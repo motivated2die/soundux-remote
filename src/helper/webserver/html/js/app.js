@@ -377,8 +377,81 @@ function fetchSoundProgress() {
         });
 }
 
+function addFullscreenReentryFeature() {
+    // Get all navbar elements
+    const header = document.querySelector('header');
+    const logo = document.querySelector('.logo');
+    const title = document.querySelector('h1');
+    const serverStatus = document.querySelector('.server-status');
+    const stopButton = document.getElementById('stop-all');
+    
+    // Function to request fullscreen
+    function requestFullscreen() {
+        if (!document.fullscreenElement) {
+            console.log('Re-entering fullscreen mode');
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen();
+            } else if (elem.mozRequestFullScreen) { // Firefox
+                elem.mozRequestFullScreen();
+            } else if (elem.webkitRequestFullscreen) { // Chrome, Safari and Opera
+                elem.webkitRequestFullscreen();
+            } else if (elem.msRequestFullscreen) { // IE/Edge
+                elem.msRequestFullscreen();
+            }
+        }
+    }
+    
+    // Add click event listeners to all navbar elements
+    const navbarElements = [header, logo, title, serverStatus, stopButton];
+    
+    navbarElements.forEach(element => {
+        if (element) {
+            element.addEventListener('click', (e) => {
+                // Prevent click from propagating if it's just for fullscreen
+                if (!document.fullscreenElement) {
+                    e.stopPropagation();
+                    requestFullscreen();
+                    
+                    // Also re-enable NoSleep if necessary
+                    if (typeof noSleep !== 'undefined' && typeof noSleepEnabled !== 'undefined') {
+                        if (!noSleepEnabled) {
+                            enableNoSleep();
+                        }
+                    }
+                }
+            });
+        }
+    });
+    
+    // Also add listener to tabs container
+    const tabsContainer = document.getElementById('tabs-container');
+    if (tabsContainer) {
+        tabsContainer.addEventListener('click', (e) => {
+            // Only handle clicks directly on the container, not on tabs
+            if (e.target === tabsContainer) {
+                if (!document.fullscreenElement) {
+                    requestFullscreen();
+                }
+            }
+        });
+    }
+    
+    // Add listener for app visibility changes to re-enter fullscreen when app regains focus
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            // Short delay to let the UI stabilize
+            setTimeout(() => {
+                requestFullscreen();
+            }, 300);
+        }
+    });
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     init();
     checkForPlayingSounds();
+    addFullscreenReentryFeature();
+    initTabSwiping();
 });
