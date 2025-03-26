@@ -641,3 +641,32 @@ h1 {
     border-bottom: none;
 }
 
+/* Add these styles to your CSS file */
+
+#sound-progress-container {
+    position: fixed;
+    bottom: 76px; /* Position it above the tabs */
+    left: 0;
+    right: 0;
+    height: 3px;
+    background-color: rgba(255, 255, 255, 0.1);
+    z-index: 200;
+}
+
+#sound-progress-bar {
+    height: 100%;
+    width: 0;
+    background-color: var(--v-primary-base);
+    transition: width 0.1s linear;
+}
+
+/* When no sound is playing, hide the progress bar with a transition */
+#sound-progress-container.inactive {
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+#sound-progress-container.active {
+    opacity: 1;
+    transition: opacity 0.2s ease;
+}

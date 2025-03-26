@@ -234,7 +234,7 @@ namespace Soundux::Objects
             try {
                 auto soundId = std::stoul(soundIdStr);
                 
-                // Get WebView instance
+                // Get the WebView instance
                 auto* webview = dynamic_cast<Soundux::Objects::WebView*>(Soundux::Globals::gGui.get());
                 if (!webview) {
                     res.status = 500;
@@ -242,18 +242,22 @@ namespace Soundux::Objects
                     return;
                 }
                 
-                // Use WebView's playSoundById method
+                // Use the WebView's playSoundById method
                 auto playingSound = webview->playSoundById(soundId);
                 
                 if (playingSound) {
-                    // CRITICAL: Notify the UI that a sound is playing
-                    webview->onSoundPlayed(*playingSound);
+                    // Construct a more detailed JSON response with length information
+                    std::stringstream jsonResponse;
+                    jsonResponse << "{";
+                    jsonResponse << "\"success\":true,";
+                    jsonResponse << "\"id\":" << std::to_string(soundId) << ",";
+                    jsonResponse << "\"playingId\":" << std::to_string(playingSound->id) << ",";
+                    jsonResponse << "\"lengthInMs\":" << std::to_string(playingSound->lengthInMs) << ",";
+                    jsonResponse << "\"length\":" << std::to_string(playingSound->length) << ",";
+                    jsonResponse << "\"sampleRate\":" << std::to_string(playingSound->sampleRate);
+                    jsonResponse << "}";
                     
-                    res.set_content(
-                        "{\"success\":true,\"id\":" + std::to_string(soundId) + 
-                        ",\"playingId\":" + std::to_string(playingSound->id) + "}", 
-                        "application/json"
-                    );
+                    res.set_content(jsonResponse.str(), "application/json");
                 } else {
                     res.status = 500;
                     res.set_content("{\"error\":\"Failed to play sound\"}", "application/json");
@@ -261,6 +265,42 @@ namespace Soundux::Objects
             } catch (const std::exception &e) {
                 res.status = 400;
                 res.set_content("{\"error\":\"Invalid sound ID: " + std::string(e.what()) + "\"}", "application/json");
+            }
+        });
+
+        // Get progress of currently playing sounds
+        server->Get("/api/sounds/progress", [](const httplib::Request &, httplib::Response &res) {
+            try {
+                // Get all currently playing sounds
+                auto playingSounds = Soundux::Globals::gAudio.getPlayingSounds();
+                
+                // Format into JSON array
+                std::stringstream jsonResponse;
+                jsonResponse << "[";
+                
+                bool first = true;
+                for (const auto &sound : playingSounds) {
+                    if (!first) {
+                        jsonResponse << ",";
+                    }
+                    first = false;
+                    
+                    jsonResponse << "{";
+                    jsonResponse << "\"id\":" << std::to_string(sound.id) << ",";
+                    jsonResponse << "\"soundId\":" << std::to_string(sound.sound.id) << ",";
+                    jsonResponse << "\"lengthInMs\":" << std::to_string(sound.lengthInMs) << ",";
+                    jsonResponse << "\"readInMs\":" << std::to_string(sound.readInMs.load()) << ",";
+                    jsonResponse << "\"paused\":" << (sound.paused.load() ? "true" : "false") << ",";
+                    jsonResponse << "\"repeat\":" << (sound.repeat.load() ? "true" : "false");
+                    jsonResponse << "}";
+                }
+                
+                jsonResponse << "]";
+                res.set_content(jsonResponse.str(), "application/json");
+            } 
+            catch (const std::exception &e) {
+                res.status = 500;
+                res.set_content("{\"error\":\"Failed to get sound progress: " + std::string(e.what()) + "\"}", "application/json");
             }
         });
         

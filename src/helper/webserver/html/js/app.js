@@ -16,6 +16,7 @@ const soundsContainer = document.getElementById('sounds-container');
 function init() {
     checkServerStatus();
     setupEventListeners();
+    initSoundProgressBar();
 }
 
 // Check server status
@@ -137,50 +138,60 @@ function displaySounds(sounds) {
 // Play a sound
 function playSound(soundId) {
     fetch(`/api/sounds/${soundId}/play`, { method: 'POST' })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Error ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             // Mark sound as playing
             state.currentlyPlaying.add(soundId);
             updatePlayingState();
-            console.log('Sound played:', data);
+            
+            // Store sound data and start progress tracking
+            if (data.lengthInMs && data.playingId) {
+                soundProgress.activeSounds.set(data.playingId, {
+                    id: data.playingId,
+                    soundId: soundId,
+                    lengthInMs: data.lengthInMs,
+                    readInMs: 0
+                });
+                
+                // Initialize progress bar
+                handleSoundPlayed({
+                    id: data.playingId,
+                    lengthInMs: data.lengthInMs
+                });
+                
+                // Start polling for updates
+                startProgressPolling();
+            }
         })
         .catch(error => {
             console.error('Error playing sound:', error);
-            alert(`Failed to play sound: ${error.message}`);
         });
 }
 
+
+
 // Stop all sounds
 function stopAllSounds() {
-    stopAllButton.disabled = true;
-    
     fetch('/api/sounds/stop', { method: 'POST' })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Error ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             // Clear playing state
             state.currentlyPlaying.clear();
             updatePlayingState();
             
-            stopAllButton.disabled = false;
-            console.log('All sounds stopped:', data);
+            // Clear progress tracking
+            soundProgress.activeSounds.clear();
+            stopProgressPolling();
+            
+            // Reset progress bar
+            handleSoundFinished();
         })
         .catch(error => {
             console.error('Error stopping sounds:', error);
-            alert(`Failed to stop sounds: ${error.message}`);
-            
-            stopAllButton.disabled = false;
         });
 }
+
+
 
 // Update playing state visually
 function updatePlayingState() {
@@ -215,6 +226,132 @@ function updatePlayingState() {
             card.classList.remove('playing');
         }
     });
+}
+// Global tracking variable for sound progress
+const soundProgress = {
+    polling: false,
+    interval: null,
+    activeSounds: new Map(), // Maps playingId to sound data
+};
+
+// Initialize progress bar
+function initSoundProgressBar() {
+    const progressContainer = document.getElementById('sound-progress-container');
+    const progressBar = document.getElementById('sound-progress-bar');
+    
+    if (!progressContainer || !progressBar) return;
+    
+    // Initially set it as inactive
+    progressContainer.classList.add('inactive');
+}
+
+// Handle sound played event
+function handleSoundPlayed(soundData) {
+    // Store the length of the sound for progress tracking
+    soundProgressData = {
+        isPlaying: true,
+        currentPosition: 0,
+        totalLength: soundData.lengthInMs,
+        soundId: soundData.id
+    };
+    
+    // Activate progress container
+    const progressContainer = document.getElementById('sound-progress-container');
+    if (progressContainer) {
+        progressContainer.classList.remove('inactive');
+        progressContainer.classList.add('active');
+    }
+    
+    // Reset progress bar to 0
+    updateProgressBar(0);
+}
+
+// Update progress bar with data from sound progress updates
+function handleSoundProgress(soundData) {
+    // Calculate percentage
+    const percentage = (soundData.readInMs / soundData.lengthInMs) * 100;
+    
+    // Update progress bar
+    updateProgressBar(percentage);
+}
+
+// Update the progress bar width
+function updateProgressBar(percentage) {
+    const progressBar = document.getElementById('sound-progress-bar');
+    if (progressBar) {
+        progressBar.style.width = `${percentage}%`;
+    }
+}
+
+// Handle sound finished event
+function handleSoundFinished() {
+    // Animate to 100% then reset
+    updateProgressBar(100);
+    
+    // After a moment, hide the progress bar
+    setTimeout(() => {
+        const progressContainer = document.getElementById('sound-progress-container');
+        if (progressContainer) {
+            progressContainer.classList.remove('active');
+            progressContainer.classList.add('inactive');
+        }
+        
+        // Reset to 0 after transition completes
+        setTimeout(() => {
+            updateProgressBar(0);
+        }, 500);
+    }, 300);
+}
+
+// Function to start polling for sound progress
+function startProgressPolling() {
+    if (soundProgress.polling) return; // Already polling
+    
+    soundProgress.polling = true;
+    
+    // Poll every 250ms (4 times per second)
+    soundProgress.interval = setInterval(fetchSoundProgress, 250);
+}
+
+// Function to stop polling
+function stopProgressPolling() {
+    if (!soundProgress.polling) return; // Not polling
+    
+    soundProgress.polling = false;
+    
+    if (soundProgress.interval) {
+        clearInterval(soundProgress.interval);
+        soundProgress.interval = null;
+    }
+}
+
+// Function to fetch sound progress from the server
+function fetchSoundProgress() {
+    // Only fetch if we have active sounds
+    if (soundProgress.activeSounds.size === 0) {
+        stopProgressPolling();
+        return;
+    }
+    
+    fetch('/api/sounds/progress')
+        .then(response => response.json())
+        .then(data => {
+            // Process progress data
+            if (Array.isArray(data) && data.length > 0) {
+                data.forEach(sound => {
+                    soundProgress.activeSounds.set(sound.id, sound);
+                    handleSoundProgress(sound);
+                });
+            } else {
+                // No sounds playing
+                soundProgress.activeSounds.clear();
+                stopProgressPolling();
+                handleSoundFinished();
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching sound progress:', error);
+        });
 }
 
 // Initialize on page load
