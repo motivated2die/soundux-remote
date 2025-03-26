@@ -16,7 +16,7 @@ const soundsContainer = document.getElementById('sounds-container');
 function init() {
     checkServerStatus();
     setupEventListeners();
-    initSoundProgressBar();
+    setTimeout(initSoundProgressBar, 100);
 }
 
 // Check server status
@@ -140,31 +140,42 @@ function playSound(soundId) {
     fetch(`/api/sounds/${soundId}/play`, { method: 'POST' })
         .then(response => response.json())
         .then(data => {
-            // Mark sound as playing
+            // Use soundId for visual state
             state.currentlyPlaying.add(soundId);
             updatePlayingState();
             
-            // Store sound data and start progress tracking
+            // Use playingId for progress tracking
             if (data.lengthInMs && data.playingId) {
+                // Store mapping between playingId and soundId
                 soundProgress.activeSounds.set(data.playingId, {
                     id: data.playingId,
-                    soundId: soundId,
+                    soundId: soundId,  // Keep reference to original sound
                     lengthInMs: data.lengthInMs,
                     readInMs: 0
                 });
                 
-                // Initialize progress bar
-                handleSoundPlayed({
-                    id: data.playingId,
-                    lengthInMs: data.lengthInMs
-                });
-                
-                // Start polling for updates
+                // Start tracking with clear data
+                handleSoundPlayed(data);
                 startProgressPolling();
             }
-        })
-        .catch(error => {
-            console.error('Error playing sound:', error);
+        });
+}
+
+
+// Add initial check for already playing sounds
+function checkForPlayingSounds() {
+    fetch('/api/sounds/progress')
+        .then(response => response.json())
+        .then(data => {
+            if (Array.isArray(data) && data.length > 0) {
+                // Update state with already playing sounds
+                data.forEach(sound => {
+                    soundProgress.activeSounds.set(sound.id, sound);
+                    state.currentlyPlaying.add(sound.soundId);
+                });
+                updatePlayingState();
+                startProgressPolling();
+            }
         });
 }
 
@@ -268,12 +279,24 @@ function handleSoundPlayed(soundData) {
 
 // Update progress bar with data from sound progress updates
 function handleSoundProgress(soundData) {
+    // Find corresponding DOM element for this sound
+    const soundElement = document.querySelector(`.sound-card[data-sound-id="${soundData.soundId}"]`);
+    
     // Calculate percentage
     const percentage = (soundData.readInMs / soundData.lengthInMs) * 100;
     
-    // Update progress bar
-    updateProgressBar(percentage);
+    // Update progress bar - for now just show the first active sound's progress
+    if (soundProgress.activeSounds.size === 1 || soundData.id === [...soundProgress.activeSounds.keys()][0]) {
+        updateProgressBar(percentage);
+    }
+    
+    // Optional: Add individual progress indicators to each sound card
+    if (soundElement) {
+        // Add progress indication to the specific sound
+        soundElement.style.background = `linear-gradient(to right, var(--v-primary-base) ${percentage}%, var(--v-surface-dark) ${percentage}%)`;
+    }
 }
+
 
 // Update the progress bar width
 function updateProgressBar(percentage) {
@@ -355,4 +378,7 @@ function fetchSoundProgress() {
 }
 
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => {
+    init();
+    checkForPlayingSounds();
+});

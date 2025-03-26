@@ -273,30 +273,21 @@ namespace Soundux::Objects
             try {
                 // Get all currently playing sounds
                 auto playingSounds = Soundux::Globals::gAudio.getPlayingSounds();
-                
-                // Format into JSON array
-                std::stringstream jsonResponse;
-                jsonResponse << "[";
-                
-                bool first = true;
+                nlohmann::json jsonArray = nlohmann::json::array();
+
                 for (const auto &sound : playingSounds) {
-                    if (!first) {
-                        jsonResponse << ",";
-                    }
-                    first = false;
-                    
-                    jsonResponse << "{";
-                    jsonResponse << "\"id\":" << std::to_string(sound.id) << ",";
-                    jsonResponse << "\"soundId\":" << std::to_string(sound.sound.id) << ",";
-                    jsonResponse << "\"lengthInMs\":" << std::to_string(sound.lengthInMs) << ",";
-                    jsonResponse << "\"readInMs\":" << std::to_string(sound.readInMs.load()) << ",";
-                    jsonResponse << "\"paused\":" << (sound.paused.load() ? "true" : "false") << ",";
-                    jsonResponse << "\"repeat\":" << (sound.repeat.load() ? "true" : "false");
-                    jsonResponse << "}";
+                    nlohmann::json soundObj;
+                    soundObj["id"] = sound.id;
+                    soundObj["soundId"] = sound.sound.id;
+                    soundObj["lengthInMs"] = sound.lengthInMs;
+                    soundObj["readInMs"] = sound.readInMs.load();
+                    soundObj["paused"] = sound.paused.load();
+                    soundObj["repeat"] = sound.repeat.load();
+                    jsonArray.push_back(soundObj);
                 }
-                
-                jsonResponse << "]";
-                res.set_content(jsonResponse.str(), "application/json");
+
+                res.set_content(jsonArray.dump(), "application/json");
+
             } 
             catch (const std::exception &e) {
                 res.status = 500;
