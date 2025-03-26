@@ -156,11 +156,43 @@ int main(int argc, char **arguments)
     gConfig.settings = gSettings;
     gConfig.save();
     
-    // Shutdown web server if running
-    if (gWebServer && gWebServer->isRunning())
-    {
-        gWebServer->stop();
+    // Shutdown in reverse order of initialization
+    try {
+        // First stop the web server as it might be using other components
+        if (gWebServer && gWebServer->isRunning()) {
+            Fancy::fancy.logTime().message() << "Stopping web server..." << std::endl;
+            gWebServer->stop();
+        }
+        
+        // Then stop audio-related services
+        Fancy::fancy.logTime().message() << "Cleaning up audio resources..." << std::endl;
+        gAudio.destroy();
+        
+        #if defined(__linux__)
+        if (gAudioBackend) {
+            gAudioBackend->destroy();
+        }
+        #endif
+        
+        // Save configuration last
+        Fancy::fancy.logTime().message() << "Saving configuration..." << std::endl;
+        gConfig.data.set(gData);
+        gConfig.settings = gSettings;
+        gConfig.save();
+        
+        Fancy::fancy.logTime().success() << "Shutdown completed successfully" << std::endl;
+    } catch (const std::exception& e) {
+        Fancy::fancy.logTime().failure() << "Error during shutdown: " << e.what() << std::endl;
     }
+
+    std::thread shutdownGuard([]() {
+        // Wait 5 seconds then force exit if still running
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        Fancy::fancy.logTime().warning() << "Forcing exit after timeout" << std::endl;
+        std::_Exit(0); // Force immediate exit - use only as last resort
+    });
+    shutdownGuard.detach();
+    
 
     return 0;
 }

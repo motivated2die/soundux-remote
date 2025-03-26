@@ -380,13 +380,24 @@ namespace Soundux::Objects
     }
     void WebView::mainLoop()
     {
+        // Safely destroy tray before exiting
+        auto safelyDestroyTray = [this]() {
+            if (tray) {
+                try {
+                    tray->exit();
+                    tray.reset();
+                } catch (const std::exception& e) {
+                    Fancy::fancy.logTime().warning() << "Error destroying tray: " << e.what() << std::endl;
+                }
+            }
+        };
+
         webview->run();
-        if (tray)
-        {
-            tray->exit();
-        }
+        safelyDestroyTray();
         Fancy::fancy.logTime().message() << "UI exited" << std::endl;
     }
+
+
     void WebView::onHotKeyReceived(const std::vector<int> &keys)
     {
         std::string hotkeySequence;

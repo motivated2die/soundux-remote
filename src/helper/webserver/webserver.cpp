@@ -97,10 +97,24 @@ namespace Soundux::Objects
         {
             running = false;
             server->stop();
+            
+            // Join with timeout
             if (serverThread.joinable())
             {
-                serverThread.join();
+                // Use std::future with wait_for to implement a timeout
+                std::future<void> future = std::async(std::launch::async, [&](){
+                    if (serverThread.joinable()) {
+                        serverThread.join();
+                    }
+                });
+                
+                // Wait for thread to join with 2 second timeout
+                if (future.wait_for(std::chrono::seconds(2)) == std::future_status::timeout) {
+                    Fancy::fancy.logTime().warning() << "Web server thread did not join in time" << std::endl;
+                    // Could use more drastic approaches like std::terminate if needed
+                }
             }
+            
             Fancy::fancy.logTime().success() << "Web server stopped" << std::endl;
         }
     }
