@@ -64,22 +64,6 @@ h1 {
     color: var(--text-secondary)
 }
 
-.status-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    margin-right: 8px;
-    background-color: var(--v-secondary-base)
-}
-
-.status-dot.connected {
-    background-color: var(--v-primary-base)
-}
-
-.status-dot.error {
-    background-color: #ff5252
-}
-
 .controls {
     margin-bottom: 16px;
     display: flex;
@@ -339,8 +323,9 @@ h1 {
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    margin-right: 8px;
-    background-color: var(--v-secondary-base)
+    background-color: var(--v-secondary-base);
+    margin-bottom: 1px;
+    margin-right: 1px;
 }
 
 .status-dot.connected {

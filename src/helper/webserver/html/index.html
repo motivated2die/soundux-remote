@@ -50,11 +50,32 @@
             user-select: none;
             touch-action: manipulation;
         }
+        
+        /* Wakelock indicator as eye icon */
+        #wakelock-indicator {
+            display: inline-flex;
+            align-items: center;
+            font-size: 14px;
+            margin: 0 4px;
+            color: #777;
+            vertical-align: middle;
+        }
+        
+        #wakelock-indicator.active {
+            color: var(--v-primary-base);
+        }
+        
+        #wakelock-indicator .material-symbols-outlined {
+            font-size: 14px;
+            font-variation-settings: 'FILL' 1;
+        }
     </style>
 </head>
 <body>
+    <!-- Screen wakelock indicator is now placed inside server-status -->
+    
     <div class="container">
-                <main class="sounds-grid" id="sounds-container">
+        <main class="sounds-grid" id="sounds-container">
             <!-- Sounds will be dynamically added here -->
         </main>
         
@@ -74,6 +95,7 @@
                     <h1>Soundux 🎮</h1>
                     <div class="server-status">
                         <span id="status-indicator" class="status-dot"></span>
+                        <span id="wakelock-indicator"><span class="material-symbols-outlined">visibility_off</span></span>
                         <span id="server-status">Connecting...</span>
                     </div>
                 </div>
@@ -88,107 +110,199 @@
     </div>
 
     <script>
-        // No-sleep functionality with proper handling
-        const noSleep = new NoSleep();
-        let noSleepEnabled = false;
-        
-        function enableNoSleep() {
-            if (!noSleepEnabled) {
-                noSleep.enable().then(() => {
-                    noSleepEnabled = true;
-                    console.log("NoSleep enabled successfully");
-                })
-                .catch(error => {
-                    console.error("Error enabling NoSleep:", error);
-                    // Try again with user interaction
-                    document.addEventListener('click', handleNoSleepActivation, { once: true });
+        // Improved screen wake lock implementation
+        (function() {
+            // Variables
+            const noSleep = new NoSleep();
+            let wakelockEnabled = false;
+            const wakelockIndicator = document.getElementById('wakelock-indicator');
+            let wakelockAttempts = 0;
+            const MAX_ATTEMPTS = 5;
+            
+            // Main function to enable wakelock
+            function enableWakeLock() {
+                if (wakelockEnabled) return; // Already enabled
+                
+                try {
+                    // First try the modern Screen Wake Lock API
+                    if ('wakeLock' in navigator) {
+                        requestWakeLock();
+                    } else {
+                        // Fall back to NoSleep.js
+                        enableNoSleep();
+                    }
+                } catch (err) {
+                    console.error('Error enabling wake lock:', err);
+                    fallbackToNoSleep();
+                }
+            }
+            
+            // Modern Screen Wake Lock API implementation
+            async function requestWakeLock() {
+                try {
+                    const wakeLock = await navigator.wakeLock.request('screen');
+                    wakelockEnabled = true;
+                    updateWakeLockIndicator(true);
+                    console.log('Wake Lock enabled with the Screen Wake Lock API');
+                    
+                    // Re-request wake lock when document becomes visible again
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Wake Lock released');
+                        wakelockEnabled = false;
+                        updateWakeLockIndicator(false);
+                        
+                        // Try to re-acquire when released
+                        if (document.visibilityState === 'visible') {
+                            enableWakeLock();
+                        }
+                    });
+                    
+                } catch (err) {
+                    console.warn('Screen Wake Lock API failed:', err.message);
+                    fallbackToNoSleep();
+                }
+            }
+            
+            // NoSleep.js implementation
+            function enableNoSleep() {
+                noSleep.enable()
+                    .then(() => {
+                        wakelockEnabled = true;
+                        updateWakeLockIndicator(true);
+                        console.log('NoSleep enabled successfully');
+                        
+                        // Set up a periodic check to ensure it stays enabled
+                        setUpPeriodicWakeLockCheck();
+                    })
+                    .catch(error => {
+                        console.error('NoSleep error:', error);
+                        
+                        // If we haven't exceeded max attempts, try again on next user interaction
+                        if (wakelockAttempts < MAX_ATTEMPTS) {
+                            wakelockAttempts++;
+                            console.log(`Attempt ${wakelockAttempts}/${MAX_ATTEMPTS} failed. Will retry on next user interaction.`);
+                            setupWakeLockTriggers();
+                        }
+                    });
+            }
+            
+            // Fallback method if primary method fails
+            function fallbackToNoSleep() {
+                console.log('Falling back to NoSleep.js');
+                enableNoSleep();
+            }
+            
+            // Set up periodic checking to make sure wakelock stays active
+            function setUpPeriodicWakeLockCheck() {
+                // Check every 15 seconds if the wakelock is still active
+                setInterval(() => {
+                    if (!wakelockEnabled || (noSleep && !noSleep.isEnabled)) {
+                        console.log('Wake lock appears to be inactive, re-enabling...');
+                        enableWakeLock();
+                    }
+                }, 15000);
+            }
+            
+            // Update visual indicator
+            function updateWakeLockIndicator(active) {
+                if (wakelockIndicator) {
+                    if (active) {
+                        wakelockIndicator.classList.add('active');
+                        wakelockIndicator.innerHTML = '<span class="material-symbols-outlined">visibility</span>';
+                    } else {
+                        wakelockIndicator.classList.remove('active');
+                        wakelockIndicator.innerHTML = '<span class="material-symbols-outlined">visibility_off</span>';
+                    }
+                }
+            }
+            
+            // Set up event listeners to enable wakelock on interaction
+            function setupWakeLockTriggers() {
+                const interactiveElements = [
+                    document.body,
+                    document.getElementById('stop-all'),
+                    document.getElementById('sounds-container'),
+                    document.getElementById('tabs-container')
+                ];
+                
+                interactiveElements.forEach(el => {
+                    if (el) {
+                        el.addEventListener('click', handleUserInteraction);
+                        el.addEventListener('touchstart', handleUserInteraction);
+                    }
                 });
             }
-        }
-        
-        function handleNoSleepActivation() {
-            enableNoSleep();
-        }
-
-        // Fullscreen and Mobile Optimization Script
-        (function() {
-            // Prevent default touch behaviors
-            document.addEventListener('touchstart', (e) => {
-                if (e.touches.length > 1) {
-                    e.preventDefault(); // Prevent multi-touch zoom
+            
+            // Handle user interaction
+            function handleUserInteraction() {
+                if (!wakelockEnabled) {
+                    console.log('User interaction detected, enabling wake lock');
+                    enableWakeLock();
                 }
-            }, { passive: false });
-
+                
+                // Also request fullscreen if not already fullscreen
+                if (!document.fullscreenElement) {
+                    requestFullscreen();
+                }
+            }
+            
             // Fullscreen request function
             function requestFullscreen() {
                 const elem = document.documentElement;
                 if (elem.requestFullscreen) {
-                    elem.requestFullscreen();
-                } else if (elem.mozRequestFullScreen) { // Firefox
+                    elem.requestFullscreen().catch(err => {
+                        console.warn('Fullscreen request failed:', err);
+                    });
+                } else if (elem.mozRequestFullScreen) {
                     elem.mozRequestFullScreen();
-                } else if (elem.webkitRequestFullscreen) { // Chrome, Safari and Opera
+                } else if (elem.webkitRequestFullscreen) {
                     elem.webkitRequestFullscreen();
-                } else if (elem.msRequestFullscreen) { // IE/Edge
+                } else if (elem.msRequestFullscreen) {
                     elem.msRequestFullscreen();
                 }
             }
-
-            // Attempt fullscreen and activate no-sleep on first interaction
-            function setupInteractionHandlers() {
-                const interactiveElements = [
-                    document.body, 
-                    document.getElementById('stop-all'),
-                    ...document.querySelectorAll('.tab, .sound-card')
-                ];
-
-                interactiveElements.forEach(el => {
-                    if (el) {
-                        el.addEventListener('click', function firstClickHandler() {
-                            enableNoSleep();
-                            
-                            if (!document.fullscreenElement) {
-                                requestFullscreen();
-                            }
-                            
-                            // Remove the listener after first use
-                            el.removeEventListener('click', firstClickHandler);
-                        }, { once: true });
+            
+            // Handle visibility change
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    console.log('Document became visible, re-enabling wake lock');
+                    enableWakeLock();
+                    
+                    // When returning to the app, try to go fullscreen again
+                    if (!document.fullscreenElement) {
+                        requestFullscreen();
                     }
-                });
-            }
-
+                }
+            }, false);
+            
             // Standalone mode detection
             function checkStandaloneMode() {
-                if (window.matchMedia('(display-mode: standalone)').matches) {
-                    console.log('Launched in standalone mode');
-                    // Additional customizations for standalone mode
+                const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                                    window.navigator.standalone || 
+                                    document.referrer.includes('android-app://');
+                                    
+                if (isStandalone) {
+                    console.log('Running in standalone/PWA mode');
                     document.body.classList.add('standalone-mode');
-                    // Auto-enable NoSleep in standalone mode
-                    document.addEventListener('click', handleNoSleepActivation, { once: true });
+                    
+                    // In standalone mode, enable wakelock immediately
+                    setTimeout(enableWakeLock, 1000);
                 }
             }
-
-            // Prevent pull-to-refresh
-            document.addEventListener('touchstart', (e) => {
-                if (e.touches && e.touches[0] && e.touches[0].clientY <= 10) {
-                    e.preventDefault();
-                }
-            }, { passive: false });
-
-            // Setup everything once DOM is loaded
-            document.addEventListener('DOMContentLoaded', () => {
-                setupInteractionHandlers();
-                checkStandaloneMode();
-                
-                // Also add click listeners to dynamically loaded elements
+            
+            // Observer for dynamically added interactive elements
+            function setupObserver() {
                 const observer = new MutationObserver((mutations) => {
                     mutations.forEach((mutation) => {
                         if (mutation.addedNodes && mutation.addedNodes.length > 0) {
                             mutation.addedNodes.forEach((node) => {
-                                if (node.classList && 
-                                   (node.classList.contains('sound-card') || 
-                                    node.classList.contains('tab'))) {
-                                    node.addEventListener('click', handleNoSleepActivation, { once: true });
+                                if (node.nodeType === 1) { // Element node
+                                    if (node.classList && 
+                                       (node.classList.contains('sound-card') || 
+                                        node.classList.contains('tab'))) {
+                                        node.addEventListener('click', handleUserInteraction);
+                                        node.addEventListener('touchstart', handleUserInteraction);
+                                    }
                                 }
                             });
                         }
@@ -199,15 +313,27 @@
                     childList: true,
                     subtree: true
                 });
+            }
+            
+            // Initialize everything
+            document.addEventListener('DOMContentLoaded', () => {
+                checkStandaloneMode();
+                setupWakeLockTriggers();
+                setupObserver();
+                setUpPeriodicWakeLockCheck();
                 
-                // Periodically check and re-enable NoSleep if necessary
-                setInterval(() => {
-                    if (noSleepEnabled && !noSleep.isEnabled) {
-                        console.log("NoSleep was disabled, re-enabling...");
-                        enableNoSleep();
-                    }
-                }, 10000);
+                // Try to enable on first load with a slight delay
+                setTimeout(() => {
+                    // Try to enable wake lock automatically
+                    enableWakeLock();
+                }, 2000);
             });
+            
+            // Expose the functions globally for debugging
+            window.screenWakeLock = {
+                enable: enableWakeLock,
+                isEnabled: () => wakelockEnabled
+            };
         })();
     </script>
     <script src="js/app.js"></script>
