@@ -30,6 +30,13 @@ namespace Soundux
             bool minimizeToTray = false;
             bool tabHotkeysOnly = false;
             bool deleteToTrash = true;
+
+            
+            // Add these fields to the Settings struct
+            bool enableWebServer = true;
+            std::string webServerHost = "0.0.0.0";
+            int webServerPort = 8080;
+            std::string webServerRoot = "";
         };
     } // namespace Objects
 } // namespace Soundux

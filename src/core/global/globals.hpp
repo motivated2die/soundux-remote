@@ -18,6 +18,9 @@
 #include <ui/ui.hpp>
 #include <var_guard.hpp>
 
+#include <helper/webserver/webserver.hpp>
+
+
 namespace Soundux
 {
     namespace Globals
@@ -42,5 +45,10 @@ namespace Soundux
         /* Allows for fast & easy sound access, is populated on start up */
         inline sxl::var_guard<std::map<std::uint32_t, std::reference_wrapper<Objects::Sound>>> gSounds;
         inline sxl::var_guard<std::map<std::uint32_t, std::reference_wrapper<Objects::Sound>>> gFavorites;
-    } // namespace Globals
+    
+
+        inline std::unique_ptr<Objects::WebServer> gWebServer;
+
+
+        } // namespace Globals
 } // namespace Soundux

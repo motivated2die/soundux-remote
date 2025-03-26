@@ -23,9 +23,9 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={pf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
-LicenseFile=$PATH\LICENSE
+LicenseFile={#PATH}\LICENSE
 OutputBaseFilename=setup
-SetupIconFile=$PATH\assets\icon.ico
+SetupIconFile={#PATH}\assets\icon.ico
 Compression=lzma
 SolidCompression=yes
 
@@ -60,8 +60,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 0,6.1
 
 [Files]
-Source: "$PATH\build\Release\soundux.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "$PATH\build\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#PATH}\build\Release\soundux.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PATH}\build\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{tmp}\VBCABLE_Driver_Pack43.zip"; DestDir: "{app}"; Flags: external deleteafterinstall; Components: VBCable
 Source: "{tmp}\MicrosoftEdgeWebView2RuntimeInstallerX64.exe"; DestDir: "{tmp}"; Flags: external deleteafterinstall; Components: MicrosoftEdgeWebView2Runtime
 Source: "{tmp}\youtube-dl.exe"; DestDir: "{app}"; Flags: external ignoreversion; Components: FfmpegYouTubeDL

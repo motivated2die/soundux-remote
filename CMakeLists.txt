@@ -1,9 +1,10 @@
-cmake_minimum_required(VERSION 3.1)
-project(soundux VERSION 0.2.7 DESCRIPTION "A crossplatform soundboard")
+cmake_minimum_required(VERSION 3.10)
+project(soundux VERSION 0.2.8 DESCRIPTION "A crossplatform soundboard")
 
-set(FULL_VERSION_STRING "0.2.7")
+set(FULL_VERSION_STRING "0.2.8")
 option(EMBED_PATH "The path used for embedding" "OFF")
 option(USE_FLATPAK "Allows the program to run under flatpak" OFF)
+
 
 file(GLOB src
     "src/*.cpp"
@@ -11,7 +12,25 @@ file(GLOB src
     "src/*/*/*.cpp"
     "src/*/*/*/*.cpp"
     "src/*/*/*/*/*.cpp"
+    "src/helper/webserver/*.cpp"
 )
+
+# Debug function to print directory contents
+function(print_directory_contents dir_path)
+    message(STATUS "Contents of directory: ${dir_path}")
+    file(GLOB dir_contents "${dir_path}/*")
+    foreach(item ${dir_contents})
+        if(IS_DIRECTORY ${item})
+            message(STATUS "  DIR:  ${item}")
+        else()
+            message(STATUS "  FILE: ${item}")
+        endif()
+    endforeach()
+endfunction()
+
+# Ensure directories exist
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/web")
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/dist")
 
 if (WIN32)
     add_executable(soundux WIN32 ${src} "assets/icon.rc")
@@ -39,7 +58,11 @@ if (WIN32)
     target_compile_options(soundux PRIVATE /W4)
 else()
     add_executable(soundux ${src})
-    target_compile_options(soundux PRIVATE -Wall -Werror -Wextra -pedantic -Wno-unused-lambda-capture -Wno-gnu)
+
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+        message(STATUS "Enabling warning and error flags for debug build")
+        target_compile_options(soundux PRIVATE -Wall -Werror -Wextra -pedantic -Wno-unused-lambda-capture -Wno-gnu)
+    endif()
 endif()
 
 target_compile_definitions(soundux PRIVATE SOUNDUX_VERSION="${FULL_VERSION_STRING}" WNCK_I_KNOW_THIS_IS_UNSTABLE=1)
@@ -48,6 +71,7 @@ target_include_directories(soundux SYSTEM PRIVATE "lib/miniaudio")
 target_include_directories(soundux SYSTEM PRIVATE "lib/semver/include")
 target_include_directories(soundux SYSTEM PRIVATE "lib/fancypp/include")
 target_include_directories(soundux SYSTEM PRIVATE "lib/json/single_include")
+target_include_directories(soundux SYSTEM PRIVATE "lib/guardpp/guard/include")
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -91,20 +115,55 @@ target_include_directories(soundux SYSTEM PRIVATE "lib/cpp-httplib")
 
 target_link_libraries(soundux PRIVATE webview nfd tiny-process-library tray guard httplib lockpp)
 
+# Copy main UI files
 if (${EMBED_PATH} STREQUAL "OFF")
-    message("Web-content will not be embedded") 
+    message(STATUS "Main UI content will not be embedded") 
     
-    # [[ Copy required files ]]
-    #  > Copies frontend files
+    # Copy soundux-ui frontend files
     if (MSVC)
         file(COPY "${CMAKE_SOURCE_DIR}/src/ui/impl/webview/lib/soundux-ui/" 
-            DESTINATION "${CMAKE_SOURCE_DIR}/build/Release/dist")
+            DESTINATION "${CMAKE_BINARY_DIR}/Release/dist"
+            FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+        file(COPY "${CMAKE_SOURCE_DIR}/src/ui/impl/webview/lib/soundux-ui/" 
+            DESTINATION "${CMAKE_BINARY_DIR}/Debug/dist"
+            FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
     else()
         file(COPY "${CMAKE_SOURCE_DIR}/src/ui/impl/webview/lib/soundux-ui/" 
-            DESTINATION "${CMAKE_SOURCE_DIR}/build/dist")
+            DESTINATION "${CMAKE_BINARY_DIR}/dist"
+            FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+    endif()
+    
+    # Print contents for debugging
+    message(STATUS "Main UI source: ${CMAKE_SOURCE_DIR}/src/ui/impl/webview/lib/soundux-ui/")
+    print_directory_contents("${CMAKE_SOURCE_DIR}/src/ui/impl/webview/lib/soundux-ui")
+    
+    # Copy web server content if it exists
+    if(EXISTS "${CMAKE_SOURCE_DIR}/src/helper/webserver/html")
+        message(STATUS "Web server content source path: ${CMAKE_SOURCE_DIR}/src/helper/webserver/html")
+        message(STATUS "Web server content destination path: ${CMAKE_BINARY_DIR}/web")
+
+        file(COPY "${CMAKE_SOURCE_DIR}/src/helper/webserver/html/" 
+             DESTINATION "${CMAKE_BINARY_DIR}/web"
+             FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+        
+        # Copy to Debug/Release directories for Windows
+        if(MSVC)
+            file(COPY "${CMAKE_SOURCE_DIR}/src/helper/webserver/html/" 
+                 DESTINATION "${CMAKE_BINARY_DIR}/Debug/web"
+                 FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+            file(COPY "${CMAKE_SOURCE_DIR}/src/helper/webserver/html/" 
+                 DESTINATION "${CMAKE_BINARY_DIR}/Release/web"
+                 FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+        endif()
+        
+        # Print contents for debugging
+        print_directory_contents("${CMAKE_SOURCE_DIR}/src/helper/webserver/html")
+        print_directory_contents("${CMAKE_BINARY_DIR}/web")
+    else()
+        message(WARNING "Web server content directory does not exist: ${CMAKE_SOURCE_DIR}/src/helper/webserver/html")
     endif()
 else()
-    message("Using embed path " ${EMBED_PATH})
+    message(STATUS "Using embed path: ${EMBED_PATH}")
     target_include_directories(webview PUBLIC ${EMBED_PATH})
     target_compile_definitions(soundux PRIVATE IS_EMBEDDED=1)
 endif()
@@ -118,22 +177,29 @@ set_target_properties(soundux PROPERTIES
 set_target_properties(soundux PROPERTIES VERSION ${PROJECT_VERSION})
 set_target_properties(soundux PROPERTIES PROJECT_NAME ${PROJECT_NAME})
 
-
+# Installation
 if(USE_FLATPAK)
     target_compile_definitions(soundux PRIVATE USE_FLATPAK)
     target_link_libraries(soundux PRIVATE ${PULSEAUDIO_LIBRARY})
 
     install(TARGETS soundux DESTINATION bin)
     if (${EMBED_PATH} STREQUAL "OFF")
-        install(DIRECTORY "${CMAKE_SOURCE_DIR}/build/dist" DESTINATION bin)
+        install(DIRECTORY "${CMAKE_BINARY_DIR}/dist" DESTINATION bin)
+    endif()
+    if(EXISTS "${CMAKE_SOURCE_DIR}/src/helper/webserver/html")
+        install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/helper/webserver/html/" 
+                DESTINATION share/soundux/web)
     endif()
 else()
-  set(CMAKE_INSTALL_PREFIX "/opt/soundux" CACHE PATH "Install path prefix, prepended onto install directories." FORCE)
-  install(TARGETS soundux DESTINATION .)
-  if (${EMBED_PATH} STREQUAL "OFF")
-    install(DIRECTORY "${CMAKE_SOURCE_DIR}/build/dist" DESTINATION .)
-  endif()
-  install(FILES "${CMAKE_SOURCE_DIR}/deployment/soundux.desktop" DESTINATION /usr/share/applications)
-  install(FILES "${CMAKE_SOURCE_DIR}/deployment/appstream/io.github.Soundux.metainfo.xml" DESTINATION /usr/share/metainfo)
-  install(FILES "${CMAKE_SOURCE_DIR}/assets/soundux.png" DESTINATION /usr/share/pixmaps)
+    set(CMAKE_INSTALL_PREFIX "/opt/soundux" CACHE PATH "Install path prefix, prepended onto install directories." FORCE)
+    install(TARGETS soundux DESTINATION .)
+    if (${EMBED_PATH} STREQUAL "OFF")
+        install(DIRECTORY "${CMAKE_BINARY_DIR}/dist" DESTINATION .)
+    endif()
+    install(FILES "${CMAKE_SOURCE_DIR}/deployment/soundux.desktop" DESTINATION /usr/share/applications)
+    install(FILES "${CMAKE_SOURCE_DIR}/deployment/appstream/io.github.Soundux.metainfo.xml" DESTINATION /usr/share/metainfo)
+    install(FILES "${CMAKE_SOURCE_DIR}/assets/soundux.png" DESTINATION /usr/share/pixmaps)
+    if(EXISTS "${CMAKE_SOURCE_DIR}/src/helper/webserver/html")
+        install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/helper/webserver/html/" DESTINATION web)
+    endif()
 endif()

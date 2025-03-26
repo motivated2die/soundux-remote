@@ -4,6 +4,10 @@
 #include <fancy.hpp>
 #include <ui/impl/webview/webview.hpp>
 
+
+#include <filesystem>
+
+
 #if defined(__linux__)
 #include <helper/audio/linux/backend.hpp>
 #endif
@@ -95,6 +99,35 @@ int main(int argc, char **arguments)
     gGui = std::make_unique<Soundux::Objects::WebView>();
     gGui->setup();
 
+    // Web server initialization
+    if (gSettings.enableWebServer)
+    {
+        gWebServer = std::make_unique<Soundux::Objects::WebServer>();
+
+        std::string webRoot = gSettings.webServerRoot;
+        // If web root is not specified, use default location
+        if (webRoot.empty())
+        {
+        #if defined(_WIN32)
+            char rawPath[MAX_PATH];
+            GetModuleFileNameA(nullptr, rawPath, MAX_PATH);
+            std::string basePath = std::filesystem::path(rawPath).parent_path().string();
+            webRoot = basePath + "/web";
+        #else
+            std::string basePath = std::filesystem::canonical("/proc/self/exe").parent_path().string();
+            webRoot = basePath + "/web";
+        #endif
+        }
+
+
+        // Update WebServer initialization
+        if (!gWebServer->start(gSettings.webServerHost, gSettings.webServerPort, webRoot))
+        {
+            Fancy::fancy.logTime().failure() << "Failed to start web server" << std::endl;
+        }
+    }
+
+
     if (std::find(args.begin(), args.end(), "--hidden") == args.end())
     {
         gGui->show();
@@ -122,6 +155,12 @@ int main(int argc, char **arguments)
     gConfig.data.set(gData);
     gConfig.settings = gSettings;
     gConfig.save();
+    
+    // Shutdown web server if running
+    if (gWebServer && gWebServer->isRunning())
+    {
+        gWebServer->stop();
+    }
 
     return 0;
 }

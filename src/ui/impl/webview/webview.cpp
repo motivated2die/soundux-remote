@@ -448,4 +448,12 @@ namespace Soundux::Objects
         webview->callFunction<void>(
             Webview::JavaScriptFunction("window.getStore().commit", "setAdministrativeModal", true));
     }
+
+    
+    //webserver
+    void WebView::stopAllSounds() {
+        stopSounds(true);  // Call with sync=true
+    }
+
+    
 } // namespace Soundux::Objects
