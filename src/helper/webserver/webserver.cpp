@@ -234,7 +234,7 @@ namespace Soundux::Objects
             try {
                 auto soundId = std::stoul(soundIdStr);
                 
-                // Get the WebView instance
+                // Get WebView instance
                 auto* webview = dynamic_cast<Soundux::Objects::WebView*>(Soundux::Globals::gGui.get());
                 if (!webview) {
                     res.status = 500;
@@ -242,10 +242,13 @@ namespace Soundux::Objects
                     return;
                 }
                 
-                // Use the WebView's playSoundById method instead of direct gAudio.play()
+                // Use WebView's playSoundById method
                 auto playingSound = webview->playSoundById(soundId);
                 
                 if (playingSound) {
+                    // CRITICAL: Notify the UI that a sound is playing
+                    webview->onSoundPlayed(*playingSound);
+                    
                     res.set_content(
                         "{\"success\":true,\"id\":" + std::to_string(soundId) + 
                         ",\"playingId\":" + std::to_string(playingSound->id) + "}", 

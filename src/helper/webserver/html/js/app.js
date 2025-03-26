@@ -187,9 +187,31 @@ function updatePlayingState() {
     const soundCards = document.querySelectorAll('.sound-card');
     soundCards.forEach(card => {
         const soundId = parseInt(card.dataset.soundId);
-        if (state.currentlyPlaying.has(soundId)) {
+        
+        // If sound is currently playing and card doesn't have the playing class yet
+        if (state.currentlyPlaying.has(soundId) && !card.classList.contains('playing')) {
+            // Add the playing class which will trigger the highlight animation
             card.classList.add('playing');
-        } else {
+            
+            // Create a temporary highlight effect that fades out
+            // Remove and re-add the class after animation completes to reset it
+            card.addEventListener('animationend', function resetHighlight() {
+                // After animation ends, keep the class but reset for future animations
+                card.classList.remove('playing');
+                
+                // If still playing (didn't get stopped during animation), re-add class immediately
+                if (state.currentlyPlaying.has(soundId)) {
+                    requestAnimationFrame(() => {
+                        card.classList.add('playing');
+                    });
+                }
+                
+                // Remove this specific instance of the event listener
+                card.removeEventListener('animationend', resetHighlight);
+            });
+        } 
+        // If sound is no longer playing
+        else if (!state.currentlyPlaying.has(soundId) && card.classList.contains('playing')) {
             card.classList.remove('playing');
         }
     });
