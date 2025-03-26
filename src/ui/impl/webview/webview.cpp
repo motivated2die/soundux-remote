@@ -455,5 +455,9 @@ namespace Soundux::Objects
         stopSounds(true);  // Call with sync=true
     }
 
+    std::optional<PlayingSound> WebView::playSoundById(const std::uint32_t &id) {
+        return playSound(id);
+    }
+
     
 } // namespace Soundux::Objects

@@ -234,23 +234,18 @@ namespace Soundux::Objects
             try {
                 auto soundId = std::stoul(soundIdStr);
                 
-                // Check if the sound exists
-                auto sound = Soundux::Globals::gData.getSound(soundId);
-                if (!sound) {
-                    res.status = 404;
-                    res.set_content("{\"error\":\"Sound not found\"}", "application/json");
+                // Get the WebView instance
+                auto* webview = dynamic_cast<Soundux::Objects::WebView*>(Soundux::Globals::gGui.get());
+                if (!webview) {
+                    res.status = 500;
+                    res.set_content("{\"error\":\"WebView interface not available\"}", "application/json");
                     return;
                 }
                 
-                // Try to play the sound using the global gAudio object
-                auto playingSound = Soundux::Globals::gAudio.play(sound->get());
+                // Use the WebView's playSoundById method instead of direct gAudio.play()
+                auto playingSound = webview->playSoundById(soundId);
                 
                 if (playingSound) {
-                    // If successful, notify the UI
-                    if (Soundux::Globals::gGui) {
-                        Soundux::Globals::gGui->onSoundPlayed(*playingSound);
-                    }
-                    
                     res.set_content(
                         "{\"success\":true,\"id\":" + std::to_string(soundId) + 
                         ",\"playingId\":" + std::to_string(playingSound->id) + "}", 

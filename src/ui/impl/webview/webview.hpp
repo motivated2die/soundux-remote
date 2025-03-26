@@ -39,6 +39,9 @@ namespace Soundux
             void onDownloadProgressed(float progress, const std::string &eta) override;
 
             void stopAllSounds();
+
+            std::optional<PlayingSound> playSoundById(const std::uint32_t &id);
+
             
         };
     } // namespace Objects
