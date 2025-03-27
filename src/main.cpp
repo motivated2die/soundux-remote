@@ -1,3 +1,4 @@
+
 #include <backward.hpp>
 #include <core/enums/enums.hpp>
 #include <core/global/globals.hpp>
@@ -122,11 +123,20 @@ int main(int argc, char **arguments)
         #endif
         }
 
-
-        // Update WebServer initialization
+        // Start the web server with the configured settings
         if (!gWebServer->start(gSettings.webServerHost, gSettings.webServerPort, webRoot))
         {
             Fancy::fancy.logTime().failure() << "Failed to start web server" << std::endl;
+        }
+        else
+        {
+            // Get the generated PIN and display it in the WebView UI
+            auto* webview = dynamic_cast<Soundux::Objects::WebView*>(gGui.get());
+            if (webview && gWebServer) { // Check gWebServer is valid too
+                webview->setWebRemotePin(gWebServer->getPin());
+            } else {
+                Fancy::fancy.logTime().warning() << "Could not set Web Remote PIN in UI" << std::endl;
+            }
         }
     }
 
@@ -158,7 +168,7 @@ int main(int argc, char **arguments)
     gConfig.data.set(gData);
     gConfig.settings = gSettings;
     gConfig.save();
-    
+
     // Shutdown in reverse order of initialization
     try {
         // First stop the web server as it might be using other components
@@ -166,23 +176,23 @@ int main(int argc, char **arguments)
             Fancy::fancy.logTime().message() << "Stopping web server..." << std::endl;
             gWebServer->stop();
         }
-        
+
         // Then stop audio-related services
         Fancy::fancy.logTime().message() << "Cleaning up audio resources..." << std::endl;
         gAudio.destroy();
-        
+
         #if defined(__linux__)
         if (gAudioBackend) {
             gAudioBackend->destroy();
         }
         #endif
-        
+
         // Save configuration last
         Fancy::fancy.logTime().message() << "Saving configuration..." << std::endl;
         gConfig.data.set(gData);
         gConfig.settings = gSettings;
         gConfig.save();
-        
+
         Fancy::fancy.logTime().success() << "Shutdown completed successfully" << std::endl;
     } catch (const std::exception& e) {
         Fancy::fancy.logTime().failure() << "Error during shutdown: " << e.what() << std::endl;
@@ -206,7 +216,7 @@ int main(int argc, char **arguments)
     } catch (...) {
         Fancy::fancy.logTime().warning() << "Final save attempt failed" << std::endl;
     }
-    
+
 
     return 0;
 }

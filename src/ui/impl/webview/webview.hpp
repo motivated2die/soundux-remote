@@ -2,6 +2,7 @@
 #include <tray.hpp>
 #include <ui/ui.hpp>
 #include <webview.hpp>
+#include <string> // Added for webRemotePin
 
 namespace Soundux
 {
@@ -19,6 +20,9 @@ namespace Soundux
 
             void setupTray();
             void fetchTranslations();
+
+            // Store the web remote PIN
+            std::string webRemotePin; // Added
 
             void onAllSoundsFinished() override;
             Settings changeSettings(Settings newSettings) override;
@@ -47,7 +51,10 @@ namespace Soundux
             std::optional<Sound> setCustomRemoteVolumeForWeb(const std::uint32_t &id, const std::optional<int> &volume);
             bool toggleFavoriteForWeb(const std::uint32_t &id);
 
-            
+            // Set the web remote PIN to display in the UI
+            void setWebRemotePin(const std::string& pin); // Added
+
+
         };
     } // namespace Objects
 } // namespace Soundux

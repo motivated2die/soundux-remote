@@ -1,3 +1,4 @@
+
 #include "webview.hpp"
 #include <core/global/globals.hpp>
 #include <cstdint>
@@ -9,6 +10,11 @@
 #include <helper/systeminfo/systeminfo.hpp>
 #include <helper/version/check.hpp>
 #include <helper/ytdl/youtube-dl.hpp>
+#include <optional> // Ensure optional is included
+
+// Include nlohmann/json forward declaration or full header if needed here
+#include <nlohmann/json.hpp>
+
 
 #ifdef _WIN32
 #include "../../assets/icon.h"
@@ -16,6 +22,11 @@
 #include <shellapi.h>
 #include <windows.h>
 #endif
+#if defined(__linux__)
+#include <unistd.h> // For readlink
+#include <limits.h> // For PATH_MAX
+#endif
+
 
 namespace Soundux::Objects
 {
@@ -29,33 +40,54 @@ namespace Soundux::Objects
         webview->enableDevTools(std::getenv("SOUNDUX_DEBUG") != nullptr);    // NOLINT
         webview->enableContextMenu(std::getenv("SOUNDUX_DEBUG") != nullptr); // NOLINT
 
+        std::filesystem::path frontendPath;
+
 #ifdef _WIN32
         char rawPath[MAX_PATH];
         GetModuleFileNameA(nullptr, rawPath, MAX_PATH);
-
-        auto path = std::filesystem::canonical(rawPath).parent_path() / "dist" / "index.html";
+        std::string basePath = std::filesystem::path(rawPath).parent_path().string();
+        frontendPath = std::filesystem::path(basePath) / "dist" / "index.html";
         tray = std::make_shared<Tray::Tray>("soundux-tray", IDI_ICON1);
-
         webview->disableAcceleratorKeys(true);
 #endif
 #if defined(__linux__)
-        auto path = std::filesystem::canonical("/proc/self/exe").parent_path() / "dist" / "index.html";
+        std::string basePath = "."; // Default
+         try {
+             char selfPath[PATH_MAX];
+             ssize_t len = readlink("/proc/self/exe", selfPath, sizeof(selfPath)-1);
+             if(len != -1) {
+               selfPath[len] = '\0';
+               basePath = std::filesystem::path(selfPath).parent_path().string();
+             }
+         } catch (const std::exception& e) {
+             Fancy::fancy.logTime().warning() << "Error getting executable path for frontend: " << e.what() << std::endl;
+         }
+         frontendPath = std::filesystem::path(basePath) / "dist" / "index.html";
+
+
         std::filesystem::path iconPath;
+        std::vector<std::string> iconSearchPaths = {
+            "/app/share/icons/hicolor/256x256/apps/io.github.Soundux.png", // Flatpak
+            "/usr/share/pixmaps/soundux.png", // Standard install
+            basePath + "/../share/pixmaps/soundux.png", // Relative path
+            basePath + "/soundux.png" // Local path
+        };
 
-        if (std::filesystem::exists("/app/share/icons/hicolor/256x256/apps/io.github.Soundux.png"))
-        {
-            iconPath = "/app/share/icons/hicolor/256x256/apps/io.github.Soundux.png";
-        }
-        else if (std::filesystem::exists("/usr/share/pixmaps/soundux.png"))
-        {
-            iconPath = "/usr/share/pixmaps/soundux.png";
-        }
-        else
-        {
-            Fancy::fancy.logTime().warning() << "Failed to find iconPath for tray icon" << std::endl;
+        for(const auto& p : iconSearchPaths) {
+            if (std::filesystem::exists(p)) {
+                iconPath = p;
+                break;
+            }
         }
 
-        tray = std::make_shared<Tray::Tray>("soundux-tray", iconPath.u8string());
+        if (iconPath.empty()) {
+            Fancy::fancy.logTime().warning() << "Failed to find iconPath for tray icon in standard locations." << std::endl;
+        } else {
+             Fancy::fancy.logTime().message() << "Using tray icon: " << iconPath.string() << std::endl;
+        }
+
+
+        tray = std::make_shared<Tray::Tray>("soundux-tray", iconPath.empty() ? "" : iconPath.string());
 #endif
 
         exposeFunctions();
@@ -64,22 +96,47 @@ namespace Soundux::Objects
         webview->setCloseCallback([this]() { return onClose(); });
         webview->setResizeCallback([this](int width, int height) { onResize(width, height); });
 
-#if defined(IS_EMBEDDED)
+#if defined(IS_EMBEDDED) // This assumes embedded resources are handled differently
 #if defined(__linux__)
-        webview->setUrl("embedded://" + path.string());
+        webview->setUrl("embedded://" + frontendPath.string());
 #elif defined(_WIN32)
-        webview->setUrl("file:///embedded/" + path.string());
+        // Windows embedded paths might need special handling
+        webview->setUrl("file:///embedded/" + frontendPath.string()); // Verify this format
 #endif
-#else
-        webview->setUrl("file://" + path.string());
+#else // Normal file serving
+       try {
+           // Ensure path exists before setting URL
+            if (std::filesystem::exists(frontendPath)) {
+                 std::string url = "file://" + std::filesystem::absolute(frontendPath).string();
+                 // Replace backslashes on Windows for URL format
+                 #ifdef _WIN32
+                   std::replace(url.begin(), url.end(), '\\', '/');
+                   // Add third slash for absolute path drive letter
+                    if (url.rfind("file:///", 0) != 0) {
+                         url.replace(0, 8, "file:///");
+                    }
+                 #endif
+                 Fancy::fancy.logTime().message() << "Setting WebView URL to: " << url << std::endl;
+                 webview->setUrl(url);
+            } else {
+                 Fancy::fancy.logTime().failure() << "Frontend index.html not found at: " << frontendPath.string() << std::endl;
+                 // Display an error in the webview?
+                 webview->setHtml("<html><body><h1>Error</h1><p>Frontend not found.</p></body></html>");
+            }
+       } catch (const std::exception& e) {
+            Fancy::fancy.logTime().failure() << "Error setting webview URL: " << e.what() << std::endl;
+            webview->setHtml("<html><body><h1>Error</h1><p>Could not load frontend.</p></body></html>");
+       }
 #endif
     }
     void WebView::show()
     {
-        webview->show();
+        if (webview) webview->show();
     }
     void WebView::exposeFunctions()
     {
+        if (!webview) return; // Safety check
+
         webview->expose(Webview::Function("getSettings", []() { return Globals::gSettings; }));
         webview->expose(Webview::Function("isLinux", []() {
 #if defined(__linux__)
@@ -136,6 +193,8 @@ namespace Soundux::Objects
             "moveTabs", [this](const std::vector<int> &newOrder) { return changeTabOrder(newOrder); }));
         webview->expose(Webview::Function("markFavorite", [this](const std::uint32_t &id, bool favorite) {
             Globals::gData.markFavorite(id, favorite);
+            // Maybe return the updated sound object or just favorite IDs? Plan implies IDs.
+             onSettingsChanged(); // Notify UI about potential changes (e.g., favorite list update)
             return Globals::gData.getFavoriteIds();
         }));
         webview->expose(Webview::Function("getFavorites", [this] { return Globals::gData.getFavoriteIds(); }));
@@ -151,7 +210,7 @@ namespace Soundux::Objects
         webview->expose(Webview::AsyncFunction("stopYoutubeDLDownload", [this](Webview::Promise promise) {
             std::thread killDownload([promise, this] {
                 Globals::gYtdl.killDownload();
-                promise.discard();
+                promise.discard(); // Discard indicates stop, maybe resolve with success?
             });
             killDownload.detach();
         }));
@@ -162,39 +221,67 @@ namespace Soundux::Objects
         webview->expose(Webview::Function("deleteSound", [this](std::uint32_t id) { return deleteSound(id); }));
         webview->expose(Webview::Function("setCustomLocalVolume",
                                           [this](const std::uint32_t &id, const std::optional<int> &volume) {
-                                              return setCustomLocalVolume(id, volume);
+                                               auto result = setCustomLocalVolume(id, volume);
+                                               onSettingsChanged(); // Notify UI
+                                              return result;
                                           }));
         webview->expose(Webview::Function("setCustomRemoteVolume",
                                           [this](const std::uint32_t &id, const std::optional<int> &volume) {
-                                              return setCustomRemoteVolume(id, volume);
+                                               auto result = setCustomRemoteVolume(id, volume);
+                                               onSettingsChanged(); // Notify UI
+                                              return result;
                                           }));
         webview->expose(Webview::Function("toggleSoundPlayback", [this]() { return toggleSoundPlayback(); }));
+
+        // Add this with the other expose statements
+        webview->expose(Webview::Function("getWebRemotePin", [this]() -> std::string {
+            return webRemotePin; // Return the stored PIN
+        }));
+
 
 #if !defined(__linux__)
         webview->expose(Webview::Function("getOutputs", [this]() { return getOutputs(); }));
 #endif
 #if defined(_WIN32)
         webview->expose(Webview::Function("openUrl", [](const std::string &url) {
-            ShellExecuteA(nullptr, nullptr, url.c_str(), nullptr, nullptr, SW_SHOW);
+             Fancy::fancy.logTime().message() << "Opening URL: " << url << std::endl;
+            ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL); // Use "open" verb
         }));
         webview->expose(Webview::Function("openFolder", [](const std::uint32_t &id) {
             auto tab = Globals::gData.getTab(id);
             if (tab)
             {
-                ShellExecuteW(nullptr, nullptr, Helpers::widen(tab->path).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                 Fancy::fancy.logTime().message() << "Opening folder: " << tab->path << std::endl;
+                // Use SHOpenFolderAndSelectItems or equivalent for better experience?
+                // ShellExecuteW for wide paths
+                ShellExecuteW(nullptr, L"explore", Helpers::widen(tab->path).c_str(), nullptr, nullptr, SW_SHOWNORMAL); // Use "explore"
             }
             else
             {
-                Fancy::fancy.logTime().warning() << "Failed to find tab with id " << id << std::endl;
+                Fancy::fancy.logTime().warning() << "Failed to find tab with id " << id << " to open folder." << std::endl;
             }
         }));
         webview->expose(Webview::Function("restartAsAdmin", [this] {
-            Globals::gGuard.reset();
+            Fancy::fancy.logTime().message() << "Attempting to restart as administrator..." << std::endl;
+            Globals::gGuard->reset(); // Release mutex before restarting
             wchar_t selfPath[MAX_PATH];
             GetModuleFileNameW(nullptr, selfPath, MAX_PATH);
-            ShellExecuteW(nullptr, L"runas", selfPath, nullptr, nullptr, SW_SHOWNORMAL);
+            SHELLEXECUTEINFOW sei = { sizeof(sei) };
+            sei.lpVerb = L"runas";
+            sei.lpFile = selfPath;
+            sei.hwnd = nullptr;
+            sei.nShow = SW_SHOWNORMAL;
 
-            webview->exit();
+            if (!ShellExecuteExW(&sei)) {
+                DWORD error = GetLastError();
+                 Fancy::fancy.logTime().failure() << "Failed to restart as admin. Error code: " << error << std::endl;
+                 // Optionally re-acquire guard if restart fails?
+                 // Globals::gGuard = std::make_shared<Instance::Guard>("soundux-guard"); // Re-acquire if needed
+            } else {
+                 Fancy::fancy.logTime().success() << "Restart as admin initiated. Exiting current instance." << std::endl;
+                 if(webview) webview->exit(); // Exit the current instance gracefully
+                 else std::exit(0);
+            }
         }));
         webview->expose(Webview::Function("isVBCableProperlySetup", [] {
             if (Globals::gWinSound)
@@ -202,16 +289,22 @@ namespace Soundux::Objects
                 return Globals::gWinSound->isVBCableProperlySetup();
             }
 
-            Fancy::fancy.logTime().failure() << "Windows Sound Backend not found" << std::endl;
+            Fancy::fancy.logTime().failure() << "isVBCableProperlySetup: Windows Sound Backend not found" << std::endl;
             return false;
         }));
         webview->expose(Webview::Function("setupVBCable", [](const std::string &micOverride) {
             if (Globals::gWinSound)
             {
-                return Globals::gWinSound->setupVBCable(Globals::gWinSound->getRecordingDevice(micOverride));
+                auto device = Globals::gWinSound->getRecordingDevice(micOverride);
+                if (!device && !micOverride.empty()) {
+                    Fancy::fancy.logTime().warning() << "setupVBCable: Specified mic override '" << micOverride << "' not found." << std::endl;
+                } else if (!device) {
+                     Fancy::fancy.logTime().warning() << "setupVBCable: Default mic could not be determined." << std::endl;
+                }
+                return Globals::gWinSound->setupVBCable(device);
             }
 
-            Fancy::fancy.logTime().failure() << "Windows Sound Backend not found" << std::endl;
+            Fancy::fancy.logTime().failure() << "setupVBCable: Windows Sound Backend not found" << std::endl;
             return false;
         }));
         webview->expose(Webview::Function(
@@ -219,80 +312,108 @@ namespace Soundux::Objects
             if (Globals::gWinSound)
             {
                 auto devices = Globals::gWinSound->getRecordingDevices();
-                for (auto it = devices.begin(); it != devices.end();)
-                {
-                    if (it->getName().find("VB-Audio") != std::string::npos)
+                 std::vector<RecordingDevice> filteredDevices;
+                 // Filter out VB-Audio devices explicitly
+                 for (const auto& device : devices) {
+                    if (device.getName().find("VB-Audio") == std::string::npos &&
+                        device.getName().find("CABLE Output") == std::string::npos ) // Also filter default name
                     {
-                        it = devices.erase(it);
+                        filteredDevices.push_back(device);
                     }
-                    else
-                    {
-                        ++it;
-                    }
-                }
+                 }
 
-                return std::make_pair(devices, Globals::gWinSound->getMic());
+                return std::make_pair(filteredDevices, Globals::gWinSound->getMic());
             }
 
-            Fancy::fancy.logTime().failure() << "Windows Sound Backend not found" << std::endl;
+            Fancy::fancy.logTime().failure() << "getRecordingDevices: Windows Sound Backend not found" << std::endl;
             return {};
         }));
 
-        
-        // Add volume-related functions
+
+        // Add volume-related functions (summary endpoint)
         webview->expose(Webview::Function("getSoundVolumes", []() {
             // Create a response with all sound volumes
             nlohmann::json response;
             response["defaultLocalVolume"] = Globals::gSettings.localVolume;
             response["defaultRemoteVolume"] = Globals::gSettings.remoteVolume;
-            
-            std::vector<nlohmann::json> soundVolumes;
+            response["syncVolumes"] = Globals::gSettings.syncVolumes;
+
+
+            nlohmann::json soundVolumes = nlohmann::json::object(); // Use object { id: { details } }
             auto sounds = Globals::gSounds.scoped();
-            
+
             for (const auto &soundPair : *sounds) {
                 const auto &sound = soundPair.second.get();
-                
-                if (sound.localVolume.has_value() || sound.remoteVolume.has_value()) {
+                bool hasCustomLocal = sound.localVolume.has_value();
+                bool hasCustomRemote = sound.remoteVolume.has_value();
+
+                if (hasCustomLocal || hasCustomRemote) {
                     nlohmann::json volumeInfo;
-                    volumeInfo["id"] = sound.id;
-                    
-                    if (sound.localVolume) {
-                        volumeInfo["localVolume"] = *sound.localVolume;
-                    }
-                    
-                    if (sound.remoteVolume) {
-                        volumeInfo["remoteVolume"] = *sound.remoteVolume;
-                    }
-                    
-                    soundVolumes.push_back(volumeInfo);
+                    volumeInfo["id"] = sound.id; // Redundant if key is ID, but maybe useful
+
+                    // FIX: Assign optional correctly
+                    volumeInfo["customLocalVolume"] = sound.localVolume.has_value() ? nlohmann::json(*sound.localVolume) : nlohmann::json(nullptr);
+                    volumeInfo["customRemoteVolume"] = sound.remoteVolume.has_value() ? nlohmann::json(*sound.remoteVolume) : nlohmann::json(nullptr);
+
+                    volumeInfo["hasCustomVolume"] = true;
+                    // Report effective volumes too?
+                    volumeInfo["localVolume"] = sound.localVolume.value_or(Globals::gSettings.localVolume);
+                    volumeInfo["remoteVolume"] = sound.remoteVolume.value_or(Globals::gSettings.remoteVolume);
+
+                     // Calculate slider position
+                     float ratio = 1.0f;
+                     int defaultLocal = Globals::gSettings.localVolume;
+                     if (hasCustomLocal) {
+                         if (defaultLocal > 0) ratio = static_cast<float>(*sound.localVolume) / static_cast<float>(defaultLocal);
+                         else if (*sound.localVolume > 0) ratio = 2.0f;
+                     }
+                     int sliderPosition = 0;
+                     if (ratio >= 0.0f && ratio <= 2.0f) sliderPosition = static_cast<int>(std::round((ratio - 1.0f) * 50.0f)); // Use round
+                     else if (ratio > 2.0f) sliderPosition = 50;
+                     else sliderPosition = -50;
+                     volumeInfo["sliderPosition"] = sliderPosition;
+
+                    soundVolumes[std::to_string(sound.id)] = volumeInfo;
                 }
             }
-            
+
             response["sounds"] = soundVolumes;
             return response;
         }));
-        
+
 
 #endif
 #if defined(__linux__)
         webview->expose(Webview::Function("openUrl", [](const std::string &url) {
+             Fancy::fancy.logTime().message() << "Opening URL: " << url << std::endl;
+            // Sanitize URL? Basic check for safety.
+             if (url.find("http://") != 0 && url.find("https://") != 0) {
+                 Fancy::fancy.logTime().warning() << "Refusing to open non-HTTP(S) URL: " << url << std::endl;
+                 return;
+             }
             if (system(("xdg-open \"" + url + "\"").c_str()) != 0) // NOLINT
             {
-                Fancy::fancy.logTime().warning() << "Failed to open url " << url << std::endl;
+                Fancy::fancy.logTime().warning() << "Failed to open url " << url << " using xdg-open." << std::endl;
             }
         }));
         webview->expose(Webview::Function("openFolder", [](const std::uint32_t &id) {
             auto tab = Globals::gData.getTab(id);
             if (tab)
             {
+                 Fancy::fancy.logTime().message() << "Opening folder: " << tab->path << std::endl;
+                // Ensure path exists and is a directory?
+                 if (!std::filesystem::exists(tab->path) || !std::filesystem::is_directory(tab->path)) {
+                     Fancy::fancy.logTime().warning() << "Folder path does not exist or is not a directory: " << tab->path << std::endl;
+                     return;
+                 }
                 if (system(("xdg-open \"" + tab->path + "\"").c_str()) != 0) // NOLINT
                 {
-                    Fancy::fancy.logTime().warning() << "Failed to open folder " << tab->path << std::endl;
+                    Fancy::fancy.logTime().warning() << "Failed to open folder " << tab->path << " using xdg-open." << std::endl;
                 }
             }
             else
             {
-                Fancy::fancy.logTime().warning() << "Failed to find tab with id " << id << std::endl;
+                Fancy::fancy.logTime().warning() << "Failed to find tab with id " << id << " to open folder." << std::endl;
             }
         }));
         webview->expose(Webview::Function("getOutputs", [this]() { return getOutputs(); }));
@@ -306,34 +427,45 @@ namespace Soundux::Objects
                 std::dynamic_pointer_cast<Soundux::Objects::PulseAudio>(Soundux::Globals::gAudioBackend);
             if (pulseBackend)
             {
+                 Fancy::fancy.logTime().message() << "Unloading PulseAudio switch-on-connect module..." << std::endl;
                 pulseBackend->unloadSwitchOnConnect();
-                pulseBackend->loadModules();
-                Globals::gAudio.setup();
+                 Fancy::fancy.logTime().message() << "Reloading PulseAudio modules..." << std::endl;
+                pulseBackend->loadModules(); // Reload other necessary modules
+                 Fancy::fancy.logTime().message() << "Re-setting up audio..." << std::endl;
+                Globals::gAudio.setup(); // Re-initialize audio streams
+                 Fancy::fancy.logTime().success() << "PulseAudio switch-on-connect unloaded and audio reset." << std::endl;
             }
             else
             {
                 Fancy::fancy.logTime().failure()
-                    << "unloadSwitchOnConnect was called but no pulse backend was detected!" << std::endl;
+                    << "unloadSwitchOnConnect called but no PulseAudio backend was detected!" << std::endl;
             }
         }));
 #endif
     }
     bool WebView::onClose()
     {
-        if (Globals::gSettings.minimizeToTray)
+        if (Globals::gSettings.minimizeToTray && tray) // Check if tray exists
         {
-            tray->getEntries().at(1)->setText(translations.show);
-            webview->hide();
-            return true;
+            if (tray->getEntries().size() > 1) { // Ensure entry exists
+               tray->getEntries().at(1)->setText(translations.show);
+            }
+            if (webview) webview->hide();
+            return true; // Prevent default close
         }
-        
+
         // Save configuration before allowing window to close
         Fancy::fancy.logTime().message() << "Window closing, saving configuration..." << std::endl;
-        Soundux::Globals::gConfig.data.set(Soundux::Globals::gData);
-        Soundux::Globals::gConfig.settings = Soundux::Globals::gSettings;
-        Soundux::Globals::gConfig.save();
-        
-        return false;
+        try {
+             Soundux::Globals::gConfig.data.set(Soundux::Globals::gData);
+             Soundux::Globals::gConfig.settings = Soundux::Globals::gSettings;
+             Soundux::Globals::gConfig.save();
+             Fancy::fancy.logTime().success() << "Configuration saved on close." << std::endl;
+        } catch(const std::exception& e) {
+             Fancy::fancy.logTime().failure() << "Error saving configuration on close: " << e.what() << std::endl;
+        }
+
+        return false; // Allow default close (which should exit the app via mainLoop end)
     }
 
 
@@ -341,259 +473,366 @@ namespace Soundux::Objects
     {
         Globals::gData.width = width;
         Globals::gData.height = height;
+        // Optionally debounce saving this?
     }
     void WebView::fetchTranslations()
     {
+         if (!webview) return;
+        // Use setNavigateCallback to run *after* the page is loaded and JS context is ready
         webview->setNavigateCallback([this]([[maybe_unused]] const std::string &url) {
-            static bool once = false;
-            if (!once)
+            static bool translationsFetched = false;
+            if (!translationsFetched && webview) // Ensure webview still exists
             {
-#if defined(__linux__)
+                Fancy::fancy.logTime().message() << "Fetching translations from frontend..." << std::endl;
+
+#if defined(__linux__) // PulseAudio specific logic
                 if (auto pulseBackend = std::dynamic_pointer_cast<PulseAudio>(Globals::gAudioBackend); pulseBackend)
                 {
                     //* We have to call this so that we can trigger an event in the frontend that switchOnConnect was
-                    //* found becausepreviously the UI was not initialized.
-                    pulseBackend->switchOnConnectPresent();
+                    //* found because previously the UI was not initialized.
+                     Fancy::fancy.logTime().message() << "Checking PulseAudio switch-on-connect status..." << std::endl;
+                    pulseBackend->switchOnConnectPresent(); // Notify frontend if module is loaded
                 }
 #endif
 
+                // Use async calls to avoid blocking the navigate callback
                 auto future = std::make_shared<std::future<void>>();
-                *future = std::async(std::launch::async, [future, this] {
-                    translations.settings = webview
-                                                ->callFunction<std::string>(Webview::JavaScriptFunction(
-                                                    "window.getTranslation", "settings.title"))
-                                                .get();
-                    translations.tabHotkeys = webview
-                                                  ->callFunction<std::string>(Webview::JavaScriptFunction(
-                                                      "window.getTranslation", "settings.tabHotkeysOnly"))
-                                                  .get();
-                    translations.muteDuringPlayback = webview
-                                                          ->callFunction<std::string>(Webview::JavaScriptFunction(
-                                                              "window.getTranslation", "settings.muteDuringPlayback"))
-                                                          .get();
-                    translations.show = webview
-                                            ->callFunction<std::string>(
-                                                Webview::JavaScriptFunction("window.getTranslation", "tray.show"))
-                                            .get();
-                    translations.hide = webview
-                                            ->callFunction<std::string>(
-                                                Webview::JavaScriptFunction("window.getTranslation", "tray.hide"))
-                                            .get();
-                    translations.exit = webview
-                                            ->callFunction<std::string>(
-                                                Webview::JavaScriptFunction("window.getTranslation", "tray.exit"))
-                                            .get();
+                *future = std::async(std::launch::async, [this, future] { // Capture future for lifetime management if needed
+                   try {
+                        translations.settings = webview->callFunction<std::string>(Webview::JavaScriptFunction("window.getTranslation", "settings.title")).get();
+                        translations.tabHotkeys = webview->callFunction<std::string>(Webview::JavaScriptFunction("window.getTranslation", "settings.tabHotkeysOnly")).get();
+                        translations.muteDuringPlayback = webview->callFunction<std::string>(Webview::JavaScriptFunction("window.getTranslation", "settings.muteDuringPlayback")).get();
+                        translations.show = webview->callFunction<std::string>(Webview::JavaScriptFunction("window.getTranslation", "tray.show")).get();
+                        translations.hide = webview->callFunction<std::string>(Webview::JavaScriptFunction("window.getTranslation", "tray.hide")).get();
+                        translations.exit = webview->callFunction<std::string>(Webview::JavaScriptFunction("window.getTranslation", "tray.exit")).get();
 
-                    setupTray();
+                        Fancy::fancy.logTime().success() << "Translations fetched successfully." << std::endl;
+                        setupTray(); // Setup tray *after* getting translations
+                   } catch (const std::exception& e) {
+                        Fancy::fancy.logTime().failure() << "Failed to fetch translations: " << e.what() << std::endl;
+                        // Setup tray with default text?
+                        translations.settings = "Settings";
+                        translations.tabHotkeys = "Tab Hotkeys Only";
+                        translations.muteDuringPlayback = "Mute During Playback";
+                        translations.show = "Show";
+                        translations.hide = "Hide";
+                        translations.exit = "Exit";
+                        setupTray();
+                   }
                 });
 
-                once = true;
+                translationsFetched = true; // Only try once
             }
+            return true; // Allow navigation
         });
     }
     void WebView::setupTray()
     {
-        tray->addEntry(Tray::Button(translations.exit, [this]() {
-            tray->exit();
-            webview->exit();
+         if (!tray) {
+             Fancy::fancy.logTime().warning() << "Tray icon not initialized, cannot setup entries." << std::endl;
+             return;
+         }
+         // Clear existing entries first?
+         // tray->clearEntries(); // If Tray class supports this
+
+        tray->addEntry(Tray::Button(translations.exit.empty() ? "Exit" : translations.exit, [this]() {
+            Fancy::fancy.logTime().message() << "Exit requested from tray." << std::endl;
+            if (tray) tray->exit(); // Stop tray updates
+            if (webview) webview->exit(); // Terminate webview loop
         }));
 
-        tray->addEntry(Tray::Button(webview->isHidden() ? translations.show : translations.hide, [this]() {
+        tray->addEntry(Tray::Button((webview && webview->isHidden()) ? translations.show : translations.hide, [this]() {
+             if (!webview) return;
             if (!webview->isHidden())
             {
                 webview->hide();
-                tray->getEntries().at(1)->setText(translations.show);
+                if (tray && tray->getEntries().size() > 1) tray->getEntries().at(1)->setText(translations.show);
             }
             else
             {
                 webview->show();
-                tray->getEntries().at(1)->setText(translations.hide);
+                 if (tray && tray->getEntries().size() > 1) tray->getEntries().at(1)->setText(translations.hide);
             }
         }));
 
-        auto settings = tray->addEntry(Tray::Submenu(translations.settings));
-        settings->addEntries(Tray::SyncedToggle(translations.muteDuringPlayback, Globals::gSettings.muteDuringPlayback,
-                                                [this]([[maybe_unused]] bool state) {
-                                                    changeSettings(Globals::gSettings);
-                                                    onSettingsChanged();
-                                                }),
-                             Tray::SyncedToggle(translations.tabHotkeys, Globals::gSettings.tabHotkeysOnly,
-                                                [this]([[maybe_unused]] bool state) {
-                                                    changeSettings(Globals::gSettings);
-                                                    onSettingsChanged();
-                                                }));
+        auto settingsMenu = tray->addEntry(Tray::Submenu(translations.settings.empty() ? "Settings" : translations.settings));
+        if (settingsMenu) { // Check if submenu was added successfully
+             settingsMenu->addEntries(
+                Tray::SyncedToggle(translations.muteDuringPlayback.empty() ? "Mute During Playback" : translations.muteDuringPlayback,
+                                   Globals::gSettings.muteDuringPlayback,
+                                   [this](bool state) {
+                                       Globals::gSettings.muteDuringPlayback = state; // Update setting directly
+                                       changeSettings(Globals::gSettings); // Apply changes
+                                       onSettingsChanged(); // Notify UI
+                                   }),
+                Tray::SyncedToggle(translations.tabHotkeys.empty() ? "Tab Hotkeys Only" : translations.tabHotkeys,
+                                   Globals::gSettings.tabHotkeysOnly,
+                                   [this](bool state) {
+                                       Globals::gSettings.tabHotkeysOnly = state; // Update setting
+                                       changeSettings(Globals::gSettings); // Apply changes
+                                       onSettingsChanged(); // Notify UI
+                                   })
+                // Add more settings toggles here if needed
+             );
+        }
+         tray->update(); // Apply changes to the tray icon
+         Fancy::fancy.logTime().success() << "Tray menu setup complete." << std::endl;
     }
     void WebView::mainLoop()
     {
-        // Safely destroy tray before exiting
-        auto safelyDestroyTray = [this]() {
-            if (tray) {
-                try {
-                    tray->exit();
-                    tray.reset();
-                } catch (const std::exception& e) {
-                    Fancy::fancy.logTime().warning() << "Error destroying tray: " << e.what() << std::endl;
+        if (!webview) {
+             Fancy::fancy.logTime().failure() << "WebView not initialized, cannot run main loop." << std::endl;
+             return;
+        }
+        // Safely destroy tray before exiting webview->run() blocks
+        struct TrayGuard {
+            std::shared_ptr<Tray::Tray> trayRef;
+            TrayGuard(std::shared_ptr<Tray::Tray> t) : trayRef(t) {}
+            ~TrayGuard() {
+                if (trayRef) {
+                    try {
+                         Fancy::fancy.logTime().message() << "Destroying tray icon..." << std::endl;
+                        trayRef->exit();
+                    } catch (const std::exception& e) {
+                        Fancy::fancy.logTime().warning() << "Error destroying tray: " << e.what() << std::endl;
+                    }
                 }
             }
-        };
+        } trayGuard(tray); // RAII for tray destruction
 
-        webview->run();
-        
-        // Explicitly save configuration before shutdown
-        Fancy::fancy.logTime().message() << "Saving configuration before exit..." << std::endl;
-        Soundux::Globals::gConfig.data.set(Soundux::Globals::gData);
-        Soundux::Globals::gConfig.settings = Soundux::Globals::gSettings;
-        Soundux::Globals::gConfig.save();
-        
-        safelyDestroyTray();
-        Fancy::fancy.logTime().message() << "UI exited" << std::endl;
+
+        webview->run(); // This blocks until the window is closed or exit() is called
+
+        // Code here runs after webview->run() returns
+
+        // Explicitly save configuration before shutdown (also saved in onClose if not minimizing)
+        Fancy::fancy.logTime().message() << "Saving configuration before final exit..." << std::endl;
+        try {
+             Soundux::Globals::gConfig.data.set(Soundux::Globals::gData);
+             Soundux::Globals::gConfig.settings = Soundux::Globals::gSettings;
+             Soundux::Globals::gConfig.save();
+              Fancy::fancy.logTime().success() << "Final configuration saved." << std::endl;
+        } catch(const std::exception& e) {
+             Fancy::fancy.logTime().failure() << "Error saving final configuration: " << e.what() << std::endl;
+        }
+
+
+        Fancy::fancy.logTime().message() << "WebView main loop finished." << std::endl;
+        // Tray is destroyed automatically by trayGuard destructor here
     }
 
 
 
     void WebView::onHotKeyReceived(const std::vector<int> &keys)
     {
+         if (!webview) return;
         std::string hotkeySequence;
-        for (const auto &key : keys)
-        {
-            hotkeySequence += Globals::gHotKeys.getKeyName(key) + " + ";
+        if (!keys.empty()) {
+            for (size_t i = 0; i < keys.size(); ++i)
+            {
+                hotkeySequence += Globals::gHotKeys.getKeyName(keys[i]);
+                if (i < keys.size() - 1) {
+                    hotkeySequence += " + ";
+                }
+            }
+        } else {
+            hotkeySequence = "None"; // Or empty string?
         }
+
         webview->callFunction<void>(Webview::JavaScriptFunction(
-            "window.hotkeyReceived", hotkeySequence.substr(0, hotkeySequence.length() - 3), keys));
+            "window.hotkeyReceived", hotkeySequence, keys));
     }
     void WebView::onSoundFinished(const PlayingSound &sound)
     {
+         if (!webview) return;
         Window::onSoundFinished(sound);
-        if (sound.playbackDevice.isDefault)
-        {
+        // Only notify frontend if it was played through the default device? This check seems odd.
+        // Notify regardless of output device?
+        // if (sound.playbackDevice.isDefault)
+        // {
             webview->callFunction<void>(Webview::JavaScriptFunction("window.finishSound", sound));
-        }
+        // }
     }
     void WebView::onSoundPlayed(const PlayingSound &sound)
     {
+        if (!webview) return;
         webview->callFunction<void>(Webview::JavaScriptFunction("window.onSoundPlayed", sound));
     }
     void WebView::onSoundProgressed(const PlayingSound &sound)
     {
-        webview->callFunction<void>(Webview::JavaScriptFunction("window.updateSound", sound));
+         if (!webview) return;
+        // Debounce this call? Can be very frequent.
+        // Add a simple time-based debounce?
+        // static auto lastProgressUpdate = std::chrono::steady_clock::now();
+        // auto now = std::chrono::steady_clock::now();
+        // if (now - lastProgressUpdate > std::chrono::milliseconds(100)) { // Update ~10 times/sec max
+        //     lastProgressUpdate = now;
+             webview->callFunction<void>(Webview::JavaScriptFunction("window.updateSound", sound));
+        // }
     }
     void WebView::onDownloadProgressed(float progress, const std::string &eta)
     {
+        if (!webview) return;
         webview->callFunction<void>(Webview::JavaScriptFunction("window.downloadProgressed", progress, eta));
     }
     void WebView::onError(const Enums::ErrorCode &error)
     {
+         if (!webview) return;
         webview->callFunction<void>(Webview::JavaScriptFunction("window.onError", static_cast<std::uint8_t>(error)));
     }
     Settings WebView::changeSettings(Settings newSettings)
     {
-        auto rtn = Window::changeSettings(newSettings);
-        tray->update();
+        // Apply changes through base class
+        auto appliedSettings = Window::changeSettings(newSettings);
 
-        return rtn;
+        // Update tray if it exists
+         if (tray) tray->update();
+
+        // Return the actually applied settings
+        return appliedSettings; // Should be Globals::gSettings after Window::changeSettings
     }
     void WebView::onSettingsChanged()
     {
+        if (!webview) return;
+        // Call the Vuex mutation (or equivalent) to update the frontend store
         webview->callFunction<void>(
             Webview::JavaScriptFunction("window.getStore().commit", "setSettings", Globals::gSettings));
+         // Also potentially update tray toggles if settings affecting them changed
+         if (tray) tray->update();
     }
     void WebView::onAllSoundsFinished()
     {
+        if (!webview) return;
         Window::onAllSoundsFinished();
         webview->callFunction<void>(Webview::JavaScriptFunction("window.getStore().commit", "clearCurrentlyPlaying"));
     }
     void WebView::onSwitchOnConnectDetected(bool state)
     {
+        if (!webview) return;
         webview->callFunction<void>(
             Webview::JavaScriptFunction("window.getStore().commit", "setSwitchOnConnectLoaded", state));
     }
     void WebView::onAdminRequired()
     {
+        if (!webview) return;
         webview->callFunction<void>(
             Webview::JavaScriptFunction("window.getStore().commit", "setAdministrativeModal", true));
     }
 
-    
-    //webserver
+
+    //webserver related public methods
+
     void WebView::stopAllSounds() {
-        stopSounds(true);  // Call with sync=true
+        stopSounds(true);  // Call base class method with sync=true if needed
+        // No need to call webview function here, UI updates via onAllSoundsFinished
+         Fancy::fancy.logTime().message() << "WebView::stopAllSounds called." << std::endl;
     }
 
     std::optional<PlayingSound> WebView::playSoundById(const std::uint32_t &id) {
-        return playSound(id);
+         Fancy::fancy.logTime().message() << "WebView::playSoundById called for ID: " << id << std::endl;
+        return playSound(id); // Call base class method
+        // UI updates via onSoundPlayed
     }
 
-    // Volume control wrapper methods for web server
+    // Volume control wrapper methods for web server -> WebView interaction
+    // These primarily call the base Window methods and then ensure the UI is notified.
+
     std::optional<Sound> WebView::setCustomLocalVolumeForWeb(const std::uint32_t &id, const std::optional<int> &volume)
     {
-        // Call the base class method to update the volume
+        Fancy::fancy.logTime().message() << "WebView::setCustomLocalVolumeForWeb ID: " << id << " Volume: " << (volume ? std::to_string(*volume) : "reset") << std::endl;
+        // Call the base class method to update the volume in data/settings
         auto result = setCustomLocalVolume(id, volume);
-        
-        // If successful, notify any connected web clients
-        if (result) {
-            // Notify the frontend about volume change
-            // We can add a JavaScript function to handle this notification
-            bool hasCustomVolume = volume.has_value();
-            std::string eventData = "{\"id\":" + std::to_string(id) + 
-                                ",\"hasCustomVolume\":" + (hasCustomVolume ? "true" : "false");
-            
-            // If we have volume data, include it
-            if (hasCustomVolume) {
-                eventData += ",\"localVolume\":" + std::to_string(*volume);
-            }
-            
-            eventData += "}";
-            
-            webview->callFunction<void>(
-                Webview::JavaScriptFunction("window.dispatchEvent", 
-                                        "new CustomEvent('soundVolumeChanged', { detail: " + eventData + " })"));
+
+        // If successful, notify the WebView UI about the change.
+        if (result && webview) {
+            // onSettingsChanged() pushes the whole settings object, which might be enough.
+            // Or send a more specific event.
+            onSettingsChanged(); // This should update the volume sliders/info in UI
+
+            // Optional: Send a specific event if needed by frontend logic
+            // nlohmann::json detail;
+            // detail["id"] = id;
+            // detail["localVolume"] = result->localVolume.value_or(Globals::gSettings.localVolume);
+            // detail["remoteVolume"] = result->remoteVolume.value_or(Globals::gSettings.remoteVolume);
+            // detail["hasCustomVolume"] = result->localVolume.has_value() || result->remoteVolume.has_value();
+            // webview->eval("window.dispatchEvent(new CustomEvent('soundVolumeChanged', { detail: " + detail.dump() + " }))");
         }
-        
+
         return result;
     }
-
-
 
     std::optional<Sound> WebView::setCustomRemoteVolumeForWeb(const std::uint32_t &id, const std::optional<int> &volume)
     {
-        // Call the base class method to update the volume
+         Fancy::fancy.logTime().message() << "WebView::setCustomRemoteVolumeForWeb ID: " << id << " Volume: " << (volume ? std::to_string(*volume) : "reset") << std::endl;
+        // Call the base class method
         auto result = setCustomRemoteVolume(id, volume);
-        
-        // If successful, notify any connected web clients
-        if (result) {
-            // Similar notification as above but for remote volume
-            bool hasCustomVolume = volume.has_value();
-            std::string eventData = "{\"id\":" + std::to_string(id) + 
-                                ",\"hasCustomVolume\":" + (hasCustomVolume ? "true" : "false");
-            
-            // If we have volume data, include it
-            if (hasCustomVolume) {
-                eventData += ",\"remoteVolume\":" + std::to_string(*volume);
-            }
-            
-            eventData += "}";
-            
-            webview->callFunction<void>(
-                Webview::JavaScriptFunction("window.dispatchEvent", 
-                                        "new CustomEvent('soundVolumeChanged', { detail: " + eventData + " })"));
+
+        if (result && webview) {
+            // Notify the WebView UI
+            onSettingsChanged();
+
+            // Optional specific event
+            // nlohmann::json detail;
+            // detail["id"] = id;
+            // detail["localVolume"] = result->localVolume.value_or(Globals::gSettings.localVolume);
+            // detail["remoteVolume"] = result->remoteVolume.value_or(Globals::gSettings.remoteVolume);
+            // detail["hasCustomVolume"] = result->localVolume.has_value() || result->remoteVolume.has_value();
+            // webview->eval("window.dispatchEvent(new CustomEvent('soundVolumeChanged', { detail: " + detail.dump() + " }))");
         }
-        
+
         return result;
     }
 
-
-
+    // Toggles favorite status and notifies UI
     bool WebView::toggleFavoriteForWeb(const std::uint32_t &id)
     {
+         Fancy::fancy.logTime().message() << "WebView::toggleFavoriteForWeb ID: " << id << std::endl;
         auto sound = Globals::gData.getSound(id);
         if (sound)
         {
             bool newState = !sound->get().isFavorite;
-            Globals::gData.markFavorite(id, newState);
+            Globals::gData.markFavorite(id, newState); // Update data model
+            Fancy::fancy.logTime().message() << "Sound ID " << id << " favorite status set to: " << newState << std::endl;
+
+            // Notify the WebView UI about the change in favorites
+            if (webview) {
+                // Send updated list of favorite IDs
+                 auto favIds = Globals::gData.getFavoriteIds();
+                 // Use the existing commit mechanism if available
+                 webview->callFunction<void>(Webview::JavaScriptFunction("window.getStore().commit", "setFavorites", favIds));
+
+                // Also trigger a general settings update if favorites are part of main settings display
+                // onSettingsChanged(); // Maybe redundant if setFavorites handles UI update
+            }
             return true;
         }
+         Fancy::fancy.logTime().warning() << "WebView::toggleFavoriteForWeb failed for ID: " << id << " (Sound not found)" << std::endl;
         return false;
     }
 
-    
+    // Implementation for setWebRemotePin
+    void WebView::setWebRemotePin(const std::string& pin)
+    {
+        webRemotePin = pin; // Store the PIN locally
+
+        // Update the UI to show the PIN
+        if (webview) {
+            try {
+                // Call a JS function, assuming the frontend has implemented `window.setWebRemotePin`
+                 Fancy::fancy.logTime().message() << "Calling JS window.setWebRemotePin with PIN: " << pin << std::endl;
+                // Ensure the webview is ready for JS calls. This might need to happen later, e.g., in navigate callback.
+                // For now, assume it's okay to call here or shortly after setup.
+                webview->callFunction<void>(Webview::JavaScriptFunction(
+                    "window.setWebRemotePin", pin));
+            } catch(const std::exception& e) {
+                 Fancy::fancy.logTime().warning() << "Failed to call window.setWebRemotePin in JS: " << e.what() << std::endl;
+                 // Maybe try eval as fallback?
+                 // webview->eval("try { window.setWebRemotePin('" + pin + "'); } catch (e) { console.error('Failed to set PIN:', e); }");
+            }
+        } else {
+             Fancy::fancy.logTime().warning() << "WebView not available when trying to set remote PIN." << std::endl;
+        }
+    }
+
+
 } // namespace Soundux::Objects
