@@ -216,27 +216,63 @@ namespace Soundux::Objects
         }));
         webview->expose(Webview::Function(
             "getRecordingDevices", []() -> std::pair<std::vector<RecordingDevice>, std::optional<RecordingDevice>> {
-                if (Globals::gWinSound)
+            if (Globals::gWinSound)
+            {
+                auto devices = Globals::gWinSound->getRecordingDevices();
+                for (auto it = devices.begin(); it != devices.end();)
                 {
-                    auto devices = Globals::gWinSound->getRecordingDevices();
-                    for (auto it = devices.begin(); it != devices.end();)
+                    if (it->getName().find("VB-Audio") != std::string::npos)
                     {
-                        if (it->getName().find("VB-Audio") != std::string::npos)
-                        {
-                            it = devices.erase(it);
-                        }
-                        else
-                        {
-                            ++it;
-                        }
+                        it = devices.erase(it);
                     }
-
-                    return std::make_pair(devices, Globals::gWinSound->getMic());
+                    else
+                    {
+                        ++it;
+                    }
                 }
 
-                Fancy::fancy.logTime().failure() << "Windows Sound Backend not found" << std::endl;
-                return {};
-            }));
+                return std::make_pair(devices, Globals::gWinSound->getMic());
+            }
+
+            Fancy::fancy.logTime().failure() << "Windows Sound Backend not found" << std::endl;
+            return {};
+        }));
+
+        
+        // Add volume-related functions
+        webview->expose(Webview::Function("getSoundVolumes", []() {
+            // Create a response with all sound volumes
+            nlohmann::json response;
+            response["defaultLocalVolume"] = Globals::gSettings.localVolume;
+            response["defaultRemoteVolume"] = Globals::gSettings.remoteVolume;
+            
+            std::vector<nlohmann::json> soundVolumes;
+            auto sounds = Globals::gSounds.scoped();
+            
+            for (const auto &soundPair : *sounds) {
+                const auto &sound = soundPair.second.get();
+                
+                if (sound.localVolume.has_value() || sound.remoteVolume.has_value()) {
+                    nlohmann::json volumeInfo;
+                    volumeInfo["id"] = sound.id;
+                    
+                    if (sound.localVolume) {
+                        volumeInfo["localVolume"] = *sound.localVolume;
+                    }
+                    
+                    if (sound.remoteVolume) {
+                        volumeInfo["remoteVolume"] = *sound.remoteVolume;
+                    }
+                    
+                    soundVolumes.push_back(volumeInfo);
+                }
+            }
+            
+            response["sounds"] = soundVolumes;
+            return response;
+        }));
+        
+
 #endif
 #if defined(__linux__)
         webview->expose(Webview::Function("openUrl", [](const std::string &url) {
@@ -473,13 +509,62 @@ namespace Soundux::Objects
     // Volume control wrapper methods for web server
     std::optional<Sound> WebView::setCustomLocalVolumeForWeb(const std::uint32_t &id, const std::optional<int> &volume)
     {
-        return setCustomLocalVolume(id, volume);
+        // Call the base class method to update the volume
+        auto result = setCustomLocalVolume(id, volume);
+        
+        // If successful, notify any connected web clients
+        if (result) {
+            // Notify the frontend about volume change
+            // We can add a JavaScript function to handle this notification
+            bool hasCustomVolume = volume.has_value();
+            std::string eventData = "{\"id\":" + std::to_string(id) + 
+                                ",\"hasCustomVolume\":" + (hasCustomVolume ? "true" : "false");
+            
+            // If we have volume data, include it
+            if (hasCustomVolume) {
+                eventData += ",\"localVolume\":" + std::to_string(*volume);
+            }
+            
+            eventData += "}";
+            
+            webview->callFunction<void>(
+                Webview::JavaScriptFunction("window.dispatchEvent", 
+                                        "new CustomEvent('soundVolumeChanged', { detail: " + eventData + " })"));
+        }
+        
+        return result;
     }
+
+
 
     std::optional<Sound> WebView::setCustomRemoteVolumeForWeb(const std::uint32_t &id, const std::optional<int> &volume)
     {
-        return setCustomRemoteVolume(id, volume);
+        // Call the base class method to update the volume
+        auto result = setCustomRemoteVolume(id, volume);
+        
+        // If successful, notify any connected web clients
+        if (result) {
+            // Similar notification as above but for remote volume
+            bool hasCustomVolume = volume.has_value();
+            std::string eventData = "{\"id\":" + std::to_string(id) + 
+                                ",\"hasCustomVolume\":" + (hasCustomVolume ? "true" : "false");
+            
+            // If we have volume data, include it
+            if (hasCustomVolume) {
+                eventData += ",\"remoteVolume\":" + std::to_string(*volume);
+            }
+            
+            eventData += "}";
+            
+            webview->callFunction<void>(
+                Webview::JavaScriptFunction("window.dispatchEvent", 
+                                        "new CustomEvent('soundVolumeChanged', { detail: " + eventData + " })"));
+        }
+        
+        return result;
     }
+
+
 
     bool WebView::toggleFavoriteForWeb(const std::uint32_t &id)
     {

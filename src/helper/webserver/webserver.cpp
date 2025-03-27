@@ -334,7 +334,7 @@ namespace Soundux::Objects
         });
 
             
-        // Get single sound details
+        // Get single sound details with volume position
         server->Get(R"(/api/sounds/(\d+))", [](const httplib::Request &req, httplib::Response &res) {
             auto soundIdStr = req.matches[1];
             try {
@@ -361,14 +361,49 @@ namespace Soundux::Objects
                     response["path"] = sound->get().path;
                     response["isFavorite"] = sound->get().isFavorite;
                     response["tabName"] = tabName;
-                    response["hasCustomVolume"] = (sound->get().localVolume.has_value() || sound->get().remoteVolume.has_value());
                     
-                    // Include volume information if available
-                    if (sound->get().localVolume) {
-                        response["localVolume"] = *sound->get().localVolume;
-                    }
-                    if (sound->get().remoteVolume) {
-                        response["remoteVolume"] = *sound->get().remoteVolume;
+                    // Get default volumes
+                    int defaultLocalVolume = Soundux::Globals::gSettings.localVolume;
+                    int defaultRemoteVolume = Soundux::Globals::gSettings.remoteVolume;
+                    
+                    response["defaultLocalVolume"] = defaultLocalVolume;
+                    response["defaultRemoteVolume"] = defaultRemoteVolume;
+                    
+                    // Check if this sound has custom volume
+                    bool hasCustomVolume = sound->get().localVolume.has_value() || sound->get().remoteVolume.has_value();
+                    response["hasCustomVolume"] = hasCustomVolume;
+                    
+                    // Include current volumes
+                    int localVolume = sound->get().localVolume.value_or(defaultLocalVolume);
+                    int remoteVolume = sound->get().remoteVolume.value_or(defaultRemoteVolume);
+                    
+                    response["localVolume"] = localVolume;
+                    response["remoteVolume"] = remoteVolume;
+                    
+                    // Calculate slider position if custom volume is set
+                    if (hasCustomVolume) {
+                        // Use local volume for calculating slider position (could use either local or remote)
+                        float ratio = static_cast<float>(localVolume) / static_cast<float>(defaultLocalVolume);
+                        
+                        // Calculate slider position: -50 to +50
+                        int sliderPosition = 0;
+                        
+                        if (ratio > 1.0f) {
+                            // Right side (volume increase)
+                            sliderPosition = static_cast<int>((ratio - 1.0f) * 50.0f);
+                            sliderPosition = std::min(50, sliderPosition);
+                        } else if (ratio < 1.0f) {
+                            // Left side (volume decrease)
+                            sliderPosition = static_cast<int>((ratio - 1.0f) * 50.0f);
+                            sliderPosition = std::max(-50, sliderPosition);
+                        }
+                        
+                        response["sliderPosition"] = sliderPosition;
+                        response["volumeRatio"] = ratio;
+                    } else {
+                        // Default to center position
+                        response["sliderPosition"] = 0;
+                        response["volumeRatio"] = 1.0f;
                     }
                     
                     res.set_content(response.dump(), "application/json");
@@ -381,6 +416,8 @@ namespace Soundux::Objects
                 res.set_content("{\"error\":\"Invalid sound ID: " + std::string(e.what()) + "\"}", "application/json");
             }
         });
+
+
 
         // Get sound settings (favorites and custom volumes)
         server->Get("/api/sounds/settings", [](const httplib::Request &, httplib::Response &res) {
@@ -404,10 +441,14 @@ namespace Soundux::Objects
                         
                         if (sound.localVolume.has_value()) {
                             customVolume["localVolume"] = *sound.localVolume;
+                        } else {
+                            customVolume["localVolume"] = Soundux::Globals::gSettings.localVolume;
                         }
                         
                         if (sound.remoteVolume.has_value()) {
                             customVolume["remoteVolume"] = *sound.remoteVolume;
+                        } else {
+                            customVolume["remoteVolume"] = Soundux::Globals::gSettings.remoteVolume;
                         }
                         
                         customVolumes.push_back(customVolume);
@@ -415,13 +456,15 @@ namespace Soundux::Objects
                 }
                 
                 response["customVolumes"] = customVolumes;
+                response["defaultLocalVolume"] = Soundux::Globals::gSettings.localVolume;
+                response["defaultRemoteVolume"] = Soundux::Globals::gSettings.remoteVolume;
                 
                 res.set_content(response.dump(), "application/json");
             } catch (const std::exception &e) {
                 res.status = 500;
                 res.set_content("{\"error\":\"Failed to fetch sound settings: " + std::string(e.what()) + "\"}", "application/json");
             }
-        });// Updated version of the WebServer API endpoints that uses 
+        });
         // the new public methods from WebView instead of trying to access protected methods
 
         // Toggle favorite status
@@ -457,6 +500,7 @@ namespace Soundux::Objects
         });
 
         // Set volume adjustment
+        // Set volume with proper slider position mapping
         server->Post(R"(/api/sounds/(\d+)/volume)", [](const httplib::Request &req, httplib::Response &res) {
             auto soundIdStr = req.matches[1];
             try {
@@ -469,37 +513,16 @@ namespace Soundux::Objects
                     return;
                 }
                 
-                // Parse request body
+                // Parse slider position from request (-50 to +50)
                 auto json = nlohmann::json::parse(req.body);
-                int adjustment = json["adjustment"].get<int>();
+                int sliderPosition = json["sliderPosition"].get<int>();
                 
-                // Get current volumes or default values
-                int localVolume = sound->get().localVolume.value_or(Soundux::Globals::gSettings.localVolume);
-                int remoteVolume = sound->get().remoteVolume.value_or(Soundux::Globals::gSettings.remoteVolume);
+                // Clamp slider position to valid range
+                sliderPosition = std::min(50, std::max(-50, sliderPosition));
                 
-                int newLocalVolume, newRemoteVolume;
-                
-                // More nuanced volume adjustment
-                if (adjustment > 0) {
-                    // For positive adjustments, reduce by 40%
-                    int reducedAdjustment = static_cast<int>(adjustment * 0.6);
-                    newLocalVolume = std::max(0, std::min(200, localVolume + reducedAdjustment));
-                    newRemoteVolume = std::max(0, std::min(200, remoteVolume + reducedAdjustment));
-                } else if (adjustment < 0) {
-                    // For negative adjustments, use a more logarithmic approach
-                    // Map -50 to 0.5 (50% of original volume) rather than a linear decrease
-                    float factor = 1.0f + (adjustment / 50.0f); // -50 → 0, -25 → 0.5, 0 → 1
-                    newLocalVolume = static_cast<int>(localVolume * factor);
-                    newRemoteVolume = static_cast<int>(remoteVolume * factor);
-                    
-                    // Ensure we don't go below 1 (keep some audible volume)
-                    newLocalVolume = std::max(1, newLocalVolume);
-                    newRemoteVolume = std::max(1, newRemoteVolume);
-                } else {
-                    // No change
-                    newLocalVolume = localVolume;
-                    newRemoteVolume = remoteVolume;
-                }
+                // Get default volumes
+                int defaultLocalVolume = Soundux::Globals::gSettings.localVolume;
+                int defaultRemoteVolume = Soundux::Globals::gSettings.remoteVolume;
                 
                 // Get the WebView instance
                 auto* webview = dynamic_cast<Soundux::Objects::WebView*>(Soundux::Globals::gGui.get());
@@ -509,28 +532,84 @@ namespace Soundux::Objects
                     return;
                 }
                 
-                // Apply the new volume values using the wrapper methods
-                webview->setCustomLocalVolumeForWeb(soundId, newLocalVolume);
-                webview->setCustomRemoteVolumeForWeb(soundId, newRemoteVolume);
+                // If slider is at center, reset to defaults
+                if (sliderPosition == 0) {
+                    auto localResult = webview->setCustomLocalVolumeForWeb(soundId, std::nullopt);
+                    auto remoteResult = webview->setCustomRemoteVolumeForWeb(soundId, std::nullopt);
+                    
+                    if (localResult && remoteResult) {
+                        nlohmann::json response;
+                        response["success"] = true;
+                        response["sliderPosition"] = 0;
+                        response["localVolume"] = defaultLocalVolume;
+                        response["remoteVolume"] = defaultRemoteVolume;
+                        response["hasCustomVolume"] = false;
+                        
+                        res.set_content(response.dump(), "application/json");
+                    } else {
+                        res.status = 500;
+                        res.set_content("{\"error\":\"Failed to reset volume\"}", "application/json");
+                    }
+                    return;
+                }
                 
-                // Return success with new values
-                nlohmann::json response;
-                response["success"] = true;
-                response["localVolume"] = newLocalVolume;
-                response["remoteVolume"] = newRemoteVolume;
+                // Calculate new volumes based on slider position
+                int newLocalVolume, newRemoteVolume;
                 
-                res.set_content(response.dump(), "application/json");
+                if (sliderPosition > 0) {
+                    // Increase volume (right side of slider): 100% to 200%
+                    float factor = 1.0f + (static_cast<float>(sliderPosition) / 50.0f);
+                    newLocalVolume = static_cast<int>(defaultLocalVolume * factor);
+                    newRemoteVolume = static_cast<int>(defaultRemoteVolume * factor);
+                } else {
+                    // Decrease volume (left side of slider): 0% to 100%
+                    float factor = (50.0f + static_cast<float>(sliderPosition)) / 50.0f;
+                    newLocalVolume = static_cast<int>(defaultLocalVolume * factor);
+                    newRemoteVolume = static_cast<int>(defaultRemoteVolume * factor);
+                }
+                
+                // Ensure volumes don't go below 1
+                newLocalVolume = std::max(1, newLocalVolume);
+                newRemoteVolume = std::max(1, newRemoteVolume);
+                
+                // Apply the calculated volumes
+                auto localResult = webview->setCustomLocalVolumeForWeb(soundId, newLocalVolume);
+                auto remoteResult = webview->setCustomRemoteVolumeForWeb(soundId, newRemoteVolume);
+                
+                if (localResult && remoteResult) {
+                    // Response with full details
+                    nlohmann::json response;
+                    response["success"] = true;
+                    response["sliderPosition"] = sliderPosition;
+                    response["localVolume"] = newLocalVolume;
+                    response["remoteVolume"] = newRemoteVolume;
+                    response["defaultLocalVolume"] = defaultLocalVolume;
+                    response["defaultRemoteVolume"] = defaultRemoteVolume;
+                    response["hasCustomVolume"] = true;
+                    
+                    res.set_content(response.dump(), "application/json");
+                } else {
+                    res.status = 500;
+                    res.set_content("{\"error\":\"Failed to set volume values\"}", "application/json");
+                }
             } catch (const std::exception &e) {
                 res.status = 400;
                 res.set_content("{\"error\":\"Failed to set volume: " + std::string(e.what()) + "\"}", "application/json");
             }
         });
 
-        // Reset volume
+        // Reset volume endpoint
         server->Post(R"(/api/sounds/(\d+)/volume/reset)", [](const httplib::Request &req, httplib::Response &res) {
             auto soundIdStr = req.matches[1];
             try {
                 auto soundId = std::stoul(soundIdStr);
+                auto sound = Soundux::Globals::gData.getSound(soundId);
+                
+                if (!sound) {
+                    res.status = 404;
+                    res.set_content("{\"error\":\"Sound not found\"}", "application/json");
+                    return;
+                }
                 
                 // Get the WebView instance
                 auto* webview = dynamic_cast<Soundux::Objects::WebView*>(Soundux::Globals::gGui.get());
@@ -540,12 +619,24 @@ namespace Soundux::Objects
                     return;
                 }
                 
-                // Reset both local and remote volume (passing std::nullopt) using wrapper methods
-                webview->setCustomLocalVolumeForWeb(soundId, std::nullopt);
-                webview->setCustomRemoteVolumeForWeb(soundId, std::nullopt);
+                // Reset volumes to default by passing std::nullopt
+                auto localResult = webview->setCustomLocalVolumeForWeb(soundId, std::nullopt);
+                auto remoteResult = webview->setCustomRemoteVolumeForWeb(soundId, std::nullopt);
                 
-                // Return success
-                res.set_content("{\"success\":true}", "application/json");
+                if (localResult && remoteResult) {
+                    // Return success response with default values
+                    nlohmann::json response;
+                    response["success"] = true;
+                    response["sliderPosition"] = 0;
+                    response["localVolume"] = Soundux::Globals::gSettings.localVolume;
+                    response["remoteVolume"] = Soundux::Globals::gSettings.remoteVolume;
+                    response["hasCustomVolume"] = false;
+                    
+                    res.set_content(response.dump(), "application/json");
+                } else {
+                    res.status = 500;
+                    res.set_content("{\"error\":\"Failed to reset volume\"}", "application/json");
+                }
             } catch (const std::exception &e) {
                 res.status = 400;
                 res.set_content("{\"error\":\"Failed to reset volume: " + std::string(e.what()) + "\"}", "application/json");

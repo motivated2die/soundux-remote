@@ -15,7 +15,7 @@ function initFavoriteIndicators() {
                         const favIcon = favTab.querySelector('.material-symbols-outlined');
                         if (favIcon) {
                             favIcon.style.fontVariationSettings = "'FILL' 1";
-                            favIcon.style.color = '#ff4081';
+                            favIcon.style.color = '#555';
                         }
                     }
                 }
@@ -64,7 +64,9 @@ function initFavoritesStyling() {
 document.addEventListener('DOMContentLoaded', () => {
     initFavoriteIndicators();
     initFavoritesStyling();
-});// Setup sound card right-click behavior
+});
+
+// Setup sound card right-click behavior
 function setupRightClickBehavior() {
     // Prevent default context menu on all sound cards
     document.addEventListener('contextmenu', (e) => {
@@ -81,7 +83,106 @@ function setupRightClickBehavior() {
             e.preventDefault();
         }
     });
-}// Sound Settings Menu - Create as js/sound-settings.js
+}
+
+
+// Visualize volume level change based on slider position
+function visualizeVolumeChange(sliderPos) {
+    if (!currentSoundId) return;
+    
+    // Get a sound card element if it exists in the current view
+    const soundCard = document.querySelector(`.sound-card[data-sound-id="${currentSoundId}"]`);
+    if (!soundCard) return;
+    
+    const defaultLocalVolume = currentSoundData?.defaultLocalVolume || 100;
+    let volumePercent = 100; // Default is 100%
+    
+    // Right side: 100% to 200%
+    if (sliderPos > 0) {
+        volumePercent = 100 + (sliderPos * 3); // 0-50 → 100-200%
+    } 
+    // Left side: 0% to 100%
+    else if (sliderPos < 0) {
+        volumePercent = 100 + (sliderPos * 2); // -50-0 → 0-100%
+    }
+    
+    // Show a subtle visual indicator on the sound card
+    // This gives immediate visual feedback when adjusting volume
+    soundCard.setAttribute('data-volume-level', volumePercent + '%');
+    
+    // Optional: add a temporary pulse animation to show volume change
+    soundCard.classList.add('volume-adjusting');
+    setTimeout(() => {
+        soundCard.classList.remove('volume-adjusting');
+    }, 300);
+}
+
+// Keep track of volume settings across application sessions
+function setupVolumeStateTracking() {
+    // Add a periodic check for volume settings to stay in sync with core application
+    // This helps ensure the web UI reflects any changes made in the desktop app
+    setInterval(() => {
+        if (window.soundSettingsCache) {
+            fetch('/api/sounds/settings')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.customVolumes) {
+                        // Update our local cache
+                        data.customVolumes.forEach(sound => {
+                            window.soundSettingsCache.set(sound.id, 
+                                {...(window.soundSettingsCache.get(sound.id) || {}), 
+                                    customVolume: true, 
+                                    localVolume: sound.localVolume,
+                                    remoteVolume: sound.remoteVolume
+                                });
+                            
+                            // Update any visible sound cards
+                            const soundCard = document.querySelector(`.sound-card[data-sound-id="${sound.id}"]`);
+                            if (soundCard) {
+                                updateSoundCardWithSettings(soundCard, {customVolume: true});
+                            }
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error refreshing volume settings:', error);
+                });
+        }
+    }, 30000); // Check every 30 seconds
+}
+
+// Define CSS for volume visualization
+function addVolumeStyles() {
+    const style = document.createElement('style');
+    style.textContent = `
+        /* Volume adjustment visualization */
+        .sound-card.volume-adjusting {
+            transition: all 0.3s ease-out;
+            box-shadow: 0 0 15px rgba(82, 177, 140, 0.5);
+        }
+        
+        /* Add a subtle volume level indicator */
+        .sound-card[data-volume-level]::after {
+            content: attr(data-volume-level);
+            position: absolute;
+            bottom: 3px;
+            left: 3px;
+            font-size: 9px;
+            opacity: 0.7;
+            color: var(--text-secondary);
+            pointer-events: none;
+        }
+        
+        /* Style for volume indicator icon */
+        .indicator-icon.volume-indicator {
+            color: #555;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+
+// Sound Settings Menu - Create as js/sound-settings.js
 
 // State management
 let currentSoundId = null;
@@ -237,9 +338,9 @@ function onCardTouchEnd() {
     }
 }
 
-// Setup button actions
+// Updated setup button actions for better volume handling
 function setupButtonActions() {
-    // Favorite button
+    // Favorite button code remains the same
     favoriteButton.addEventListener('click', () => {
         if (!currentSoundId) return;
         
@@ -271,19 +372,18 @@ function setupButtonActions() {
         });
     });
     
-    // Preview button
+    // Preview button code remains the same
     previewButton.addEventListener('click', () => {
         if (!currentSoundId) return;
         
         const currentState = previewButton.getAttribute('data-state');
         
         if (currentState === 'preview') {
-            // Switch to stop state first (for better UI feedback)
+            // Preview implementation...
             previewButton.setAttribute('data-state', 'stop');
             previewButton.querySelector('.material-symbols-outlined').textContent = 'stop_circle';
             previewButton.querySelector('.button-text').textContent = 'Stop';
             
-            // Play the preview
             fetch(`/api/sounds/${currentSoundId}/preview`, {
                 method: 'POST'
             })
@@ -294,7 +394,7 @@ function setupButtonActions() {
                 }
             });
         } else {
-            // Switch back to preview state
+            // Stop implementation...
             previewButton.setAttribute('data-state', 'preview');
             previewButton.querySelector('.material-symbols-outlined').textContent = 'volume_up';
             previewButton.querySelector('.button-text').textContent = 'Preview';
@@ -305,98 +405,111 @@ function setupButtonActions() {
         }
     });
     
-    // Volume slider
-    let volumeChangeTimer = null;
+    // Volume slider with improved implementation
+    let sliderDebounceTimer = null;
     
-    // Handle continuous sliding updates
+    // Update volume indicator while sliding without sending API requests
     volumeSlider.addEventListener('input', () => {
-        const value = parseInt(volumeSlider.value);
+        const sliderPos = parseInt(volumeSlider.value);
         
-        // Show reset button when volume is adjusted from center
-        resetVolumeButton.classList.toggle('hidden', value === 0);
+        // Toggle reset button visibility
+        resetVolumeButton.classList.toggle('hidden', sliderPos === 0);
         
-        // Clear any pending updates
-        if (volumeChangeTimer) {
-            clearTimeout(volumeChangeTimer);
+        // Clear any pending requests
+        if (sliderDebounceTimer) {
+            clearTimeout(sliderDebounceTimer);
         }
-        
-        // Set a short delay to minimize excessive API calls while sliding
-        volumeChangeTimer = setTimeout(() => {
-            updateVolume(value);
-        }, 50);
     });
     
-    // Handle final value when releasing slider or clicking directly
+    // Send volume update when slider is released or clicked
     volumeSlider.addEventListener('change', () => {
-        const value = parseInt(volumeSlider.value);
+        const sliderPos = parseInt(volumeSlider.value);
         
-        // If value is 0 (center), treat as reset
-        if (value === 0) {
-            resetVolume();
-            return;
+        // If there's a pending timer, clear it
+        if (sliderDebounceTimer) {
+            clearTimeout(sliderDebounceTimer);
         }
         
-        // Clear any pending updates
-        if (volumeChangeTimer) {
-            clearTimeout(volumeChangeTimer);
-            volumeChangeTimer = null;
-        }
-        
-        // Update volume with final value
-        updateVolume(value);
+        // Send the new slider position to the server
+        updateVolumeWithSlider(sliderPos);
     });
-    
-    // Function to update volume
-    function updateVolume(adjustment) {
-        if (!currentSoundId) return;
-        
-        // Send volume adjustment to server
-        fetch(`/api/sounds/${currentSoundId}/volume`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ adjustment: adjustment })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Update the sound card indicator
-                updateSoundCardIndicator(currentSoundId, 'volume', true);
-            }
-        })
-        .catch(error => {
-            console.error('Error updating volume:', error);
-        });
-    }
     
     // Reset volume button
     resetVolumeButton.addEventListener('click', resetVolume);
+
 }
 
-// Reset volume function
+// Function to update volume with slider position
+function updateVolumeWithSlider(sliderPos) {
+    if (!currentSoundId) return;
+    
+    // Send the slider position to the server
+    fetch(`/api/sounds/${currentSoundId}/volume`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sliderPosition: sliderPos })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the sound card indicator
+            updateSoundCardIndicator(currentSoundId, 'volume', sliderPos !== 0);
+            
+            // Update current sound data with the returned values
+            if (currentSoundData) {
+                currentSoundData.localVolume = data.localVolume;
+                currentSoundData.remoteVolume = data.remoteVolume;
+                currentSoundData.hasCustomVolume = (sliderPos !== 0);
+                currentSoundData.sliderPosition = sliderPos;
+            }
+            
+            // Show/hide reset button based on whether we have custom volume
+            resetVolumeButton.classList.toggle('hidden', sliderPos === 0);
+        }
+    })
+    .catch(error => {
+        console.error('Error updating volume:', error);
+    });
+}
+
+// Reset volume with improved implementation
 function resetVolume() {
     if (!currentSoundId) return;
     
+    // First update UI immediately for responsiveness
+    volumeSlider.value = 0;
+    resetVolumeButton.classList.add('hidden');
+    
+    // Send reset request to server
     fetch(`/api/sounds/${currentSoundId}/volume/reset`, {
         method: 'POST'
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Reset UI
-            volumeSlider.value = 0;
-            resetVolumeButton.classList.add('hidden');
-            
-            // Update indicator
+            // Update sound card indicator
             updateSoundCardIndicator(currentSoundId, 'volume', false);
+            
+            // Update current sound data
+            if (currentSoundData) {
+                // Remove custom volumes
+                delete currentSoundData.localVolume;
+                delete currentSoundData.remoteVolume;
+                currentSoundData.hasCustomVolume = false;
+                currentSoundData.sliderPosition = 0;
+            }
         }
+    })
+    .catch(error => {
+        console.error('Error resetting volume:', error);
     });
 }
 
-// Open settings menu for a sound
+// Improved open settings menu function that properly loads volume state
 function openSoundSettings(soundId) {
     currentSoundId = soundId;
     
-    // Fetch sound details
+    // Fetch sound details with volume info
     fetch(`/api/sounds/${soundId}`)
     .then(response => response.json())
     .then(sound => {
@@ -412,9 +525,14 @@ function openSoundSettings(soundId) {
         // Update favorite state
         favoriteButton.classList.toggle('active', sound.isFavorite);
         
-        // Update volume slider - reset to center initially
-        volumeSlider.value = 0;
-        resetVolumeButton.classList.toggle('hidden', !sound.hasCustomVolume);
+        // Update volume slider with correct position
+        if (sound.hasCustomVolume && sound.sliderPosition !== undefined) {
+            volumeSlider.value = sound.sliderPosition;
+            resetVolumeButton.classList.remove('hidden');
+        } else {
+            volumeSlider.value = 0; // Default to center
+            resetVolumeButton.classList.add('hidden');
+        }
         
         // Reset backdrop and card styles before showing
         settingsBackdrop.style.opacity = '0';
@@ -438,6 +556,8 @@ function openSoundSettings(soundId) {
         console.error('Failed to fetch sound details:', error);
     });
 }
+
+
 
 // Reset the menu state to default
 function resetMenuState() {
@@ -530,7 +650,7 @@ function updateSoundCardIndicator(soundId, type, state) {
             favoriteIcon.className = 'indicator-icon material-symbols-outlined favorite-indicator';
             favoriteIcon.textContent = 'favorite';
             // Add filled style
-            favoriteIcon.style.color = '#ff4081';
+            favoriteIcon.style.color = '#555';
             favoriteIcon.style.fontVariationSettings = "'FILL' 1";
             indicators.appendChild(favoriteIcon);
         }
@@ -562,5 +682,14 @@ function updateSoundCardIndicator(soundId, type, state) {
     }
 }
 
+
+// Call this during initialization
+document.addEventListener('DOMContentLoaded', () => {
+    addVolumeStyles();
+    setupVolumeStateTracking();
+});
+
+
 // Initialize when DOM content is loaded
 document.addEventListener('DOMContentLoaded', initSoundSettings);
+

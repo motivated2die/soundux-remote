@@ -511,7 +511,7 @@ function updateSoundCardWithSettings(card, settings) {
             favoriteIcon.className = 'indicator-icon material-symbols-outlined favorite-indicator';
             favoriteIcon.textContent = 'favorite';
             favoriteIcon.style.fontVariationSettings = "'FILL' 1";
-            favoriteIcon.style.color = '#ff4081';
+            favoriteIcon.style.color = '#555';
             indicators.appendChild(favoriteIcon);
         }
     }
@@ -551,7 +551,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         .indicator-icon.favorite-indicator {
-            color: #ff4081;
+            color: #555;
             font-variation-settings: 'FILL' 1;
         }
         
@@ -611,10 +611,91 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Initialize on page load
+
+// Listen for volume change events from the server
+function setupVolumeChangeListeners() {
+    // Listen for custom events dispatched from the server
+    window.addEventListener('soundVolumeChanged', (event) => {
+        const { id, hasCustomVolume, localVolume, remoteVolume } = event.detail;
+        
+        // Update our local cache
+        if (window.soundSettingsCache) {
+            window.soundSettingsCache.set(id, {
+                ...window.soundSettingsCache.get(id),
+                customVolume: hasCustomVolume,
+                localVolume,
+                remoteVolume
+            });
+        }
+        
+        // Find and update the sound card if it's visible
+        const soundCard = document.querySelector(`.sound-card[data-sound-id="${id}"]`);
+        if (soundCard) {
+            updateSoundCardWithSettings(soundCard, { customVolume: hasCustomVolume });
+            
+            // If we're currently viewing this sound in the settings panel, update the slider
+            if (currentSoundId === id && soundSettingsOverlay && !soundSettingsOverlay.classList.contains('hidden')) {
+                if (hasCustomVolume && localVolume) {
+                    // Calculate slider position based on volume ratio
+                    const defaultLocalVolume = currentSoundData?.defaultLocalVolume || 100;
+                    const ratio = localVolume / defaultLocalVolume;
+                    
+                    let sliderPos = 0;
+                    if (ratio > 1.0) {
+                        // Right side (volume increase)
+                        sliderPos = Math.round((ratio - 1.0) * 50);
+                        sliderPos = Math.min(50, sliderPos);
+                    } else if (ratio < 1.0) {
+                        // Left side (volume decrease)
+                        sliderPos = Math.round((ratio - 1.0) * 50);
+                        sliderPos = Math.max(-50, sliderPos);
+                    }
+                    
+                    // Update slider without triggering change events
+                    volumeSlider.value = sliderPos;
+                    resetVolumeButton.classList.remove('hidden');
+                } else {
+                    // Reset to center
+                    volumeSlider.value = 0;
+                    resetVolumeButton.classList.add('hidden');
+                }
+            }
+        }
+    });
+}
+
+
+// Function to periodically refresh sound settings to keep UI in sync
+function setupSoundSettingsRefresh() {
+    // Start a timer to refresh sound settings every minute
+    // This ensures that any changes made in the main app or via 
+    // other remote connections get reflected in the current UI
+    setInterval(() => {
+        checkForSoundSettings();
+    }, 60000); // 60 seconds
+}
+
+// Function to update settings when a sound volume changes on another client
+window.updateSoundVolumeIndicator = function(soundId, hasCustomVolume) {
+    const soundCard = document.querySelector(`.sound-card[data-sound-id="${soundId}"]`);
+    if (soundCard) {
+        updateSoundCardWithSettings(soundCard, {
+            customVolume: hasCustomVolume,
+            favorite: soundCard.dataset.favorite === 'true' 
+        });
+    }
+};
+
+// Add this to the initialization code in the DOMContentLoaded listener
 document.addEventListener('DOMContentLoaded', () => {
     init();
     checkForPlayingSounds();
     addFullscreenReentryFeature();
     initTabSwiping();
+    
+    // Add this line - start periodic settings refreshes
+    setupSoundSettingsRefresh();
+
+    // Add volume change listeners
+    setupVolumeChangeListeners();
 });

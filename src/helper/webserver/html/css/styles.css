@@ -47,8 +47,8 @@ header {
 }
 
 .logo {
-    width: 40px;
-    height: 40px
+    width: 45px;
+    height: 45px
 }
 
 h1 {
@@ -453,8 +453,8 @@ h1 {
     }
 
     .logo {
-        width: 40px;
-        height: 40px
+        width: 45px;
+        height: 45px
     }
 
     h1 {
@@ -588,8 +588,8 @@ header {
 }
 
 .logo {
-    width: 36px;
-    height: 36px;
+    width: 45px;
+    height: 45px;
 }
 
 h1 {
@@ -684,9 +684,9 @@ h1 {
     right: 0;
     background-color: var(--v-secondary-darken1);
     border-radius: 16px 16px 0 0;
-    padding: 20px 25px;
+    padding: 50px 25px;
     padding-top: 12px;
-    transform: translateY(100%);
+    transform: translateY(110%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     max-height: 80vh;
     overflow-y: auto;
@@ -760,7 +760,7 @@ h1 {
   }
   
   .icon-button[data-type="favorite"].active .material-symbols-outlined {
-    color: #ff4081;
+    color: #ff6b6b;
     transform: scale(1.1);
     font-variation-settings: 'FILL' 1;
   }
@@ -897,6 +897,6 @@ h1 {
   }
   
   .indicator-icon.favorite-indicator {
-    color: #ff4081;
+    color: #555;
     font-variation-settings: 'FILL' 1;
   }
