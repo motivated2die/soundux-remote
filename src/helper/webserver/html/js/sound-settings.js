@@ -416,8 +416,23 @@ function openSoundSettings(soundId) {
         volumeSlider.value = 0;
         resetVolumeButton.classList.toggle('hidden', !sound.hasCustomVolume);
         
-        // Show the settings overlay
+        // Reset backdrop and card styles before showing
+        settingsBackdrop.style.opacity = '0';
+        settingsBackdrop.style.transition = 'opacity 0.3s ease';
+        settingsCard.style.transform = 'translateY(100%)';
+        settingsCard.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        
+        // Show the settings overlay first
         settingsOverlay.classList.remove('hidden');
+        
+        // Force a reflow to ensure styles are applied
+        void settingsOverlay.offsetWidth;
+        
+        // Then animate in the backdrop and card
+        requestAnimationFrame(() => {
+            settingsBackdrop.style.opacity = '1';
+            settingsCard.style.transform = 'translateY(0)';
+        });
     })
     .catch(error => {
         console.error('Failed to fetch sound details:', error);
@@ -456,8 +471,12 @@ function closeSettingsMenu() {
     // Hide the overlay after animation completes
     setTimeout(() => {
         settingsOverlay.classList.add('hidden');
+        
+        // Reset styles completely
         settingsCard.style.transform = '';
         settingsCard.style.transition = '';
+        settingsBackdrop.style.opacity = '';
+        settingsBackdrop.style.transition = '';
         
         // Reset UI elements
         previewButton.setAttribute('data-state', 'preview');
