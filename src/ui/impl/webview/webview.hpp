@@ -42,6 +42,11 @@ namespace Soundux
 
             std::optional<PlayingSound> playSoundById(const std::uint32_t &id);
 
+            // Volume control methods for web server
+            std::optional<Sound> setCustomLocalVolumeForWeb(const std::uint32_t &id, const std::optional<int> &volume);
+            std::optional<Sound> setCustomRemoteVolumeForWeb(const std::uint32_t &id, const std::optional<int> &volume);
+            bool toggleFavoriteForWeb(const std::uint32_t &id);
+
             
         };
     } // namespace Objects

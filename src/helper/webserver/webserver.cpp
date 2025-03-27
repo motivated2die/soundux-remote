@@ -332,6 +332,255 @@ namespace Soundux::Objects
                 res.set_content("{\"error\":\"Failed to stop sounds: " + std::string(e.what()) + "\"}", "application/json");
             }
         });
+
+            
+        // Get single sound details
+        server->Get(R"(/api/sounds/(\d+))", [](const httplib::Request &req, httplib::Response &res) {
+            auto soundIdStr = req.matches[1];
+            try {
+                auto soundId = std::stoul(soundIdStr);
+                auto sound = Soundux::Globals::gData.getSound(soundId);
+                
+                if (sound) {
+                    // Get tab information for this sound
+                    std::string tabName;
+                    for (const auto &tab : Soundux::Globals::gData.getTabs()) {
+                        for (const auto &tabSound : tab.sounds) {
+                            if (tabSound.id == soundId) {
+                                tabName = tab.name;
+                                break;
+                            }
+                        }
+                        if (!tabName.empty()) break;
+                    }
+                    
+                    // Build response JSON
+                    nlohmann::json response;
+                    response["id"] = sound->get().id;
+                    response["name"] = sound->get().name;
+                    response["path"] = sound->get().path;
+                    response["isFavorite"] = sound->get().isFavorite;
+                    response["tabName"] = tabName;
+                    response["hasCustomVolume"] = (sound->get().localVolume.has_value() || sound->get().remoteVolume.has_value());
+                    
+                    // Include volume information if available
+                    if (sound->get().localVolume) {
+                        response["localVolume"] = *sound->get().localVolume;
+                    }
+                    if (sound->get().remoteVolume) {
+                        response["remoteVolume"] = *sound->get().remoteVolume;
+                    }
+                    
+                    res.set_content(response.dump(), "application/json");
+                } else {
+                    res.status = 404;
+                    res.set_content("{\"error\":\"Sound not found\"}", "application/json");
+                }
+            } catch (const std::exception &e) {
+                res.status = 400;
+                res.set_content("{\"error\":\"Invalid sound ID: " + std::string(e.what()) + "\"}", "application/json");
+            }
+        });
+
+        // Get sound settings (favorites and custom volumes)
+        server->Get("/api/sounds/settings", [](const httplib::Request &, httplib::Response &res) {
+            try {
+                nlohmann::json response;
+                response["success"] = true;
+                
+                // Get favorite sound IDs
+                std::vector<std::uint32_t> favoriteIds = Soundux::Globals::gData.getFavoriteIds();
+                response["favorites"] = favoriteIds;
+                
+                // Get sounds with custom volumes
+                std::vector<nlohmann::json> customVolumes;
+                auto sounds = Soundux::Globals::gSounds.scoped();
+                
+                for (const auto &soundPair : *sounds) {
+                    const auto &sound = soundPair.second.get();
+                    if (sound.localVolume.has_value() || sound.remoteVolume.has_value()) {
+                        nlohmann::json customVolume;
+                        customVolume["id"] = sound.id;
+                        
+                        if (sound.localVolume.has_value()) {
+                            customVolume["localVolume"] = *sound.localVolume;
+                        }
+                        
+                        if (sound.remoteVolume.has_value()) {
+                            customVolume["remoteVolume"] = *sound.remoteVolume;
+                        }
+                        
+                        customVolumes.push_back(customVolume);
+                    }
+                }
+                
+                response["customVolumes"] = customVolumes;
+                
+                res.set_content(response.dump(), "application/json");
+            } catch (const std::exception &e) {
+                res.status = 500;
+                res.set_content("{\"error\":\"Failed to fetch sound settings: " + std::string(e.what()) + "\"}", "application/json");
+            }
+        });// Updated version of the WebServer API endpoints that uses 
+        // the new public methods from WebView instead of trying to access protected methods
+
+        // Toggle favorite status
+        server->Post(R"(/api/sounds/(\d+)/favorite)", [](const httplib::Request &req, httplib::Response &res) {
+            auto soundIdStr = req.matches[1];
+            try {
+                auto soundId = std::stoul(soundIdStr);
+                
+                // Parse request body
+                auto json = nlohmann::json::parse(req.body);
+                bool favorite = json["favorite"].get<bool>();
+                
+                // Get the WebView instance
+                auto* webview = dynamic_cast<Soundux::Objects::WebView*>(Soundux::Globals::gGui.get());
+                if (!webview) {
+                    res.status = 500;
+                    res.set_content("{\"error\":\"WebView interface not available\"}", "application/json");
+                    return;
+                }
+                
+                // Use the wrapper method
+                if (webview->toggleFavoriteForWeb(soundId)) {
+                    // Return success response
+                    res.set_content("{\"success\":true}", "application/json");
+                } else {
+                    res.status = 404;
+                    res.set_content("{\"error\":\"Sound not found\"}", "application/json");
+                }
+            } catch (const std::exception &e) {
+                res.status = 400;
+                res.set_content("{\"error\":\"Failed to set favorite status: " + std::string(e.what()) + "\"}", "application/json");
+            }
+        });
+
+        // Set volume adjustment
+        server->Post(R"(/api/sounds/(\d+)/volume)", [](const httplib::Request &req, httplib::Response &res) {
+            auto soundIdStr = req.matches[1];
+            try {
+                auto soundId = std::stoul(soundIdStr);
+                auto sound = Soundux::Globals::gData.getSound(soundId);
+                
+                if (!sound) {
+                    res.status = 404;
+                    res.set_content("{\"error\":\"Sound not found\"}", "application/json");
+                    return;
+                }
+                
+                // Parse request body
+                auto json = nlohmann::json::parse(req.body);
+                int adjustment = json["adjustment"].get<int>();
+                
+                // Get current volumes or default values
+                int localVolume = sound->get().localVolume.value_or(Soundux::Globals::gSettings.localVolume);
+                int remoteVolume = sound->get().remoteVolume.value_or(Soundux::Globals::gSettings.remoteVolume);
+                
+                int newLocalVolume, newRemoteVolume;
+                
+                // More nuanced volume adjustment
+                if (adjustment > 0) {
+                    // For positive adjustments, reduce by 40%
+                    int reducedAdjustment = static_cast<int>(adjustment * 0.6);
+                    newLocalVolume = std::max(0, std::min(200, localVolume + reducedAdjustment));
+                    newRemoteVolume = std::max(0, std::min(200, remoteVolume + reducedAdjustment));
+                } else if (adjustment < 0) {
+                    // For negative adjustments, use a more logarithmic approach
+                    // Map -50 to 0.5 (50% of original volume) rather than a linear decrease
+                    float factor = 1.0f + (adjustment / 50.0f); // -50 → 0, -25 → 0.5, 0 → 1
+                    newLocalVolume = static_cast<int>(localVolume * factor);
+                    newRemoteVolume = static_cast<int>(remoteVolume * factor);
+                    
+                    // Ensure we don't go below 1 (keep some audible volume)
+                    newLocalVolume = std::max(1, newLocalVolume);
+                    newRemoteVolume = std::max(1, newRemoteVolume);
+                } else {
+                    // No change
+                    newLocalVolume = localVolume;
+                    newRemoteVolume = remoteVolume;
+                }
+                
+                // Get the WebView instance
+                auto* webview = dynamic_cast<Soundux::Objects::WebView*>(Soundux::Globals::gGui.get());
+                if (!webview) {
+                    res.status = 500;
+                    res.set_content("{\"error\":\"WebView interface not available\"}", "application/json");
+                    return;
+                }
+                
+                // Apply the new volume values using the wrapper methods
+                webview->setCustomLocalVolumeForWeb(soundId, newLocalVolume);
+                webview->setCustomRemoteVolumeForWeb(soundId, newRemoteVolume);
+                
+                // Return success with new values
+                nlohmann::json response;
+                response["success"] = true;
+                response["localVolume"] = newLocalVolume;
+                response["remoteVolume"] = newRemoteVolume;
+                
+                res.set_content(response.dump(), "application/json");
+            } catch (const std::exception &e) {
+                res.status = 400;
+                res.set_content("{\"error\":\"Failed to set volume: " + std::string(e.what()) + "\"}", "application/json");
+            }
+        });
+
+        // Reset volume
+        server->Post(R"(/api/sounds/(\d+)/volume/reset)", [](const httplib::Request &req, httplib::Response &res) {
+            auto soundIdStr = req.matches[1];
+            try {
+                auto soundId = std::stoul(soundIdStr);
+                
+                // Get the WebView instance
+                auto* webview = dynamic_cast<Soundux::Objects::WebView*>(Soundux::Globals::gGui.get());
+                if (!webview) {
+                    res.status = 500;
+                    res.set_content("{\"error\":\"WebView interface not available\"}", "application/json");
+                    return;
+                }
+                
+                // Reset both local and remote volume (passing std::nullopt) using wrapper methods
+                webview->setCustomLocalVolumeForWeb(soundId, std::nullopt);
+                webview->setCustomRemoteVolumeForWeb(soundId, std::nullopt);
+                
+                // Return success
+                res.set_content("{\"success\":true}", "application/json");
+            } catch (const std::exception &e) {
+                res.status = 400;
+                res.set_content("{\"error\":\"Failed to reset volume: " + std::string(e.what()) + "\"}", "application/json");
+            }
+        });
+
+        // Preview sound (headphones only)
+        server->Post(R"(/api/sounds/(\d+)/preview)", [](const httplib::Request &req, httplib::Response &res) {
+            auto soundIdStr = req.matches[1];
+            try {
+                auto soundId = std::stoul(soundIdStr);
+                auto sound = Soundux::Globals::gData.getSound(soundId);
+                
+                if (!sound) {
+                    res.status = 404;
+                    res.set_content("{\"error\":\"Sound not found\"}", "application/json");
+                    return;
+                }
+                
+                // For preview, we'll just use the regular playback method
+                // This will only play through headphones and not through microphone
+                // because we're not setting up any sound routing here
+                
+                auto playingSound = Soundux::Globals::gAudio.play(*sound);
+                if (playingSound) {
+                    res.set_content("{\"success\":true}", "application/json");
+                } else {
+                    res.status = 500;
+                    res.set_content("{\"error\":\"Failed to preview sound\"}", "application/json");
+                }
+            } catch (const std::exception &e) {
+                res.status = 400;
+                res.set_content("{\"error\":\"Failed to preview sound: " + std::string(e.what()) + "\"}", "application/json");
+            }
+        });
         
         
         

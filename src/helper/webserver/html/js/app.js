@@ -448,6 +448,169 @@ function addFullscreenReentryFeature() {
     });
 }
 
+// Add these functions to app.js
+
+// Function to check for favorited and custom volume sounds
+function checkForSoundSettings() {
+    // Check for sounds with existing settings when displayed
+    fetch('/api/sounds/settings')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Store settings for immediate application when cards are added
+                window.soundSettingsCache = window.soundSettingsCache || new Map();
+                
+                // Process favorites
+                if (data.favorites && Array.isArray(data.favorites)) {
+                    data.favorites.forEach(id => {
+                        window.soundSettingsCache.set(id, {...(window.soundSettingsCache.get(id) || {}), favorite: true});
+                    });
+                }
+                
+                // Process custom volumes
+                if (data.customVolumes && Array.isArray(data.customVolumes)) {
+                    data.customVolumes.forEach(sound => {
+                        window.soundSettingsCache.set(sound.id, {...(window.soundSettingsCache.get(sound.id) || {}), customVolume: true});
+                    });
+                }
+                
+                // Apply settings to existing sound cards
+                document.querySelectorAll('.sound-card').forEach(card => {
+                    const soundId = parseInt(card.dataset.soundId);
+                    const settings = window.soundSettingsCache.get(soundId);
+                    if (settings) {
+                        updateSoundCardWithSettings(card, settings);
+                    }
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching sound settings:', error);
+        });
+}
+
+// Update a sound card with settings indicators
+function updateSoundCardWithSettings(card, settings) {
+    if (!card) return;
+    
+    // Get or create indicators container
+    let indicators = card.querySelector('.sound-indicators');
+    if (!indicators) {
+        indicators = document.createElement('div');
+        indicators.className = 'sound-indicators';
+        card.appendChild(indicators);
+    }
+    
+    // Add favorite indicator if needed
+    if (settings.favorite) {
+        card.dataset.favorite = 'true';
+        
+        // Add favorite indicator if not already there
+        if (!indicators.querySelector('.favorite-indicator')) {
+            const favoriteIcon = document.createElement('span');
+            favoriteIcon.className = 'indicator-icon material-symbols-outlined favorite-indicator';
+            favoriteIcon.textContent = 'favorite';
+            favoriteIcon.style.fontVariationSettings = "'FILL' 1";
+            favoriteIcon.style.color = '#ff4081';
+            indicators.appendChild(favoriteIcon);
+        }
+    }
+    
+    // Add custom volume indicator if needed
+    if (settings.customVolume) {
+        card.dataset.customVolume = 'true';
+        
+        // Add volume indicator if not already there
+        if (!indicators.querySelector('.volume-indicator')) {
+            const volumeIcon = document.createElement('span');
+            volumeIcon.className = 'indicator-icon material-symbols-outlined volume-indicator';
+            volumeIcon.textContent = 'volume_up';
+            indicators.appendChild(volumeIcon);
+        }
+    }
+}
+
+// Add event listener when sounds are loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Create a CSS style for sound indicators
+    const style = document.createElement('style');
+    style.textContent = `
+        .sound-indicators {
+            position: absolute;
+            bottom: 3px;
+            right: 3px;
+            display: flex;
+            gap: 3px;
+            z-index: 5;
+            pointer-events: none; /* Allow clicks to pass through */
+        }
+        
+        .indicator-icon {
+            font-size: 12px; /* Smaller size */
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .indicator-icon.favorite-indicator {
+            color: #ff4081;
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Ensure sound-card has proper positioning for absolute children */
+        .sound-card {
+            position: relative !important; /* Ensure absolute positioning works inside */
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Load sound settings initially
+    window.soundSettingsCache = new Map();
+    checkForSoundSettings();
+    
+    // Observe the sounds container for newly added sound cards
+    const soundsContainer = document.getElementById('sounds-container');
+    if (soundsContainer) {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach(mutation => {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    // Process each new node
+                    mutation.addedNodes.forEach(node => {
+                        if (node.classList && node.classList.contains('sound-card')) {
+                            const soundId = parseInt(node.dataset.soundId);
+                            const settings = window.soundSettingsCache.get(soundId);
+                            if (settings) {
+                                // Apply settings immediately, don't wait
+                                updateSoundCardWithSettings(node, settings);
+                            }
+                        }
+                    });
+                }
+            });
+        });
+        
+        // Start observing
+        observer.observe(soundsContainer, { 
+            childList: true, 
+            subtree: false
+        });
+    }
+    
+    // Also observe tab switching
+    const tabsContainer = document.getElementById('tabs-container');
+    if (tabsContainer) {
+        const tabObserver = new MutationObserver(() => {
+            // Refresh settings when tabs change
+            setTimeout(checkForSoundSettings, 50);
+        });
+        
+        tabObserver.observe(tabsContainer, { 
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class']
+        });
+    }
+});
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     init();

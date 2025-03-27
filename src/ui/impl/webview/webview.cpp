@@ -470,5 +470,28 @@ namespace Soundux::Objects
         return playSound(id);
     }
 
+    // Volume control wrapper methods for web server
+    std::optional<Sound> WebView::setCustomLocalVolumeForWeb(const std::uint32_t &id, const std::optional<int> &volume)
+    {
+        return setCustomLocalVolume(id, volume);
+    }
+
+    std::optional<Sound> WebView::setCustomRemoteVolumeForWeb(const std::uint32_t &id, const std::optional<int> &volume)
+    {
+        return setCustomRemoteVolume(id, volume);
+    }
+
+    bool WebView::toggleFavoriteForWeb(const std::uint32_t &id)
+    {
+        auto sound = Globals::gData.getSound(id);
+        if (sound)
+        {
+            bool newState = !sound->get().isFavorite;
+            Globals::gData.markFavorite(id, newState);
+            return true;
+        }
+        return false;
+    }
+
     
 } // namespace Soundux::Objects

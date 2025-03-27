@@ -109,6 +109,44 @@
         </header>
     </div>
 
+    <!-- Sound Settings Menu - Add this before the closing body tag in index.html -->
+    <div id="sound-settings-overlay" class="hidden">
+        <div id="settings-backdrop"></div>
+        <div id="settings-card">
+        <div class="handle-bar"></div>
+        
+        <div class="sound-info">
+            <h2 id="settings-sound-name">Sound Name</h2>
+            <p id="settings-tab-name">Tab Name</p>
+        </div>
+        
+        <div class="action-buttons">
+            <button id="favorite-button" class="icon-button" data-type="favorite">
+            <span class="material-symbols-outlined">favorite</span>
+            </button>
+            <button id="preview-button" class="action-button" data-state="preview">
+            <span class="material-symbols-outlined">volume_up</span>
+            <span class="button-text">Preview</span>
+            </button>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="volume-control">
+            <h3>Volume Adjustment</h3>
+            <div class="slider-container">
+            <span class="material-symbols-outlined">volume_down</span>
+            <input type="range" id="volume-slider" min="-50" max="50" value="0">
+            <span class="material-symbols-outlined">volume_up</span>
+            </div>
+            <div class="volume-info">
+            <span>Adjusts both local and remote volume</span>
+            <button id="reset-volume" class="reset-button hidden">Reset</button>
+            </div>
+        </div>
+        </div>
+    </div>
+
     <script>
         // Improved screen wake lock implementation
         (function() {
@@ -338,5 +376,6 @@
     </script>
     <script src="js/app.js"></script>
     <script src="js/tabs.js"></script>
+    <script src="js/sound-settings.js"></script>
 </body>
 </html>

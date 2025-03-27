@@ -641,4 +641,262 @@ h1 {
 #sound-progress-container.active {
     opacity: 1;
     transition: opacity 0.2s ease;
-}
+}/* Sound Settings Menu Styles - Add to styles.css */
+
+/* Settings Menu Container */
+#sound-settings-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    transition: visibility 0.3s;
+  }
+  
+  #sound-settings-overlay.hidden {
+    visibility: hidden;
+    pointer-events: none;
+  }
+  
+  /* Backdrop */
+  #settings-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    backdrop-filter: blur(2px);
+  }
+  
+  #sound-settings-overlay:not(.hidden) #settings-backdrop {
+    opacity: 1;
+  }
+  
+  /* Settings Card */
+  #settings-card {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--v-secondary-darken1);
+    border-radius: 16px 16px 0 0;
+    padding: 20px 25px;
+    padding-top: 12px;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+    width: 92%;
+    margin: 0 auto;
+  }
+  
+  #sound-settings-overlay:not(.hidden) #settings-card {
+    transform: translateY(0);
+  }
+  
+  /* Handle Bar for dragging */
+  .handle-bar {
+    width: 50px;
+    height: 4px;
+    background-color: var(--text-secondary);
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+  
+  /* Sound Info */
+  .sound-info {
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  
+  #settings-sound-name {
+    font-size: 1.5rem;
+    margin: 0;
+    word-break: break-word;
+  }
+  
+  #settings-tab-name {
+    color: var(--text-secondary);
+    margin: 5px 0 0;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  
+  /* Action Buttons */
+  .action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+  
+  .icon-button {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: var(--v-secondary-base);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    transition: background-color 0.2s;
+  }
+  
+  .icon-button.active {
+    background-color: var(--v-secondary-base);
+  }
+  
+  .icon-button[data-type="favorite"] .material-symbols-outlined {
+    transition: color 0.2s, transform 0.2s;
+    font-variation-settings: 'FILL' 0;
+  }
+  
+  .icon-button[data-type="favorite"].active .material-symbols-outlined {
+    color: #ff4081;
+    transform: scale(1.1);
+    font-variation-settings: 'FILL' 1;
+  }
+  
+  .action-button {
+    padding: 0 20px;
+    height: 50px;
+    border-radius: 25px;
+    background-color: var(--v-secondary-base);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    gap: 8px;
+    transition: all 0.2s;
+    min-width: 130px; /* Fixed width */
+  }
+  
+  .action-button:active {
+    background-color: var(--v-secondary-darken2);
+  }
+  
+  .action-button[data-state="stop"] {
+    background-color: #ff5252;
+  }
+  
+  /* Divider */
+  .divider {
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.1);
+    margin: 16px 0;
+  }
+  
+  /* Volume Control */
+  .volume-control {
+    margin-top: 20px;
+  }
+  
+  .volume-control h3 {
+    font-size: 1.1rem;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+  }
+  
+  .slider-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .volume-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+  
+  /* Slider */
+  #volume-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background-color: var(--v-secondary-darken2);
+    outline: none;
+    position: relative;
+  }
+  
+  #volume-slider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 12px;
+    background-color: var(--text-secondary);
+    z-index: 1;
+  }
+  
+  #volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  
+  #volume-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.15s;
+    border: none;
+  }
+  
+  /* Reset Button */
+  .reset-button {
+    background-color: transparent;
+    border: 1px solid var(--text-secondary);
+    color: var(--text-secondary);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .reset-button.hidden {
+    display: none;
+  }
+  
+  /* Sound Card Indicators */
+  .sound-indicators {
+    position: absolute;
+    bottom: 3px;
+    right: 3px;
+    display: flex;
+    gap: 3px;
+    z-index: 5;
+    pointer-events: none; /* Allow clicks to pass through */
+  }
+  
+  .indicator-icon {
+    font-size: 12px; /* Smaller size (reduced by 50%) */
+    color: rgba(255, 255, 255, 0.7);
+  }
+  
+  .indicator-icon.favorite-indicator {
+    color: #ff4081;
+    font-variation-settings: 'FILL' 1;
+  }
