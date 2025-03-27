@@ -31,19 +31,50 @@ namespace Soundux::Objects
     {
         try
         {
+            // Ensure config directory exists
             if (!std::filesystem::exists(path))
             {
                 std::filesystem::path configFile(path);
                 std::filesystem::create_directories(configFile.parent_path());
             }
-            std::ofstream configFile(path);
-            configFile << nlohmann::json(*this).dump();
-            configFile.close();
-            Fancy::fancy.logTime().success() << "Config written" << std::endl;
+            
+            // Generate config content
+            std::string configContent = nlohmann::json(*this).dump(4); // Pretty print with indentation
+            
+            // First write to a temporary file to prevent corruption if crash during write
+            std::string tempPath = path + ".tmp";
+            {
+                std::ofstream tempFile(tempPath, std::ios::out | std::ios::trunc);
+                if (!tempFile)
+                {
+                    throw std::runtime_error("Failed to open temporary config file for writing");
+                }
+                tempFile << configContent;
+                tempFile.flush(); // Ensure data is written to disk
+                tempFile.close(); // Close file explicitly
+                
+                if (tempFile.fail())
+                {
+                    throw std::runtime_error("Error while writing temporary config file");
+                }
+            }
+            
+            // Rename temp file to actual config file (atomic operation on most filesystems)
+            std::error_code ec;
+            std::filesystem::rename(tempPath, path, ec);
+            if (ec)
+            {
+                // If rename fails, try copy and delete approach
+                std::filesystem::copy_file(tempPath, path, 
+                                          std::filesystem::copy_options::overwrite_existing, ec);
+                std::filesystem::remove(tempPath, ec);
+            }
+            
+            Fancy::fancy.logTime().success() << "Config written successfully" << std::endl;
         }
         catch (const std::exception &e)
         {
-            Fancy::fancy.logTime().failure() << "Failed to write config: " >> e.what() << std::endl;
+            Fancy::fancy.logTime().failure() << "Failed to write config: " << e.what() << std::endl;
         }
         catch (...)
         {

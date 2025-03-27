@@ -3,6 +3,8 @@
 #include <core/global/globals.hpp>
 #include <fancy.hpp>
 #include <ui/impl/webview/webview.hpp>
+#include <signal.h>
+
 
 
 #include <filesystem>
@@ -61,6 +63,7 @@ int main(int argc, char **arguments)
 
     backward::SignalHandling crashHandler;
     gGuard = std::make_shared<Instance::Guard>("soundux-guard");
+
 
     if (std::find(args.begin(), args.end(), "--reset-mutex") != args.end())
     {
@@ -192,6 +195,17 @@ int main(int argc, char **arguments)
         std::_Exit(0); // Force immediate exit - use only as last resort
     });
     shutdownGuard.detach();
+
+    // Make one final save attempt before exiting
+    try {
+        Soundux::Globals::gConfig.data.set(Soundux::Globals::gData);
+        Soundux::Globals::gConfig.settings = Soundux::Globals::gSettings;
+        Soundux::Globals::gConfig.save();
+    } catch (const std::exception& e) {
+        Fancy::fancy.logTime().warning() << "Final save attempt failed: " << e.what() << std::endl;
+    } catch (...) {
+        Fancy::fancy.logTime().warning() << "Final save attempt failed" << std::endl;
+    }
     
 
     return 0;

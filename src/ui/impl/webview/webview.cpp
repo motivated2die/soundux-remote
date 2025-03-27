@@ -326,8 +326,17 @@ namespace Soundux::Objects
             webview->hide();
             return true;
         }
+        
+        // Save configuration before allowing window to close
+        Fancy::fancy.logTime().message() << "Window closing, saving configuration..." << std::endl;
+        Soundux::Globals::gConfig.data.set(Soundux::Globals::gData);
+        Soundux::Globals::gConfig.settings = Soundux::Globals::gSettings;
+        Soundux::Globals::gConfig.save();
+        
         return false;
     }
+
+
     void WebView::onResize(int width, int height)
     {
         Globals::gData.width = width;
@@ -429,9 +438,17 @@ namespace Soundux::Objects
         };
 
         webview->run();
+        
+        // Explicitly save configuration before shutdown
+        Fancy::fancy.logTime().message() << "Saving configuration before exit..." << std::endl;
+        Soundux::Globals::gConfig.data.set(Soundux::Globals::gData);
+        Soundux::Globals::gConfig.settings = Soundux::Globals::gSettings;
+        Soundux::Globals::gConfig.save();
+        
         safelyDestroyTray();
         Fancy::fancy.logTime().message() << "UI exited" << std::endl;
     }
+
 
 
     void WebView::onHotKeyReceived(const std::vector<int> &keys)
