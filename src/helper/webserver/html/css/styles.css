@@ -5,7 +5,7 @@
     --v-primary-lighten1: #6ecda6;
     --v-primary-darken1: #359672;
     --v-secondary-base: #424242;
-    --v-secondary-darken1: #2c2c2c;
+    --v-secondary-darken1: #2c2c2c; /* Original top-bar color */
     --v-secondary-darken2: #171717;
     --v-background-dark: #121212;
     --v-surface-dark: #1e1e1e;
@@ -15,9 +15,13 @@
     --error-color: #ff5252;
     --warning-color: #fb8c00;
     --success-color: #4caf50;
-    --edit-mode-color: #009688; /* Changed to Green for Edit Mode */
 
-    /* Sound Card Colors (Muted/Desaturated for dark theme) */
+    /* NEW: Top bar progress color */
+    --top-bar-progress-color: #444; /* Lighter grey */
+    --progress-percentage: 0%; /* JS will update this */
+
+
+    /* Sound Card Colors */
     --sound-color-red-bg: #4a2a2a;
     --sound-color-orange-bg: #5a3a1f;
     --sound-color-yellow-bg: #5a5a2a;
@@ -29,10 +33,10 @@
     /* Layout */
     --border-radius: 6px;
     --transition-speed: 0.2s;
-    --top-bar-height: 35px; /* Reduced height */
+    --top-bar-height: 35px;
     --header-height: 80px;
     --tabs-height: 60px;
-    --progress-bar-height: 3px; /* Slightly thinner */
+    /* --progress-bar-height: 3px; -- REMOVED */
 }
 
 /* --- Base & Reset --- */
@@ -71,70 +75,97 @@ body {
     display: flex;
     flex-direction: column;
     height: 100%;
-    padding-top: calc(var(--top-bar-height) + var(--progress-bar-height)); /* Adjust padding for fixed top elements */
-}
-
-
-/* NEW: Edit Mode Info Styles */
-.edit-mode-info {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 0.75rem; /* Smaller text */
-    color: rgba(255, 255, 255, 0.8); /* White but slightly transparent */
-    position: absolute; /* Position it absolutely */
-    left: 10px; /* Align left */
-    top: 50%; /* Center vertically */
-    transform: translateY(-50%);
-}
-.edit-mode-info .material-symbols-outlined {
-    font-size: 16px; /* Smaller icon */
-}
-.edit-mode .edit-mode-info { /* Show only in edit mode */
-    display: flex;
+    /* Adjust padding for fixed top bar only */
+    padding-top: var(--top-bar-height);
 }
 
 /* --- Top Bar --- */
 .top-bar {
     position: fixed;
-    top: env(safe-area-inset-top, 0px); /* Use safe area, fallback to 0 */
+    top: env(safe-area-inset-top, 0px);
     left: env(safe-area-inset-left, 0px);
     right: env(safe-area-inset-right, 0px);
     z-index: 110;
     display: flex;
-    justify-content: space-between; /* Pushes placeholder & buttons apart */
-    align-items: center; /* Vertically center all items */
-    height: var(--top-bar-height); /* Use reduced height */
+    justify-content: space-between;
+    align-items: center;
+    height: var(--top-bar-height);
     padding: 0 10px;
-    background-color: var(--v-secondary-darken1);
+    /* Use CSS variable for gradient background */
+    background: linear-gradient(
+        to right,
+        var(--top-bar-progress-color) var(--progress-percentage),
+        var(--v-secondary-darken1) var(--progress-percentage)
+    );
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    transition: background-color var(--transition-speed) ease;
+    transition: background-color var(--transition-speed) ease; /* Keep for edit mode */
 }
 
+/* Top bar in Edit Mode (override gradient) */
 .top-bar.edit-mode-active {
-    background-color: var(--edit-mode-color); /* Green */
+    background: var(--edit-mode-color); /* Solid green, overrides gradient */
+}
+
+/* Play Indicator Icon */
+.play-indicator {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.9);
+    pointer-events: none;
+}
+.play-indicator.hidden {
+    display: none;
+}
+
+
+/* Edit Mode Info Styles */
+.edit-mode-info {
+    display: none; /* Hidden by default */
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.8);
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    /* Push it behind the play indicator if both are present */
+    z-index: -1;
+}
+.edit-mode-info .material-symbols-outlined {
+    font-size: 16px;
+}
+/* Show only in edit mode */
+.top-bar.edit-mode-active .edit-mode-info {
+    display: flex;
+    z-index: 1; /* Bring it above default background */
+}
+/* Hide play indicator when edit mode info is shown */
+.top-bar.edit-mode-active .play-indicator {
+    display: none;
 }
 
 .top-bar .top-bar-placeholder {
-    /* No flex-grow needed if edit info is absolute */
-    /* Used just to push action buttons right */
-    flex-shrink: 0; /* Prevent shrinking */
-    width: 10px; /* Minimal width */
-    margin-right: auto; /* Push action buttons to the right */
+    flex-shrink: 0;
+    width: 10px;
+    margin-right: auto;
 }
 
 .top-bar .action-buttons {
     display: flex;
-    align-items: center; /* Vertically center items within this container */
+    align-items: center;
     gap: 7px;
     margin-left: auto;
     flex-shrink: 0;
-    height: 100%; /* Make the container take full height of top-bar */
+    height: 100%;
 }
 .icon-button.top-bar-button {
-    width: 32px; /* Smaller buttons */
+    width: 32px;
     height: 32px;
-    color: var(--text-secondary); /* Muted icon color */
+    color: var(--text-secondary);
 }
 .icon-button.top-bar-button:hover,
 .icon-button.top-bar-button.active {
@@ -142,40 +173,20 @@ body {
     color: var(--text-primary);
 }
 .top-bar.edit-mode-active .icon-button.top-bar-button {
-    color: white; /* White icons on green */
+    color: white;
 }
 .top-bar.edit-mode-active .icon-button.top-bar-button:hover,
 .top-bar.edit-mode-active .icon-button.top-bar-button.active {
     background-color: rgba(0, 0, 0, 0.2);
 }
 .icon-button.top-bar-button .material-symbols-outlined {
-    font-size: 20px; /* Smaller icon */
+    font-size: 20px;
 }
 
-/* --- Progress Bar --- */
-#sound-progress-container {
-    position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + var(--top-bar-height)); /* Below top bar, respect safe area */
-    left: env(safe-area-inset-left, 0px);
-    right: env(safe-area-inset-right, 0px);
-    height: var(--progress-bar-height);
-    background-color: transparent;
+/* --- Progress Bar --- REMOVED */
 
-    z-index: 105; /* Below top bar */
-    opacity: 0;
-    transition: opacity 0.5s ease;
-    pointer-events: none;
-}
-#sound-progress-container.active { opacity: 1; transition: opacity 0.2s ease; }
-#sound-progress-bar {
-    height: 100%;
-    width: 0;
-    background-color: var(--v-primary-base);
-    transition: width 0.1s linear; /* Keep smooth update */
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); /* Add subtle shadow */
-}
 
-/* --- Main Sound Grid (adjust padding) --- */
+/* --- Main Sound Grid --- */
 main#sounds-container {
     order: 1;
     flex-grow: 1;
@@ -187,16 +198,15 @@ main#sounds-container {
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    /* Calculate padding to avoid fixed elements at the bottom */
-    padding-bottom: calc(var(--header-height) + var(--tabs-height) + env(safe-area-inset-bottom, 0px) + 10px); /* +10px extra space */
+    padding-bottom: calc(var(--header-height) + var(--tabs-height) + env(safe-area-inset-bottom, 0px) + 10px);
 }
 
 main#sounds-container::-webkit-scrollbar { display: none; }
 
-/* Layout modes (keep existing) */
+/* Layout modes */
 main#sounds-container.layout-grid-3 { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
 main#sounds-container.layout-grid-2 { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
-main#sounds-container.layout-list { display: flex; flex-direction: column; gap: 0; /* Remove gap for list */ padding: 0 10px; /* Add padding for list items */}
+main#sounds-container.layout-list { display: flex; flex-direction: column; gap: 0; padding: 0 10px; }
 
 /* --- Sound Card --- */
 .sound-card {
@@ -206,7 +216,7 @@ main#sounds-container.layout-list { display: flex; flex-direction: column; gap: 
     padding: 10px;
     text-align: center;
     cursor: pointer;
-    transition: background-color var(--transition-speed) ease, transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
+    transition: background-color var(--transition-speed) ease, transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease, background var(--transition-speed) ease; /* Add background transition */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -219,85 +229,66 @@ main#sounds-container.layout-list { display: flex; flex-direction: column; gap: 
     word-break: break-word;
     hyphens: auto;
     overflow: hidden;
-    --sound-base-color: var(--v-surface-dark);
+    --sound-base-color: var(--v-surface-dark); /* Default base for gradient */
 }
 .sound-card:hover {
     background-color: var(--v-secondary-darken1);
     box-shadow: 0 4px 10px rgba(0,0,0,.2);
     --sound-base-color: var(--v-secondary-darken1);
 }
-
-/* Edit Mode Sound Card Styles (keep existing) */
+/* Edit Mode Sound Card Styles */
 .edit-mode .sound-card { cursor: default; }
 .edit-mode .sound-card:hover { background-color: var(--v-secondary-darken1); box-shadow: none; }
 .sortable-ghost { opacity: 0.4; background-color: var(--v-secondary-base) !important; }
 .sortable-chosen, .sortable-drag { opacity: 0.8; box-shadow: 0 5px 15px rgba(0,0,0,.3); transform: scale(1.05); cursor: grabbing !important; }
 
-/* Playing State (keep existing) */
+/* Playing State Highlight */
 .sound-card.playing { animation: highlightFade 1.5s forwards; }
 @keyframes highlightFade {
     0%, 70% { border-color: var(--v-primary-base); box-shadow: 0 0 8px var(--v-primary-base); }
     100% { border-color: transparent; box-shadow: none; }
 }
-
-/* Sound Card Content Wrapper (keep existing) */
-.sound-content-wrapper {
-    position: relative; z-index: 1; display: flex;
-    align-items: center; width: 100%; justify-content: center;
+/* Playing state background gradient (for grid) */
+.sound-card.playing:not(.layout-list .sound-card) {
+    /* Apply gradient based on base color */
+    background: linear-gradient(
+        to right,
+        var(--v-primary-darken1) var(--progress-percentage, 0%),
+        var(--sound-base-color) var(--progress-percentage, 0%)
+    );
 }
 
-/* List Layout Specific Styles (Revised) */
+
+/* Sound Card Content Wrapper */
+.sound-content-wrapper { position: relative; z-index: 1; display: flex; align-items: center; width: 100%; justify-content: center; }
+
+/* List Layout Specific Styles */
 main#sounds-container.layout-list .sound-card {
-    min-height: auto;
-    max-height: none;
-    justify-content: flex-start;
-    padding: 4% 15px; /* ADJUSTED padding */
-    text-align: left;
-    border-radius: 0;
-    border: none; /* Remove side borders */
-    border-bottom: 1px solid var(--v-secondary-darken1); /* Separator line */
-    background-color: transparent; /* Use main background */
+    min-height: auto; max-height: none; justify-content: flex-start; padding: 4% 15px;
+    text-align: left; border-radius: 0; border: none;
+    border-bottom: 1px solid var(--v-secondary-darken1); background-color: transparent;
     --sound-base-color: transparent;
+    background: transparent !important; /* Override gradient for list */
 }
-main#sounds-container.layout-list .sound-card:hover {
-    background-color: var(--v-secondary-darken2); /* Hover effect */
-     --sound-base-color: var(--v-secondary-darken2);
-}
-main#sounds-container.layout-list .sound-card:last-child {
-    border-bottom: none; /* No border on last item */
-}
-.layout-list .sound-content-wrapper {
-    justify-content: flex-start;
-    gap: 10px; /* Increased gap */
-}
-.layout-list .sound-text {
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    font-size: 1rem; /* Slightly larger text */
-}
-.layout-list .sound-emoji-list {
-    font-size: 1.4em; /* Emoji size */
-    width: 24px; /* Fixed width for alignment */
-    text-align: center;
+main#sounds-container.layout-list .sound-card:hover { background-color: var(--v-secondary-darken2); --sound-base-color: var(--v-secondary-darken2); }
+main#sounds-container.layout-list .sound-card:last-child { border-bottom: none; }
+.layout-list .sound-content-wrapper { justify-content: flex-start; gap: 10px; }
+.layout-list .sound-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 1rem; }
+.layout-list .sound-emoji-list { font-size: 1.4em; width: 24px; text-align: center; }
+
+/* Grid Layout Emoji */
+.layout-grid-2 .sound-card::before, .layout-grid-3 .sound-card::before {
+    content: var(--sound-emoji, ''); position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%); font-size: 4.5em; color: var(--text-primary);
+    opacity: 0.15; z-index: 0; pointer-events: none; line-height: 1;
 }
 
-/* Grid Layout Emoji (keep existing) */
-.layout-grid-2 .sound-card::before,
-.layout-grid-3 .sound-card::before {
-    content: var(--sound-emoji, '');
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    font-size: 4.5em; color: var(--text-primary); opacity: 0.15;
-    z-index: 0; pointer-events: none; line-height: 1;
-}
-
-/* Sound Card Indicators (keep existing) */
-.sound-indicators {
-    position: absolute; bottom: 3px; right: 3px; display: flex; gap: 3px;
-    z-index: 2; pointer-events: none;
-}
+/* Sound Card Indicators */
+.sound-indicators { position: absolute; bottom: 3px; right: 3px; display: flex; gap: 3px; z-index: 2; pointer-events: none; }
 .indicator-icon { font-size: 12px; color: rgba(255, 255, 255, 0.6); }
 .indicator-icon.favorite-indicator { color: var(--edit-mode-color); font-variation-settings: "'FILL' 1"; }
 
-/* Sound Card Custom Colors (keep existing) */
+/* Sound Card Custom Colors */
 .sound-card.sound-color-red    { background-color: var(--sound-color-red-bg); --sound-base-color: var(--sound-color-red-bg); }
 .sound-card.sound-color-orange { background-color: var(--sound-color-orange-bg); --sound-base-color: var(--sound-color-orange-bg); }
 .sound-card.sound-color-yellow { background-color: var(--sound-color-yellow-bg); --sound-base-color: var(--sound-color-yellow-bg); }
@@ -306,155 +297,89 @@ main#sounds-container.layout-list .sound-card:last-child {
 .sound-card.sound-color-purple { background-color: var(--sound-color-purple-bg); --sound-base-color: var(--sound-color-purple-bg); }
 .sound-card.sound-color-pink   { background-color: var(--sound-color-pink-bg); --sound-base-color: var(--sound-color-pink-bg); }
 
-/* --- Tabs --- (keep existing) */
+/* --- Tabs --- */
 nav#tabs-container {
-    order: 2;
-    position: fixed;
-    bottom: calc(var(--header-height) + env(safe-area-inset-bottom, 0px)); /* Above header, respect safe area */
-    left: env(safe-area-inset-left, 0px);
-    right: env(safe-area-inset-right, 0px);
-    z-index: 90;
-    height: var(--tabs-height);
-
-    display: flex; overflow-x: auto; white-space: nowrap; scrollbar-width: none;
-    -webkit-overflow-scrolling: touch; background-color: var(--v-secondary-darken1);
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    order: 2; position: fixed; bottom: calc(var(--header-height) + env(safe-area-inset-bottom, 0px));
+    left: env(safe-area-inset-left, 0px); right: env(safe-area-inset-right, 0px); z-index: 90;
+    height: var(--tabs-height); display: flex; overflow-x: auto; white-space: nowrap;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch; background-color: var(--v-secondary-darken1);
+    border-top: 1px solid rgba(255, 255, 255, 0.05); border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 nav#tabs-container::-webkit-scrollbar { display: none; }
-
 .tab {
     flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
     padding: 0 20px; height: var(--tabs-height); background-color: transparent;
     color: var(--text-secondary); border: 0; border-top: 4px solid transparent;
     cursor: pointer; transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease, border-color var(--transition-speed) ease;
-    font-size: 0.9rem; font-weight: 600; gap: 6px;
-    text-transform: uppercase;
-
+    font-size: 0.9rem; font-weight: 600; gap: 6px; text-transform: uppercase;
 }
 .tab .material-symbols-outlined { font-size: 20px; }
 .tab:hover { background-color: rgba(255, 255, 255, 0.05); color: var(--text-primary); }
-.tab.active {
-    color: var(--v-primary-base); border-top-color: var(--v-primary-base);
-    background-color: rgba(82, 177, 140, 0.1);
-}
+.tab.active { color: var(--v-primary-base); border-top-color: var(--v-primary-base); background-color: rgba(82, 177, 140, 0.1); }
 .tab.active .material-symbols-outlined { color: var(--v-primary-base); font-variation-settings: "'FILL' 1"; }
 
 /* --- Bottom Header --- */
 header {
-    order: 3;
-    position: fixed;
-    bottom: env(safe-area-inset-bottom, 0px); /* Respect safe area, fallback 0 */
-    left: env(safe-area-inset-left, 0px);
-    right: env(safe-area-inset-right, 0px);
-    z-index: 100;
-    height: var(--header-height);
-
-    display: flex; justify-content: space-between; align-items: center;
+    order: 3; position: fixed; bottom: env(safe-area-inset-bottom, 0px);
+    left: env(safe-area-inset-left, 0px); right: env(safe-area-inset-right, 0px); z-index: 100;
+    height: var(--header-height); display: flex; justify-content: space-between; align-items: center;
     padding: 0 16px; background-color: var(--v-secondary-darken2);
     border-top: 1px solid rgba(255,255,255,0.1); box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
 }
-
 .app-title { display: flex; align-items: center; gap: 10px; }
 .logo { width: 40px; height: 40px; }
 .title-group { display: flex; flex-direction: column; }
 h1 { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); line-height: 1; }
-
-
-/* Server Status - Moved here */
-/* Server Status - Moved here */
-.server-status {
-    display: flex;
-    align-items: center;
-    font-size: .8rem; /* Match original */
-    color: var(--text-secondary);
-    margin-top: 4px; /* Spacing below title */
-    gap: 5px; /* Gap between elements */
-}
-/* Ensure status dot comes first */
-#status-indicator { order: 1; }
-/* Text next */
+.server-status { display: flex; align-items: center; font-size: .8rem; color: var(--text-secondary); margin-top: 4px; gap: 5px; }
+#status-indicator { order: 1; width: 8px; height: 8px; border-radius: 50%; background-color: var(--error-color); transition: background-color var(--transition-speed); }
+#status-indicator.connected { background-color: var(--success-color); }
 #server-status-text { order: 2; }
-/* Wakelock indicator last */
-.wakelock-indicator {
-    order: 3;
-    display: inline-flex; /* Keep display type */
-    align-items: center;
-    font-size: 14px; /* Match original */
-    color: var(--text-secondary);
-    transition: color var(--transition-speed) ease;
-}
+.wakelock-indicator { order: 3; display: inline-flex; align-items: center; font-size: 14px; color: var(--text-secondary); transition: color var(--transition-speed) ease; }
 .wakelock-indicator.active { color: var(--v-primary-base); }
-.wakelock-indicator .material-symbols-outlined {
-    font-size: 14px; /* Match original icon size */
-    vertical-align: middle;
-}
+.wakelock-indicator .material-symbols-outlined { font-size: 14px; vertical-align: middle; }
 
-/* Stop Button */
-.btn { /* Base button reset */
-    display: inline-flex; align-items: center; justify-content: center; border: 0;
-    border-radius: var(--border-radius); cursor: pointer; transition: background-color var(--transition-speed) ease;
-    background-color: transparent; color: var(--text-primary); min-height: 44px;
-}
-
-.btn-danger {
-    background-color: var(--error-color); color: white;
-    width: 120px; /* Back to original width */
-    height: 60px; /* Back to original height */
-    padding: 8px; border-radius: 30px; /* Adjust radius */ gap: 8px;
-}
+.btn { display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--border-radius); cursor: pointer; transition: background-color var(--transition-speed) ease; background-color: transparent; color: var(--text-primary); min-height: 44px; }
+.btn-danger { background-color: var(--error-color); color: white; width: 120px; height: 60px; padding: 8px; border-radius: 30px; gap: 8px; }
 .btn-danger:hover { background-color: #ff6b6b; }
-.btn-danger .material-symbols-outlined { font-size: 32px; } /* Original icon size */
-.stop-text { font-weight: 700; font-size: 1rem; } /* Original text size */
+.btn-danger .material-symbols-outlined { font-size: 32px; }
+.stop-text { font-weight: 700; font-size: 1rem; }
 
 /* --- Sound Settings Menu --- */
-/* Overlay and Backdrop (keep existing) */
 #sound-settings-overlay { position: fixed; inset: 0; z-index: 1000; transition: visibility 0.3s; }
 #sound-settings-overlay.hidden { visibility: hidden; pointer-events: none; }
 #settings-backdrop { position: absolute; inset: 0; background-color: rgba(0, 0, 0, 0.6); opacity: 0; transition: opacity 0.3s ease; backdrop-filter: blur(2px); }
 #sound-settings-overlay:not(.hidden) #settings-backdrop { opacity: 1; }
 
-/* Card (keep existing, adjust padding) */
 #settings-card {
     position: absolute; bottom: 0; left: 0; right: 0; background-color: var(--v-secondary-darken1);
     border-radius: 16px 16px 0 0; padding: 12px 20px calc(env(safe-area-inset-bottom) + 20px) 20px;
     transform: translateY(110%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     max-height: 85vh; overflow-y: auto; box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
-    /* Add scrollbar styling for desktop */
-    scrollbar-width: thin;
-    scrollbar-color: var(--v-secondary-base) transparent;
+    scrollbar-width: thin; scrollbar-color: var(--v-secondary-base) transparent;
 }
 #settings-card::-webkit-scrollbar { width: 6px; }
 #settings-card::-webkit-scrollbar-thumb { background-color: var(--v-secondary-base); border-radius: 3px; }
 #sound-settings-overlay:not(.hidden) #settings-card { transform: translateY(0); }
 
-/* Handle, Info, Action Buttons, Divider (keep existing) */
 .handle-bar { width: 40px; height: 4px; background-color: var(--text-secondary); border-radius: 2px; margin: 0 auto 12px; }
 .sound-info { margin-bottom: 16px; text-align: center; }
 #settings-sound-name { font-size: 1.4rem; margin: 0; word-break: break-word; }
 #settings-tab-name { color: var(--text-secondary); margin: 4px 0 0; font-size: 0.8rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
 .action-buttons { display: flex; justify-content: center; gap: 16px; }
-.icon-button { /* General icon button style */
-    width: 48px; height: 48px; border-radius: 50%; background-color: var(--v-secondary-darken1);
-    border: none; display: flex; align-items: center; justify-content: center; color: var(--text-primary);
-    transition: background-color var(--transition-speed) ease; cursor: pointer;
-}
+.icon-button { width: 48px; height: 48px; border-radius: 50%; background-color: var(--v-secondary-darken1); border: none; display: flex; align-items: center; justify-content: center; color: var(--text-primary); transition: background-color var(--transition-speed) ease; cursor: pointer; }
 .icon-button .material-symbols-outlined { font-size: 24px; }
 .icon-button[data-type="favorite"] .material-symbols-outlined { transition: color 0.2s, transform 0.2s, font-variation-settings 0.2s; font-variation-settings: "'FILL' 0"; color: var(--text-secondary); }
 .icon-button[data-type="favorite"].active .material-symbols-outlined { color: var(--edit-mode-color); transform: scale(1.1); font-variation-settings: "'FILL' 1"; }
-.action-button { /* General text button style */
-    padding: 0 18px; height: 48px; border-radius: 24px; background-color: var(--v-secondary-base);
-    border: none; display: flex; align-items: center; justify-content: center; color: var(--text-primary);
-    gap: 8px; transition: all var(--transition-speed) ease; min-width: 120px; font-weight: 500; font-size: 0.9rem; cursor: pointer;
-}
+.action-button { padding: 0 18px; height: 48px; border-radius: 24px; background-color: var(--v-secondary-base); border: none; display: flex; align-items: center; justify-content: center; color: var(--text-primary); gap: 8px; transition: all var(--transition-speed) ease; min-width: 120px; font-weight: 500; font-size: 0.9rem; cursor: pointer; }
+.action-button.secondary { background-color: var(--v-secondary-darken2); }
 .action-button:active { background-color: var(--v-secondary-darken2); }
 .action-button .material-symbols-outlined { font-size: 22px; }
 .action-button[data-state="stop"] { background-color: var(--error-color); }
 .divider { height: 1px; background-color: rgba(255, 255, 255, 0.1); margin: 16px 0; }
-.settings-section { margin-bottom: 20px; }
+.settings-section { margin-bottom: 20px; position: relative; } /* Add position relative for emoji clear button */
 .settings-section h3 { font-size: 1rem; margin-bottom: 12px; color: var(--text-primary); font-weight: 500; }
 
-/* Volume Control (keep existing) */
+/* Volume Control */
 .volume-control { margin-top: 16px; }
 .slider-container { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .slider-container .material-symbols-outlined { color: var(--text-secondary); }
@@ -467,23 +392,27 @@ h1 { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); line-heigh
 .reset-button:hover { background-color: var(--v-secondary-base); color: var(--text-primary); }
 .reset-button.hidden { display: none; }
 
-/* Color Selector (Ensure single line) */
+/* Color Selector (Round Buttons) */
 .color-selector {
     display: flex;
-    flex-wrap: nowrap; /* Prevent wrapping */
-    gap: 8px; /* Reduced gap */
-    overflow-x: auto; /* Allow horizontal scroll if needed */
-    padding-bottom: 5px; /* Space for scrollbar if it appears */
-    scrollbar-width: thin;
-    scrollbar-color: var(--v-secondary-base) transparent;
+    justify-content: space-between; /* Distribute items evenly */
+    gap: 5px; /* Small gap */
+    padding: 0 2px; /* Tiny horizontal padding if needed */
 }
-.color-selector::-webkit-scrollbar { height: 4px; }
-.color-selector::-webkit-scrollbar-thumb { background-color: var(--v-secondary-base); border-radius: 2px; }
 .color-swatch {
-    width: 32px; height: 32px; /* Slightly smaller */
-    flex-shrink: 0; /* Prevent shrinking */
+    flex-grow: 1; /* Allow buttons to grow */
+    flex-basis: 0; /* Start with no intrinsic width */
+    aspect-ratio: 1 / 1; /* Make them square (border-radius makes them round) */
+    border-radius: 50%; /* Make them round */
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: border-color var(--transition-speed) ease, transform var(--transition-speed) ease;
+    max-width: 36px; /* Limit max size */
 }
-/* Colors (keep existing) */
+.color-swatch.selected { border-color: var(--text-primary); transform: scale(1.1); }
+.color-swatch:active { transform: scale(0.95); }
+
+/* Colors */
 .color-swatch.default { background-color: var(--v-surface-dark); border-color: var(--text-secondary); }
 .color-swatch.red { background-color: var(--sound-color-red-bg); }
 .color-swatch.orange { background-color: var(--sound-color-orange-bg); }
@@ -493,120 +422,74 @@ h1 { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); line-heigh
 .color-swatch.purple { background-color: var(--sound-color-purple-bg); }
 .color-swatch.pink { background-color: var(--sound-color-pink-bg); }
 
-/* Emoji Selector - Revised for Picmo */
-.emoji-search {
-    width: 100%;
-    padding: 8px 12px;
-    margin-bottom: 12px;
-    border-radius: var(--border-radius);
-    border: 1px solid var(--v-secondary-base);
-    background-color: var(--v-surface-dark);
-    color: var(--text-primary);
-    font-size: 0.9rem;
+/* Emoji Selector (using emoji-picker-element) */
+.emoji-section .emoji-display-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
 }
-#emoji-picker-container {
-    /* Container for the picker - Picmo might style itself */
-    min-height: 200px; /* Ensure space */
-    /* The actual picker will be positioned by Picmo's popup logic */
-}
-/* Style Picmo elements if needed (use browser dev tools to find selectors) */
-/* e.g., .picmo__popupContainer, .picmo__search, .picmo__list */
-.picmo__popupContainer {
-     background-color: var(--v-secondary-darken1) !important; /* Example override */
-     border: 1px solid var(--v-secondary-base) !important;
-     border-radius: var(--border-radius) !important;
-     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4) !important;
-     max-height: 300px !important; /* Limit height */
-}
-/* Trigger element (used by Picmo for positioning) */
 #emoji-picker-trigger {
-     width: 100%; /* Make it span width for better positioning */
-     height: 48px; /* Match action button height */
-     border-radius: 24px;
-     background-color: var(--v-secondary-base);
-     border: none;
-     display: flex;
-     align-items: center;
-     justify-content: center;
-     color: var(--text-primary);
-     gap: 8px;
-     cursor: pointer;
-     transition: background-color var(--transition-speed) ease;
-     font-weight: 500;
-     font-size: 0.9rem;
-     margin-bottom: 10px; /* Space before clear button */
-}
-#emoji-picker-trigger:hover {
-    background-color: var(--v-secondary-darken2);
+    flex-grow: 1; /* Take available space */
 }
 .current-emoji {
-    font-size: 1.4em; margin-right: 8px; display: inline-block;
-    width: 24px; text-align: center;
+    font-size: 1.4em;
+    display: inline-block;
+    width: 24px;
+    text-align: center;
 }
-/* Clear button specifically for emoji in settings */
 #clear-emoji-button-settings {
-     position: absolute; /* Position relative to the section */
-     top: 0; right: 0; /* Adjust as needed */
-     width: 32px; height: 32px; min-width: 32px; padding: 0;
-     border-radius: 50%; background-color: var(--v-secondary-darken2);
+    padding: 0;
+    width: 48px;
+    height: 48px;
+    min-width: 36px;
+    border-radius: 50%;
+    background-color: var(--v-secondary-base);
 }
 #clear-emoji-button-settings .material-symbols-outlined { font-size: 18px; }
 
+#emoji-picker-container {
+    position: relative; /* Container for absolute positioning if needed */
+    border-radius: var(--border-radius);
+    overflow: hidden; /* Clip picker content */
+    border: 1px solid var(--v-secondary-base);
+}
+#emoji-picker-container.hidden { display: none; }
 
-/* --- App Settings Modal (keep existing, add toggle switch) --- */
+/* Style the emoji picker element itself */
+emoji-picker {
+    width: 100%;
+    height: 250px; /* Or adjust as needed */
+    --background: var(--v-secondary-darken1);
+    --border-color: var(--v-secondary-base);
+    --input-background-color: var(--v-surface-dark);
+    --input-text-color: var(--text-primary);
+    --category-icon-color: var(--text-secondary);
+    --category-icon-color-active: var(--v-primary-base);
+    --indicator-color: var(--v-primary-base);
+    --emoji-size: 1.6em;
+    --emoji-padding: 5px;
+}
+
+/* --- App Settings Modal --- */
 #app-settings-modal-overlay { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; background-color: rgba(0, 0, 0, 0.7); opacity: 0; transition: opacity 0.3s ease, visibility 0.3s; visibility: hidden; backdrop-filter: blur(2px); }
 #app-settings-modal-overlay:not(.hidden) { opacity: 1; visibility: visible; }
 #app-settings-modal { background-color: var(--v-secondary-darken1); border-radius: 12px; padding: 25px; width: 90%; max-width: 400px; box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5); transform: scale(0.95); transition: transform 0.3s ease; }
 #app-settings-modal-overlay:not(.hidden) #app-settings-modal { transform: scale(1); }
 #app-settings-modal h2 { text-align: center; margin-bottom: 20px; font-size: 1.3rem; }
 #app-settings-modal .settings-section { margin-bottom: 20px; }
-#app-settings-modal .modal-actions { display: flex; gap: 15px; justify-content: center; margin-top: 10px; flex-wrap: wrap;} /* Allow wrapping */
+#app-settings-modal .modal-actions { display: flex; gap: 15px; justify-content: center; margin-top: 10px; flex-wrap: wrap;}
 #app-settings-modal .action-button { font-size: 0.9rem; height: 44px; border-radius: 22px; }
 #app-settings-modal .action-button.secondary { background-color: var(--v-secondary-base); }
 #app-settings-modal .modal-info { font-size: 0.85rem; color: var(--text-secondary); margin-top: 15px; text-align: center; }
 
 /* Toggle Switch Styles */
-.toggle-switch {
-    position: relative;
-    display: inline-flex; /* Use flex for alignment */
-    align-items: center; /* Center items vertically */
-    width: auto; /* Adjust width based on content */
-    cursor: pointer;
-    color: var(--text-primary);
-    font-size: 0.9rem;
-    gap: 10px; /* Space between slider and text */
-}
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-.toggle-switch .slider {
-    position: relative;
-    display: inline-block;
-    width: 40px; /* Smaller width */
-    height: 20px; /* Smaller height */
-    background-color: var(--v-secondary-base);
-    border-radius: 10px; /* Fully rounded */
-    transition: var(--transition-speed);
-}
-.toggle-switch .slider:before {
-    position: absolute;
-    content: "";
-    height: 14px; /* Smaller knob */
-    width: 14px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    border-radius: 50%;
-    transition: var(--transition-speed);
-}
-.toggle-switch input:checked + .slider {
-    background-color: var(--v-primary-base);
-}
-.toggle-switch input:checked + .slider:before {
-    transform: translateX(20px); /* Adjust translation */
-}
+.toggle-switch { position: relative; display: inline-flex; align-items: center; width: auto; cursor: pointer; color: var(--text-primary); font-size: 0.9rem; gap: 10px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-switch .slider { position: relative; display: inline-block; width: 40px; height: 20px; background-color: var(--v-secondary-base); border-radius: 10px; transition: var(--transition-speed); }
+.toggle-switch .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: var(--transition-speed); }
+.toggle-switch input:checked + .slider { background-color: var(--v-primary-base); }
+.toggle-switch input:checked + .slider:before { transform: translateX(20px); }
 
 /* --- Utilities --- */
 .hidden { display: none !important; }
@@ -614,5 +497,5 @@ h1 { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); line-heigh
 @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
 .error-text { color: var(--error-color); text-align: center; padding: 20px; }
 .no-sounds { color: var(--text-secondary); text-align: center; padding: 20px; font-style: italic; }
+.loading-sounds { color: var(--text-secondary); text-align: center; padding: 40px 20px; font-style: italic; }
 .material-symbols-outlined { vertical-align: middle; }
-/* --- ENTIRE FILE REPLACE --- */

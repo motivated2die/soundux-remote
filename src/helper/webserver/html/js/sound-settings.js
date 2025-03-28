@@ -1,3 +1,4 @@
+// --- ENTIRE FILE REPLACE ---
 // State management
 let currentSoundId = null;
 let currentSoundData = null; // Stores details fetched for the current sound
@@ -6,7 +7,8 @@ let currentY = 0;
 let isDragging = false;
 let cardHeight = 0;
 let currentPreviewId = null;
-let emojiPicker = null; // Reference to the emoji picker instance
+let emojiPickerInstance = null; // Reference to the emoji picker element
+let isEmojiPickerOpen = false;
 
 // Elements
 const settingsOverlay = document.getElementById('sound-settings-overlay');
@@ -19,11 +21,11 @@ const previewButton = document.getElementById('preview-button');
 const volumeSlider = document.getElementById('volume-slider');
 const resetVolumeButton = document.getElementById('reset-volume');
 const colorSelector = document.getElementById('color-selector');
-// Emoji Elements (Revised)
-const emojiSearchInput = document.getElementById('emoji-search-input');
-const emojiPickerTrigger = document.getElementById('emoji-picker-trigger'); // Picmo reference element
-const clearEmojiButtonSettings = document.getElementById('clear-emoji-button-settings'); // Specific button for settings
-
+// Emoji Elements
+const emojiPickerTrigger = document.getElementById('emoji-picker-trigger');
+const currentEmojiDisplay = document.getElementById('current-emoji-display');
+const emojiPickerContainer = document.getElementById('emoji-picker-container');
+const clearEmojiButtonSettings = document.getElementById('clear-emoji-button-settings');
 
 // Initialize the settings menu
 function initSoundSettings() {
@@ -33,19 +35,17 @@ function initSoundSettings() {
     }
     console.log("Initializing Sound Settings...");
 
-    // Set up event listeners
     setupDragBehavior();
     setupButtonActions();
     setupColorSelection();
-    setupEmojiSelection();
-    setupLongPressDetection(); // Keep long-press/right-click for non-edit mode
+    setupEmojiSelection(); // Uses emoji-picker-element
+    setupLongPressDetection();
     setupRightClickBehavior();
 
-    // Close when clicking backdrop
     settingsBackdrop?.addEventListener('click', closeSettingsMenu);
 
-    // Initialize the emoji picker
-    initializeEmojiPicker();
+    // --- REMOVED Picmo Init Call ---
+    // initializeEmojiPicker();
 }
 
 // Function to set the selected emoji
@@ -54,64 +54,52 @@ function setEmoji(emoji) {
 
     const soundPath = currentSoundData.path;
     if (!soundPath) {
-        console.error("Cannot set emoji: sound path is missing from currentSoundData.");
+        console.error("Cannot set emoji: sound path is missing.");
         return;
     }
     persistence.setSoundEmoji(soundPath, emoji);
 
     // Update UI immediately
-    // Update the trigger button display
-    const trigger = document.getElementById('emoji-picker-trigger'); // Re-select just in case
-    const currentEmojiSpan = trigger?.querySelector('.current-emoji');
-    if (currentEmojiSpan) {
-        currentEmojiSpan.textContent = emoji;
-    } else if (trigger) {
-        // Fallback if span structure changed
-        const triggerText = trigger.querySelector('.button-text') || trigger;
-        triggerText.textContent = emoji + ' Change Emoji';
-        console.warn("Emoji display span not found inside trigger, using fallback.");
+    if (currentEmojiDisplay) currentEmojiDisplay.textContent = emoji;
+    if (clearEmojiButtonSettings) clearEmojiButtonSettings.classList.remove('hidden');
+
+    if (window.app && typeof window.app.updateSoundCardDisplay === 'function') {
+        window.app.updateSoundCardDisplay(currentSoundId);
     }
 
-    if (clearEmojiButtonSettings) clearEmojiButtonSettings.classList.remove('hidden');
-    if (window.app && typeof window.app.updateSoundCardDisplay === 'function') {
-        window.app.updateSoundCardDisplay(currentSoundId); // Update the main grid card
-    }
+    // Close the picker
+    if (emojiPickerContainer) emojiPickerContainer.classList.add('hidden');
+    isEmojiPickerOpen = false;
 }
 
 // Function to clear the emoji
 function clearEmoji() {
     if (!currentSoundId || !currentSoundData) return;
-
     const soundPath = currentSoundData.path;
-     if (!soundPath) {
-        console.error("Cannot clear emoji: sound path is missing from currentSoundData.");
+    if (!soundPath) {
+        console.error("Cannot clear emoji: sound path missing.");
         return;
     }
     persistence.clearSoundEmoji(soundPath);
 
     // Update UI immediately
-    const trigger = document.getElementById('emoji-picker-trigger'); // Re-select
-    const currentEmojiSpan = trigger?.querySelector('.current-emoji');
-     if (currentEmojiSpan) {
-         currentEmojiSpan.textContent = '❓'; // Reset placeholder
-     } else if (trigger) {
-         // Fallback if span structure changed
-         const triggerText = trigger.querySelector('.button-text') || trigger;
-         triggerText.textContent = 'Select Emoji';
-         console.warn("Emoji display span not found inside trigger, using fallback.");
-     }
-
+    if (currentEmojiDisplay) currentEmojiDisplay.textContent = '❓';
     if (clearEmojiButtonSettings) clearEmojiButtonSettings.classList.add('hidden');
+
     if (window.app && typeof window.app.updateSoundCardDisplay === 'function') {
-        window.app.updateSoundCardDisplay(currentSoundId); // Update the main grid card
+        window.app.updateSoundCardDisplay(currentSoundId);
     }
+
+    // Close the picker if it was open
+    if (emojiPickerContainer) emojiPickerContainer.classList.add('hidden');
+    isEmojiPickerOpen = false;
 }
 
 
-// Set up long press detection (only active when NOT in edit mode)
+// Set up long press detection
 function setupLongPressDetection() {
     document.addEventListener('touchstart', (e) => {
-        if (editMode.isActive()) return; // Only work when not in edit mode
+        if (editMode.isActive()) return;
         handleTouchStart(e);
     }, { passive: false });
     document.addEventListener('touchmove', (e) => {
@@ -124,38 +112,31 @@ function setupLongPressDetection() {
      }, { passive: false });
 }
 
-// Setup right-click (only active when NOT in edit mode)
+// Setup right-click
 function setupRightClickBehavior() {
     document.addEventListener('contextmenu', (e) => {
         const soundCard = e.target.closest('.sound-card');
         if (soundCard) {
-            e.preventDefault(); // Always prevent default context menu on sound cards
-
-            // Only open settings if NOT in edit mode
+            e.preventDefault();
             if (!editMode.isActive()) {
                 const soundId = parseInt(soundCard.dataset.soundId);
                 if (window.soundSettings && typeof window.soundSettings.open === 'function') {
                    openSoundSettings(soundId);
-                } else {
-                   console.error("Sound settings module or open function not available for context menu.");
-                }
+                } else { console.error("Sound settings module not available."); }
            }
         }
-        // Also prevent context menu on settings menu elements
-        if (e.target.closest('#settings-card')) {
-            e.preventDefault();
-        }
+        if (e.target.closest('#settings-card')) e.preventDefault();
     });
 }
 
-// Touch variables
+// Touch variables for long press
 let longPressTimer;
 const longPressDuration = 500;
 let longPressSoundCard = null;
 let longPressStartPosition = null;
 let hasMoved = false;
 
-// Handle touch start
+// Handle touch start for long press
 function handleTouchStart(e) {
     const soundCard = e.target.closest('.sound-card');
     if (!soundCard) return;
@@ -164,20 +145,15 @@ function handleTouchStart(e) {
     longPressSoundCard = soundCard;
     longPressTimer = setTimeout(() => {
         if (!hasMoved && longPressSoundCard) {
-            console.log("Long press detected, opening settings...");
             if (navigator.vibrate) navigator.vibrate(50);
-
             const soundId = parseInt(longPressSoundCard.dataset.soundId);
-            // Check global state object exists before setting property
             if(window.state) state.lastLongPressTime = Date.now();
-            else console.warn("Global state object not found in handleTouchStart");
-
             openSoundSettings(soundId);
         }
     }, longPressDuration);
 }
 
-// Handle touch move
+// Handle touch move for long press
 function handleTouchMove(e) {
     if (!longPressSoundCard || !longPressStartPosition) return;
     const xDiff = Math.abs(e.touches[0].clientX - longPressStartPosition.x);
@@ -188,16 +164,11 @@ function handleTouchMove(e) {
     }
 }
 
-// Handle touch end
+// Handle touch end for long press
 function handleTouchEnd() {
-    // Check global state object exists before setting property
     if(window.state) state.lastLongPressTime = Date.now();
-    else console.warn("Global state object not found in handleTouchEnd");
-
     clearTimeout(longPressTimer);
-    longPressSoundCard = null;
-    longPressStartPosition = null;
-    hasMoved = false; // Reset movement flag
+    longPressSoundCard = null; longPressStartPosition = null; hasMoved = false;
 }
 
 // Setup drag behavior for the settings card
@@ -208,71 +179,62 @@ function setupDragBehavior() {
     settingsCard.addEventListener('touchend', onCardTouchEnd, { passive: true });
 }
 
-// Handle card touch start
+// Handle card touch start for dragging
 function onCardTouchStart(e) {
-    // Added check for emojiPickerTrigger
-    if (e.target === volumeSlider || e.target.closest('.color-selector') || e.target.closest('#emoji-picker-trigger')) return;
+    if (e.target === volumeSlider || e.target.closest('.color-selector') || e.target.closest('#emoji-picker-trigger') || e.target.closest('#emoji-picker-container')) return;
     startY = e.touches[0].clientY;
     cardHeight = settingsCard.offsetHeight;
     isDragging = true;
     settingsCard.style.transition = 'none';
 }
 
-// Handle card touch move
+// Handle card touch move for dragging
 function onCardTouchMove(e) {
     if (!isDragging) return;
     currentY = e.touches[0].clientY;
     const deltaY = currentY - startY;
-    if (deltaY > 0) {
+    if (deltaY > 0) { // Only allow dragging down
         e.preventDefault();
         const translateY = Math.min(deltaY, cardHeight);
         settingsCard.style.transform = `translateY(${translateY}px)`;
-        if (settingsBackdrop) {
-            const opacity = 1 - (translateY / cardHeight) * 0.5;
-            settingsBackdrop.style.opacity = opacity;
-        }
+        if (settingsBackdrop) settingsBackdrop.style.opacity = 1 - (translateY / cardHeight) * 0.5;
     }
 }
 
-// Handle card touch end
+// Handle card touch end for dragging
 function onCardTouchEnd() {
     if (!isDragging) return;
     isDragging = false;
     settingsCard.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
     if (settingsBackdrop) settingsBackdrop.style.transition = 'opacity 0.3s ease';
     const deltaY = currentY - startY;
-    if (deltaY > cardHeight * 0.4) {
-        closeSettingsMenu();
-    } else {
+    if (deltaY > cardHeight * 0.3) { closeSettingsMenu(); }
+    else {
         settingsCard.style.transform = 'translateY(0)';
         if (settingsBackdrop) settingsBackdrop.style.opacity = '1';
     }
+    startY = 0; currentY = 0;
 }
 
 // Setup button actions
 function setupButtonActions() {
-    // Favorite button
     if (favoriteButton) {
         favoriteButton.addEventListener('click', () => {
             if (!currentSoundId || !currentSoundData) return;
             const soundPath = currentSoundData.path;
-            const isCurrentlyFavorite = favoriteButton.classList.contains('active');
-            const newFavoriteState = !isCurrentlyFavorite;
-
+            const newFavoriteState = !favoriteButton.classList.contains('active');
             fetch(`/api/sounds/${currentSoundId}/favorite`, { method: 'POST' })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     favoriteButton.classList.toggle('active', newFavoriteState);
-                    // Also update the persistence layer directly
                     persistence.setSoundSetting(soundPath, 'favorite', newFavoriteState);
                     if (window.app) app.updateSoundCardDisplay(currentSoundId);
-                } else { console.error("Failed to toggle favorite on server."); }
+                }
             }).catch(err => console.error("Error toggling favorite:", err));
         });
     } else { console.error("Favorite button not found."); }
 
-    // Preview button
     if (previewButton) {
         previewButton.addEventListener('click', () => {
             if (!currentSoundId) return;
@@ -285,50 +247,40 @@ function setupButtonActions() {
                     if (data.success && data.playingId) {
                         currentPreviewId = data.playingId;
                         previewButton.setAttribute('data-state', 'stop');
-                        const icon = previewButton.querySelector('.material-symbols-outlined');
-                        if (icon) icon.textContent = 'stop_circle';
-                        const text = previewButton.querySelector('.button-text');
-                        if (text) text.textContent = 'Stop';
-                    } else { console.error("Failed to start preview"); }
+                        previewButton.querySelector('.material-symbols-outlined').textContent = 'stop_circle';
+                        previewButton.querySelector('.button-text').textContent = 'Stop';
+                    }
                 }).catch(err => console.error("Error starting preview:", err));
             } else {
                 stopPreviewSound(currentPreviewId);
                 currentPreviewId = null;
                 previewButton.setAttribute('data-state', 'preview');
-                const icon = previewButton.querySelector('.material-symbols-outlined');
-                if (icon) icon.textContent = 'volume_up';
-                const text = previewButton.querySelector('.button-text');
-                if (text) text.textContent = 'Preview';
+                previewButton.querySelector('.material-symbols-outlined').textContent = 'volume_up';
+                previewButton.querySelector('.button-text').textContent = 'Preview';
             }
         });
     } else { console.error("Preview button not found."); }
 
-    // Volume slider
     let sliderDebounceTimer = null;
     if (volumeSlider) {
         volumeSlider.addEventListener('input', () => {
             const sliderPos = parseInt(volumeSlider.value);
             if (resetVolumeButton) resetVolumeButton.classList.toggle('hidden', sliderPos === 0);
             clearTimeout(sliderDebounceTimer);
-            // Optionally visualize change immediately here
         });
-        volumeSlider.addEventListener('change', () => { // Send on final change
+        volumeSlider.addEventListener('change', () => {
             clearTimeout(sliderDebounceTimer);
             if (currentSoundId) updateVolumeWithSlider(parseInt(volumeSlider.value));
         });
     } else { console.error("Volume slider not found."); }
 
-    // Reset volume button
     if (resetVolumeButton) {
         resetVolumeButton.addEventListener('click', resetVolume);
     } else { console.error("Reset volume button not found."); }
 
-    // Clear emoji button
-    if (clearEmojiButtonSettings) { // Check if the element exists
-        clearEmojiButtonSettings.addEventListener('click', clearEmoji); // Use correct variable
-    } else {
-        console.error("Clear emoji button (settings) not found in settings menu.");
-    }
+    if (clearEmojiButtonSettings) {
+        clearEmojiButtonSettings.addEventListener('click', clearEmoji);
+    } else { console.error("Clear emoji button (settings) not found."); }
 }
 
 // Setup color selection
@@ -342,84 +294,55 @@ function setupColorSelection() {
         if (swatch && currentSoundId && currentSoundData) {
             const color = swatch.dataset.color;
             const soundPath = currentSoundData.path;
-            if (!soundPath) {
-                console.error("Cannot set color: sound path missing.");
-                return;
-            }
-
+            if (!soundPath) { console.error("Cannot set color: sound path missing."); return; }
             persistence.setSoundColor(soundPath, color);
-
             colorSelector.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
             swatch.classList.add('selected');
-
             if (window.app) app.updateSoundCardDisplay(currentSoundId);
         }
     });
 }
 
-// Setup emoji selection
-function initializeEmojiPicker() {
-    const triggerElement = document.getElementById('emoji-picker-trigger');
-    if (window.picmo && window.PicmoPopup && triggerElement) {
-        try {
-            emojiPicker = window.PicmoPopup.createPopup({
-                 emojiSize: '1.5em', emojisPerRow: 7, visibleRows: 5,
-                 showSearch: false, showCategoryTabs: true, showRecents: true, theme: 'dark'
-            }, {
-                referenceElement: triggerElement, triggerElement: triggerElement,
-                position: 'top-start', // Try top-start
-                hideOnClickOutside: true, hideOnEmojiSelect: true, hideOnEscape: true,
-            });
-
-            emojiPicker.addEventListener('emoji:select', (event) => {
-                console.log('Emoji selected:', event.emoji);
-                if (currentSoundId && currentSoundData) {
-                    setEmoji(event.emoji);
-                }
-            });
-            console.log("Picmo emoji picker initialized.");
-        } catch (error) {
-            console.error("Error initializing Picmo emoji picker:", error);
-            emojiPicker = null;
-        }
-    } else {
-        console.error("Picmo or trigger element not found for emoji picker initialization.");
-    }
-}
-
+// Setup emoji selection using emoji-picker-element
 function setupEmojiSelection() {
-    const trigger = document.getElementById('emoji-picker-trigger');
-    const searchInput = document.getElementById('emoji-search-input');
-    const clearButton = document.getElementById('clear-emoji-button-settings');
+    if (!emojiPickerTrigger || !emojiPickerContainer) {
+        console.error("Emoji trigger or container element not found.");
+        return; // Exit if elements are missing
+    }
 
-    if (trigger) {
-        trigger.addEventListener('click', () => {
-            if (emojiPicker) {
-                emojiPicker.toggle();
-            } else { console.warn("Emoji picker not initialized."); }
-        });
-    } else { console.error("Emoji picker trigger element not found."); }
+    emojiPickerInstance = emojiPickerContainer.querySelector('emoji-picker');
+    if (!emojiPickerInstance) {
+        console.error("emoji-picker element not found within the container.");
+        // Attempt to create it dynamically if needed? Or rely on HTML.
+        // For now, assume it's in the HTML.
+        return;
+    }
 
-     if (searchInput) {
-         searchInput.addEventListener('input', () => {
-             if (emojiPicker && emojiPicker.isOpen) {
-                 emojiPicker.setSearchQuery(searchInput.value);
-             } else if (emojiPicker && searchInput.value.length > 0) {
-                 emojiPicker.open();
-                 setTimeout(() => {
-                     if (emojiPicker.isOpen) emojiPicker.setSearchQuery(searchInput.value);
-                 }, 100);
-             }
-         });
-         if (emojiPicker) {
-             emojiPicker.addEventListener('picker:close', () => searchInput.value = '');
-         }
-     } else { console.error("Emoji search input not found."); }
+    // Toggle picker visibility
+    emojiPickerTrigger.addEventListener('click', () => {
+        isEmojiPickerOpen = !isEmojiPickerOpen;
+        emojiPickerContainer.classList.toggle('hidden', !isEmojiPickerOpen);
+    });
 
-     if (clearButton) {
-         clearButton.addEventListener('click', clearEmoji);
-     } else { console.error("Clear Emoji button (settings) not found."); }
+    // Handle emoji selection from the component
+    emojiPickerInstance.addEventListener('emoji-click', event => {
+        setEmoji(event.detail.unicode);
+    });
+
+    // Close picker when clicking outside (within the settings card context)
+    settingsCard.addEventListener('click', (e) => {
+        if (isEmojiPickerOpen &&
+            !emojiPickerContainer.contains(e.target) &&
+            !emojiPickerTrigger.contains(e.target))
+        {
+            emojiPickerContainer.classList.add('hidden');
+            isEmojiPickerOpen = false;
+        }
+    });
+
+    // REMOVED search input logic - handled by <emoji-picker>
 }
+
 
 // Function to update volume via API
 function updateVolumeWithSlider(sliderPos) {
@@ -435,12 +358,12 @@ function updateVolumeWithSlider(sliderPos) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            persistence.setSoundSetting(soundPath, 'hasCustomVolume', sliderPos !== 0); // Update persistence flag
+            persistence.setSoundSetting(soundPath, 'hasCustomVolume', sliderPos !== 0);
             if(window.app) app.updateSoundCardDisplay(currentSoundId);
             currentSoundData.hasCustomVolume = (sliderPos !== 0);
             currentSoundData.sliderPosition = sliderPos;
             if (resetVolumeButton) resetVolumeButton.classList.toggle('hidden', sliderPos === 0);
-        } else { console.error("Server failed to update volume."); }
+        }
     })
     .catch(error => console.error('Error updating volume:', error));
 }
@@ -457,13 +380,13 @@ function resetVolume() {
         if (data.success) {
             if (volumeSlider) volumeSlider.value = 0;
             if (resetVolumeButton) resetVolumeButton.classList.add('hidden');
-            persistence.removeSoundSetting(soundPath, 'hasCustomVolume'); // Remove flag
-            persistence.removeSoundSetting(soundPath, 'localVolume'); // Ensure specific values removed if they existed
+            persistence.removeSoundSetting(soundPath, 'hasCustomVolume');
+            persistence.removeSoundSetting(soundPath, 'localVolume');
             persistence.removeSoundSetting(soundPath, 'remoteVolume');
             if(window.app) app.updateSoundCardDisplay(currentSoundId);
             currentSoundData.hasCustomVolume = false;
             currentSoundData.sliderPosition = 0;
-        } else { console.error("Server failed to reset volume."); }
+        }
     })
     .catch(error => console.error('Error resetting volume:', error));
 }
@@ -478,7 +401,7 @@ function openSoundSettings(soundId) {
     fetch(`/api/sounds/${soundId}`)
     .then(response => response.json())
     .then(sound => {
-        if (!sound || !sound.id || !sound.path) throw new Error("Sound data not found or invalid (missing id or path).");
+        if (!sound || !sound.id || !sound.path) throw new Error("Sound data not found or invalid.");
 
         currentSoundData = sound;
         const soundPath = sound.path;
@@ -486,7 +409,7 @@ function openSoundSettings(soundId) {
 
         if (soundNameElement) soundNameElement.textContent = sound.name || 'Unknown Sound';
         if (tabNameElement) tabNameElement.textContent = sound.tabName || 'Unknown Tab';
-        if (favoriteButton) favoriteButton.classList.toggle('active', savedSoundSettings.favorite ?? sound.isFavorite); // Prioritize saved setting
+        if (favoriteButton) favoriteButton.classList.toggle('active', savedSoundSettings.favorite ?? sound.isFavorite);
 
         // Set color state
         if (colorSelector) {
@@ -497,26 +420,14 @@ function openSoundSettings(soundId) {
         }
 
         // Set emoji state
-        const trigger = document.getElementById('emoji-picker-trigger');
-        const clearBtn = document.getElementById('clear-emoji-button-settings');
         const emoji = savedSoundSettings.emoji;
-        if (trigger) {
-            const currentEmojiSpan = trigger.querySelector('.current-emoji');
-            if (emoji) {
-                if (currentEmojiSpan) currentEmojiSpan.textContent = emoji;
-                if (clearBtn) clearBtn.classList.remove('hidden');
-            } else {
-                if (currentEmojiSpan) currentEmojiSpan.textContent = '❓';
-                if (clearBtn) clearBtn.classList.add('hidden');
-            }
-        }
+        if (currentEmojiDisplay) currentEmojiDisplay.textContent = emoji || '❓';
+        if (clearEmojiButtonSettings) clearEmojiButtonSettings.classList.toggle('hidden', !emoji);
 
-
-        // Set volume slider state (using sliderPosition from API or default 0)
-         const sliderPosition = sound.sliderPosition ?? 0; // Use sliderPosition from fetched data if available
+        // Set volume slider state
+         const sliderPosition = sound.sliderPosition ?? 0;
          if (volumeSlider) volumeSlider.value = sliderPosition;
          if (resetVolumeButton) resetVolumeButton.classList.toggle('hidden', sliderPosition === 0);
-
 
         // Animate in
         settingsOverlay.classList.remove('hidden');
@@ -528,9 +439,7 @@ function openSoundSettings(soundId) {
     })
     .catch(error => {
         console.error('Failed to fetch sound details:', error);
-        currentSoundId = null;
-        currentSoundData = null;
-        // Close menu on error?
+        currentSoundId = null; currentSoundData = null;
         closeSettingsMenu();
         alert("Failed to load sound details.");
     });
@@ -540,43 +449,28 @@ function openSoundSettings(soundId) {
 function resetMenuState() {
     if (!settingsOverlay) return;
 
-    // Reset preview button
     if (previewButton) {
         previewButton.setAttribute('data-state', 'preview');
-        const icon = previewButton.querySelector('.material-symbols-outlined');
-        if (icon) icon.textContent = 'volume_up';
-        const text = previewButton.querySelector('.button-text');
-        if (text) text.textContent = 'Preview';
+        previewButton.querySelector('.material-symbols-outlined').textContent = 'volume_up';
+        previewButton.querySelector('.button-text').textContent = 'Preview';
     }
-    stopPreviewSound(currentPreviewId);
-    currentPreviewId = null;
+    stopPreviewSound(currentPreviewId); currentPreviewId = null;
 
-    // Reset volume slider and button
     if (volumeSlider) volumeSlider.value = 0;
     if (resetVolumeButton) resetVolumeButton.classList.add('hidden');
-
-    // Reset favorite button
     if (favoriteButton) favoriteButton.classList.remove('active');
 
-    // Reset color swatches
-    const colorSelectorEl = document.getElementById('color-selector');
-    if (colorSelectorEl) {
-        colorSelectorEl.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
-        const defaultSwatch = colorSelectorEl.querySelector('.color-swatch[data-color="default"]');
+    if (colorSelector) {
+        colorSelector.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+        const defaultSwatch = colorSelector.querySelector('.color-swatch[data-color="default"]');
         if (defaultSwatch) defaultSwatch.classList.add('selected');
     }
 
-    // Reset emoji display
-    const trigger = document.getElementById('emoji-picker-trigger');
-    const clearBtn = document.getElementById('clear-emoji-button-settings');
-    if (trigger) {
-        const currentEmojiSpan = trigger.querySelector('.current-emoji');
-        if (currentEmojiSpan) currentEmojiSpan.textContent = '❓';
-    }
-    if (clearBtn) clearBtn.classList.add('hidden');
-    if (emojiSearchInput) emojiSearchInput.value = ''; // Clear search
+    if (currentEmojiDisplay) currentEmojiDisplay.textContent = '❓';
+    if (clearEmojiButtonSettings) clearEmojiButtonSettings.classList.add('hidden');
+    if (emojiPickerContainer) emojiPickerContainer.classList.add('hidden');
+    isEmojiPickerOpen = false;
 
-    // Clear displayed names
     if (soundNameElement) soundNameElement.textContent = 'Loading...';
     if (tabNameElement) tabNameElement.textContent = '';
 }
@@ -587,16 +481,16 @@ function closeSettingsMenu() {
     settingsCard.style.transform = 'translateY(100%)';
     if (settingsBackdrop) settingsBackdrop.style.opacity = '0';
 
-    stopPreviewSound(currentPreviewId);
-    currentPreviewId = null;
-    if (emojiPicker && emojiPicker.isOpen) emojiPicker.close(); // Close emoji picker
+    stopPreviewSound(currentPreviewId); currentPreviewId = null;
+    if (isEmojiPickerOpen) { // Close emoji picker if open
+        emojiPickerContainer.classList.add('hidden');
+        isEmojiPickerOpen = false;
+    }
 
     setTimeout(() => {
         settingsOverlay.classList.add('hidden');
-        // Don't call resetMenuState here, it clears fields before animation finishes
-        currentSoundId = null;
-        currentSoundData = null;
-        if (settingsCard) settingsCard.style.transform = ''; // Reset for next open
+        currentSoundId = null; currentSoundData = null;
+        if (settingsCard) settingsCard.style.transform = '';
         if (settingsBackdrop) settingsBackdrop.style.opacity = '';
     }, 300);
 }
@@ -604,8 +498,7 @@ function closeSettingsMenu() {
 // Helper function to stop preview sound
 function stopPreviewSound(playingId) {
      if (playingId) {
-         console.log("Stopping preview sound (via general stop)...");
-         fetch('/api/sounds/stop', { method: 'POST' })
+         fetch('/api/sounds/stop', { method: 'POST' }) // Use general stop endpoint
              .catch(error => console.error('Error stopping preview sound:', error));
      }
 }
@@ -615,3 +508,4 @@ document.addEventListener('DOMContentLoaded', initSoundSettings);
 
 // Expose openSoundSettings globally
 window.soundSettings = { open: openSoundSettings };
+// --- ENTIRE FILE REPLACE ---

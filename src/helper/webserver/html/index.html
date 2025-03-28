@@ -19,15 +19,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.12.0/NoSleep.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-    <!-- Picmo Dependencies -->
-    <script src="https://cdn.jsdelivr.net/npm/picmo@latest/dist/index.umd.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@picmo/popup-picker@latest/dist/index.umd.js"></script>
+    <!-- Emoji Picker Element -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
 
 </head>
 <body>
     <!-- Top status/action bar -->
     <div class="top-bar" id="top-bar">
-        <!-- NEW Edit Mode Info (Hidden by default) -->
+        <!-- Play Indicator (Hidden by default) -->
+        <span class="material-symbols-outlined play-indicator hidden" id="play-indicator">play_arrow</span>
+        <!-- Edit Mode Info (Hidden by default) -->
         <div class="edit-mode-info hidden" id="edit-mode-info">
             <span class="material-symbols-outlined">info</span>
             <span>TAP TO EDIT | DRAG TO REORDER</span>
@@ -46,10 +47,10 @@
         </div>
     </div>
 
-    <!-- Progress bar - Moved below top bar -->
-    <div id="sound-progress-container" class="inactive">
-        <div id="sound-progress-bar"></div>
-    </div>
+    <!-- Progress bar - REMOVED -->
+    <!-- <div id="sound-progress-container" class="inactive"> -->
+    <!--     <div id="sound-progress-bar"></div> -->
+    <!-- </div> -->
 
     <div class="container">
         <!-- Main sound grid -->
@@ -68,7 +69,7 @@
                 <img src="assets/soundux-logo.svg" alt="Soundux Logo" class="logo">
                 <div class="title-group">
                     <h1>Soundux 🎮</h1>
-                    <!-- Server Status - Restructured -->
+                    <!-- Server Status -->
                     <div class="server-status" id="server-status-container">
                          <span id="status-indicator" class="status-dot"></span>
                          <span id="server-status-text">Connecting...</span>
@@ -107,7 +108,7 @@
             </div>
             <div class="divider"></div>
 
-            <!-- Volume Control - Moved Up -->
+            <!-- Volume Control -->
             <div class="volume-control settings-section">
                 <h3>Volume Adjustment</h3>
                 <div class="slider-container">
@@ -123,11 +124,11 @@
 
             <div class="divider"></div>
 
-            <!-- Color Selector -->
+            <!-- Color Selector (Round Buttons) -->
             <div class="settings-section">
                 <h3>Button Color</h3>
                 <div id="color-selector" class="color-selector">
-                     <button class="color-swatch default" data-color="default" aria-label="Default color"></button>
+                     <button class="color-swatch" data-color="default" aria-label="Default color"></button>
                      <button class="color-swatch red" data-color="red" aria-label="Red color"></button>
                      <button class="color-swatch orange" data-color="orange" aria-label="Orange color"></button>
                      <button class="color-swatch yellow" data-color="yellow" aria-label="Yellow color"></button>
@@ -138,17 +139,21 @@
                 </div>
             </div>
 
-            <!-- Emoji Selector - Revised -->
-            <div class="settings-section">
+            <!-- Emoji Selector (Using emoji-picker-element) -->
+            <div class="settings-section emoji-section">
                  <h3>Button Emoji</h3>
-                 <input type="search" id="emoji-search-input" placeholder="Search emojis..." class="emoji-search">
-                 <div id="emoji-picker-container">
-                    <!-- Picmo will mount here or be triggered nearby -->
-                     <div id="emoji-picker-trigger"></div> <!-- Reference element for Picmo popup -->
+                 <div class="emoji-display-area">
+                     <button id="emoji-picker-trigger" class="action-button secondary" aria-label="Select Emoji">
+                         <span id="current-emoji-display" class="current-emoji">❓</span>
+                         <span class="button-text">Select Emoji</span>
+                     </button>
+                     <button id="clear-emoji-button-settings" class="reset-button small-reset hidden" aria-label="Clear Emoji">
+                         <span class="material-symbols-outlined">delete</span>
+                     </button>
                  </div>
-                 <button id="clear-emoji-button-settings" class="reset-button small-reset hidden" aria-label="Clear Emoji">
-                    <span class="material-symbols-outlined">delete</span>
-                 </button>
+                 <div id="emoji-picker-container" class="hidden">
+                     <emoji-picker class="dark"></emoji-picker>
+                 </div>
             </div>
 
         </div>
@@ -184,14 +189,13 @@
     </div>
 
 
-    <!-- Screen Wake Lock Script (Keep existing) -->
+    <!-- Screen Wake Lock Script -->
     <script>
-        // Screen Wake Lock Implementation (Keep existing improved version from previous step)
         (function() {
             const noSleep = new NoSleep();
             let wakelockEnabled = false;
             const wakelockIndicator = document.getElementById('wakelock-indicator');
-            let wakeLockSentinel = null; // For modern API
+            let wakeLockSentinel = null;
 
             function updateWakeLockIndicator(active) {
                 if (wakelockIndicator) {
@@ -205,82 +209,35 @@
                     if ('wakeLock' in navigator) {
                         wakeLockSentinel = await navigator.wakeLock.request('screen');
                         wakeLockSentinel.addEventListener('release', () => {
-                            console.log('Screen Wake Lock released');
-                            wakeLockSentinel = null;
-                            wakelockEnabled = false;
-                            updateWakeLockIndicator(false);
-                            if (document.visibilityState === 'visible') {
-                                console.log('Re-acquiring wake lock after release');
-                                enableWakeLock();
-                            }
+                            wakeLockSentinel = null; wakelockEnabled = false; updateWakeLockIndicator(false);
+                            if (document.visibilityState === 'visible') { enableWakeLock(); }
                         });
-                        console.log('Screen Wake Lock acquired');
-                        wakelockEnabled = true;
-                        updateWakeLockIndicator(true);
-                    } else {
-                         enableNoSleep();
-                    }
-                 } catch (err) {
-                     console.warn(`Screen Wake Lock failed: ${err.name}, ${err.message}. Falling back to NoSleep.js`);
-                     enableNoSleep();
-                 }
+                        wakelockEnabled = true; updateWakeLockIndicator(true);
+                    } else { enableNoSleep(); }
+                 } catch (err) { console.warn(`Screen Wake Lock failed: ${err.name}, ${err.message}. Falling back.`); enableNoSleep(); }
              }
 
             function enableNoSleep() {
-                 noSleep.enable().then(() => {
-                    console.log('NoSleep.js enabled');
-                    wakelockEnabled = true;
-                    updateWakeLockIndicator(true);
-                 }).catch(err => {
-                    console.error('Failed to enable NoSleep.js:', err);
-                    wakelockEnabled = false;
-                    updateWakeLockIndicator(false);
-                 });
+                 noSleep.enable().then(() => { wakelockEnabled = true; updateWakeLockIndicator(true); })
+                 .catch(err => { console.error('Failed to enable NoSleep.js:', err); wakelockEnabled = false; updateWakeLockIndicator(false); });
             }
 
             function releaseWakeLock() {
-                 if (wakeLockSentinel) {
-                     wakeLockSentinel.release();
-                     wakeLockSentinel = null;
-                     console.log('Screen Wake Lock explicitly released.');
-                 }
-                 if (noSleep && noSleep.isEnabled) {
-                     noSleep.disable();
-                     console.log('NoSleep.js explicitly disabled.');
-                 }
-                 wakelockEnabled = false;
-                 updateWakeLockIndicator(false);
+                 if (wakeLockSentinel) { wakeLockSentinel.release(); wakeLockSentinel = null; }
+                 if (noSleep && noSleep.isEnabled) { noSleep.disable(); }
+                 wakelockEnabled = false; updateWakeLockIndicator(false);
             }
 
-             async function enableWakeLock() {
-                 if (wakelockEnabled) return;
-                 await requestWakeLock();
-            }
-
-            function handleVisibilityChange() {
-                // Re-acquire lock when tab becomes visible again (modern API handles this better with release event)
-                 if (document.visibilityState === 'visible') {
-                    console.log('Document became visible, attempting to re-acquire wake lock.');
-                    enableWakeLock();
-                 } else if (document.visibilityState === 'hidden' && noSleep && noSleep.isEnabled){
-                     // Optional: Could disable NoSleep when hidden to save battery,
-                     // but might cause issues if user switches apps briefly.
-                     // console.log('Document hidden, disabling NoSleep.js');
-                     // releaseWakeLock();
-                 }
-            }
-
-            document.addEventListener('visibilitychange', handleVisibilityChange);
-
-            // Initial attempt
-            setTimeout(enableWakeLock, 1500);
-
-            window.screenWakeLock = { enable: enableWakeLock, release: releaseWakeLock, isEnabled: () => wakelockEnabled };
+             async function enableWakeLock() { if (wakelockEnabled) return; await requestWakeLock(); }
+             function handleVisibilityChange() { if (document.visibilityState === 'visible') { enableWakeLock(); } }
+             document.addEventListener('visibilitychange', handleVisibilityChange);
+             setTimeout(enableWakeLock, 1500);
+             window.screenWakeLock = { enable: enableWakeLock, release: releaseWakeLock, isEnabled: () => wakelockEnabled };
         })();
     </script>
 
     <!-- Fullscreen Script -->
-    <script src="js/fullscreen.js"></script> <!-- NEW -->
+    <script src="js/fullscreen.js"></script>
 
     <!-- App Scripts -->
     <script src="js/persistence.js"></script>
