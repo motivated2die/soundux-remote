@@ -1,83 +1,252 @@
+// --- ENTIRE FILE REPLACE ---
 // Global state management
 const state = {
-    currentlyPlaying: new Set(),
+    currentlyPlaying: new Map(), // Map soundId -> playingId
     tabs: [],
-    currentTab: null
+    currentTab: null, // Can be tabId or 'favorites'
+    settings: persistence.load(), // Load settings on init
+    apiBaseUrl: '', // Determined on init
+    longPressTimer: null,
+    longPressTarget: null,
 };
 
 // DOM Elements
-const serverStatus = document.getElementById('server-status');
-const statusIndicator = document.getElementById('status-indicator');
+const serverStatusEl = document.getElementById('server-status');
+const statusIndicatorEl = document.getElementById('status-indicator');
 const stopAllButton = document.getElementById('stop-all');
-const tabsContainer = document.getElementById('tabs-container');
-const soundsContainer = document.getElementById('sounds-container');
+const tabsContainerEl = document.getElementById('tabs-container');
+const soundsContainerEl = document.getElementById('sounds-container');
+const progressContainerEl = document.getElementById('sound-progress-container');
+const progressBarEl = document.getElementById('sound-progress-bar');
+const appSettingsButton = document.getElementById('app-settings-button');
+const appSettingsModalOverlay = document.getElementById('app-settings-modal-overlay');
+const closeAppSettingsButton = document.getElementById('close-app-settings-button');
+const exportSettingsButton = document.getElementById('export-settings-button');
+const importSettingsButton = document.getElementById('import-settings-button');
+const importFileInput = document.getElementById('import-file-input');
+
 
 // Initialize the application
 function init() {
+    state.apiBaseUrl = window.location.origin; // Assuming server is on same origin
+    console.log("API Base URL:", state.apiBaseUrl);
     checkServerStatus();
     setupEventListeners();
-    setTimeout(initSoundProgressBar, 100);
+    initSoundProgressBar();
+    // Initial load depends on server status check now
+    // checkForPlayingSounds(); // Check for sounds playing on load
 }
 
-// Check server status
-function checkServerStatus() {
-    fetch('/api/status')
-        .then(response => response.json())
-        .then(data => {
-            serverStatus.textContent = 'Connected';
-            statusIndicator.classList.add('connected');
-            loadTabs();
-        })
-        .catch(error => {
-            serverStatus.textContent = 'Connection Error';
-            statusIndicator.classList.add('error');
-            console.error('Error:', error);
+// --- API Helper ---
+async function apiFetch(endpoint, options = {}) {
+    const url = `${state.apiBaseUrl}${endpoint}`;
+    try {
+        const response = await fetch(url, {
+             credentials: 'include', // Send cookies
+            ...options
         });
+        if (!response.ok) {
+            if (response.status === 401) {
+                 console.warn("API request unauthorized. Redirecting to login.");
+                 window.location.href = '/login.html'; // Redirect if unauthorized
+                 throw new Error('Unauthorized');
+            }
+            // Try to parse error message from server
+            try {
+                 const errorData = await response.json();
+                 throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            } catch (parseError) {
+                 // If response is not JSON or parsing fails
+                 throw new Error(`HTTP error! status: ${response.status}`);
+            }
+        }
+        // Check content type before parsing JSON
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            return await response.json();
+        } else {
+            // Handle non-JSON responses if necessary, or just return the response object
+            console.log("Received non-JSON response for", endpoint);
+            return response; // Or handle as text, blob etc. if needed
+        }
+    } catch (error) {
+        console.error('API Fetch Error:', error);
+        // Update UI to show connection error state
+        serverStatusEl.textContent = 'Connection Error';
+        statusIndicatorEl.className = 'status-dot error'; // Reset and add error
+        throw error; // Re-throw error for calling function to handle if needed
+    }
 }
 
-// Setup event listeners
+
+// --- Server Status & Initial Load ---
+async function checkServerStatus() {
+    try {
+        await apiFetch('/api/status');
+        serverStatusEl.textContent = 'Connected';
+        statusIndicatorEl.className = 'status-dot connected'; // Reset and add connected
+        // Load data only after successful status check
+        loadTabs();
+        checkForPlayingSounds();
+    } catch (error) {
+        // Error already logged by apiFetch, UI updated there
+        // No further action needed here unless specific error handling is required
+    }
+}
+
+// --- Event Listeners ---
 function setupEventListeners() {
     stopAllButton.addEventListener('click', stopAllSounds);
+
+    // App Settings Modal Listeners
+    if (appSettingsButton) {
+        appSettingsButton.addEventListener('click', openAppSettingsModal);
+    }
+    if (appSettingsModalOverlay) {
+        appSettingsModalOverlay.addEventListener('click', (e) => {
+             if (e.target === appSettingsModalOverlay) closeAppSettingsModal(); // Close on backdrop click
+        });
+    }
+    if (closeAppSettingsButton) {
+        closeAppSettingsButton.addEventListener('click', closeAppSettingsModal);
+    }
+    if (exportSettingsButton) {
+        exportSettingsButton.addEventListener('click', persistence.exportSettings);
+    }
+    if (importSettingsButton) {
+        importSettingsButton.addEventListener('click', () => importFileInput?.click());
+    }
+    if (importFileInput) {
+        importFileInput.addEventListener('change', handleImportFile);
+    }
+
+    // --- Sound Card Interactions ---
+     soundsContainerEl.addEventListener('click', (e) => {
+         const card = e.target.closest('.sound-card');
+         if (!card) return;
+         const soundId = parseInt(card.dataset.soundId);
+
+         if (editMode.isActive()) {
+             // In edit mode, click opens settings
+             window.soundSettings.open(soundId);
+         } else {
+             // In normal mode, click plays sound
+             playSound(soundId);
+         }
+     });
+
+     // --- Global listener for events dispatched by other modules ---
+     document.addEventListener('settingsChanged', () => {
+         // Maybe refresh UI elements if needed
+         console.log("Global settings changed event received.");
+         // Could potentially reload sounds if a major setting affecting display changed
+         // reloadSoundsForCurrentTab();
+     });
+
+      // Add listener for progress updates (optional, if backend pushes events)
+     // Example using EventSource (Server-Sent Events)
+     /*
+     const evtSource = new EventSource("/api/events"); // Assuming an SSE endpoint exists
+     evtSource.onmessage = function(event) {
+         const data = JSON.parse(event.data);
+         if (data.type === 'progressUpdate') {
+             handleSoundProgressUpdate(data.payload);
+         } else if (data.type === 'soundFinished') {
+             handleSoundFinishUpdate(data.payload);
+         } else if (data.type === 'soundStarted') {
+             // ... handle new sound starting ...
+         }
+     };
+     evtSource.onerror = function(err) {
+         console.error("EventSource failed:", err);
+         // Maybe try to reconnect or update status indicator
+     };
+     */
 }
 
-// Load tabs
-function loadTabs() {
-    fetch('/api/tabs')
-        .then(response => response.json())
-        .then(tabs => {
-            state.tabs = tabs;
-            tabsContainer.innerHTML = '';
-            
-            // Add favorites tab with icon
-            const favTab = createTabElement('favorite', 'favorites');
-            tabsContainer.appendChild(favTab);
-            
-            // Add regular tabs
-            tabs.forEach(tab => {
-                const tabElement = createTabElement(tab.name, tab.id);
-                tabsContainer.appendChild(tabElement);
-            });
-            
-            // Activate first tab by default
-            const firstTab = tabsContainer.children[0];
-            setActiveTab(firstTab, 'favorites');
-            loadSounds('favorites');
-        })
-        .catch(error => console.error('Error loading tabs:', error));
+// --- App Settings Modal ---
+function openAppSettingsModal() {
+    appSettingsModalOverlay?.classList.remove('hidden');
 }
 
-// Create tab element
-function createTabElement(name, id) {
+function closeAppSettingsModal() {
+    appSettingsModalOverlay?.classList.add('hidden');
+}
+
+async function handleImportFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+        await persistence.importSettings(file);
+        alert('Settings imported successfully! Reloading sounds...');
+        state.settings = persistence.load(); // Reload settings into state
+        reloadSoundsForCurrentTab(); // Refresh UI
+        closeAppSettingsModal();
+    } catch (error) {
+        console.error('Import failed:', error);
+        alert(`Failed to import settings: ${error.message}`);
+    } finally {
+        // Reset file input
+        event.target.value = null;
+    }
+}
+
+// --- Tabs ---
+async function loadTabs() {
+    try {
+        const tabs = await apiFetch('/api/tabs');
+        state.tabs = tabs;
+        tabsContainerEl.innerHTML = ''; // Clear existing tabs
+
+        // Add Favorites Tab
+        const favTab = createTabElement('Favorites', 'favorites', 'favorite');
+        tabsContainerEl.appendChild(favTab);
+
+        // Add Regular Tabs
+        tabs.forEach(tab => {
+            const tabElement = createTabElement(tab.name, tab.id);
+            tabsContainerEl.appendChild(tabElement);
+        });
+
+        // Activate the persisted or first tab
+        const persistedTabId = state.settings.lastTabId || 'favorites'; // Assuming you save last tab ID
+        let tabToActivate = tabsContainerEl.querySelector(`[data-tab-id="${persistedTabId}"]`) || tabsContainerEl.children[0];
+
+        if (tabToActivate) {
+            const tabId = tabToActivate.dataset.tabId;
+             setActiveTab(tabToActivate, tabId);
+            loadSounds(tabId); // Load sounds for the initially active tab
+        } else {
+            console.warn("No tabs found to activate.");
+        }
+
+    } catch (error) {
+        console.error('Error loading tabs:', error);
+        // Handle error display in UI if necessary
+    }
+}
+
+function createTabElement(name, id, iconName = null) {
     const tabElement = document.createElement('button');
     tabElement.className = 'tab';
     tabElement.dataset.tabId = id;
 
-    // Use icon for favorites, text for other tabs
-    if (id === 'favorites') {
+    if (iconName) {
         const icon = document.createElement('span');
         icon.className = 'material-symbols-outlined';
-        icon.textContent = 'favorite';
+        icon.textContent = iconName;
+         if (id === 'favorites') {
+             icon.style.fontVariationSettings = "'FILL' 1";
+             icon.style.color = 'var(--text-secondary)'; // Use a muted color for the icon itself
+         }
         tabElement.appendChild(icon);
+        // Add text label for accessibility if desired
+        // const textSpan = document.createElement('span');
+        // textSpan.textContent = name;
+        // textSpan.classList.add('tab-text-label'); // Add class for potential styling/hiding
+        // tabElement.appendChild(textSpan);
+        tabElement.setAttribute('aria-label', name); // Important for accessibility
     } else {
         tabElement.textContent = name;
     }
@@ -89,613 +258,469 @@ function createTabElement(name, id) {
     return tabElement;
 }
 
-// Set active tab
 function setActiveTab(tabElement, tabId) {
-    const tabs = document.querySelectorAll('.tab');
-    tabs.forEach(tab => tab.classList.remove('active'));
+    if (state.currentTab === tabId) return; // Already active
+
+    // Remove active class from all tabs
+    tabsContainerEl.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+
+    // Add active class to the clicked tab
     tabElement.classList.add('active');
     state.currentTab = tabId;
+
+     // Save last selected tab (optional)
+     state.settings.lastTabId = tabId; // Add this property to your settings structure if needed
+     persistence.save(state.settings);
+
+     // Dispatch event for layout manager
+     document.dispatchEvent(new CustomEvent('tabChanged', { detail: { tabId } }));
 }
 
-// Load sounds
-function loadSounds(tabId) {
-    let fetchPromise;
-    
-    if (tabId === 'favorites') {
-        fetchPromise = fetch('/api/favorites');
-    } else {
-        fetchPromise = fetch(`/api/tabs/${tabId}/sounds`);
-    }
-    
-    fetchPromise
-        .then(response => response.json())
-        .then(sounds => {
-            displaySounds(sounds);
-        })
-        .catch(error => console.error('Error loading sounds:', error));
-}
+// --- Sounds ---
+async function loadSounds(tabId) {
+    try {
+        const endpoint = (tabId === 'favorites') ? '/api/favorites' : `/api/tabs/${tabId}/sounds`;
+        let sounds = await apiFetch(endpoint);
 
-// Display sounds
-function displaySounds(sounds) {
-    soundsContainer.innerHTML = '';
-    
-    sounds.forEach(sound => {
-        const soundElement = document.createElement('div');
-        soundElement.className = 'sound-card fade-in';
-        soundElement.textContent = sound.name;
-        soundElement.dataset.soundId = sound.id;
-        
-        // Check if this sound is currently playing
-        if (state.currentlyPlaying.has(sound.id)) {
-            soundElement.classList.add('playing');
-        }
-        
-        soundElement.addEventListener('click', () => playSound(sound.id));
-        soundsContainer.appendChild(soundElement);
-    });
-}
+        // Apply custom order if available for the current layout
+        const currentLayout = layoutManager.getCurrentLayoutModeForTab(tabId);
+        const customOrder = persistence.getLayoutOrder(tabId, currentLayout);
 
-// Play a sound
-function playSound(soundId) {
-    fetch(`/api/sounds/${soundId}/play`, { method: 'POST' })
-        .then(response => response.json())
-        .then(data => {
-            // Use soundId for visual state
-            state.currentlyPlaying.add(soundId);
-            updatePlayingState();
-            
-            // Use playingId for progress tracking
-            if (data.lengthInMs && data.playingId) {
-                // Store mapping between playingId and soundId
-                soundProgress.activeSounds.set(data.playingId, {
-                    id: data.playingId,
-                    soundId: soundId,  // Keep reference to original sound
-                    lengthInMs: data.lengthInMs,
-                    readInMs: 0
-                });
-                
-                // Start tracking with clear data
-                handleSoundPlayed(data);
-                startProgressPolling();
-            }
-        });
-}
+        if (customOrder && Array.isArray(customOrder)) {
+            sounds.sort((a, b) => {
+                const indexA = customOrder.indexOf(a.path);
+                const indexB = customOrder.indexOf(b.path);
 
-
-// Add initial check for already playing sounds
-function checkForPlayingSounds() {
-    fetch('/api/sounds/progress')
-        .then(response => response.json())
-        .then(data => {
-            if (Array.isArray(data) && data.length > 0) {
-                // Update state with already playing sounds
-                data.forEach(sound => {
-                    soundProgress.activeSounds.set(sound.id, sound);
-                    state.currentlyPlaying.add(sound.soundId);
-                });
-                updatePlayingState();
-                startProgressPolling();
-            }
-        });
-}
-
-
-
-// Stop all sounds
-function stopAllSounds() {
-    fetch('/api/sounds/stop', { method: 'POST' })
-        .then(response => response.json())
-        .then(data => {
-            // Clear playing state
-            state.currentlyPlaying.clear();
-            updatePlayingState();
-            
-            // Clear progress tracking
-            soundProgress.activeSounds.clear();
-            stopProgressPolling();
-            
-            // Reset progress bar
-            handleSoundFinished();
-        })
-        .catch(error => {
-            console.error('Error stopping sounds:', error);
-        });
-}
-
-
-
-// Update playing state visually
-function updatePlayingState() {
-    const soundCards = document.querySelectorAll('.sound-card');
-    soundCards.forEach(card => {
-        const soundId = parseInt(card.dataset.soundId);
-        
-        // If sound is currently playing and card doesn't have the playing class yet
-        if (state.currentlyPlaying.has(soundId) && !card.classList.contains('playing')) {
-            // Add the playing class which will trigger the highlight animation
-            card.classList.add('playing');
-            
-            // Create a temporary highlight effect that fades out
-            // Remove and re-add the class after animation completes to reset it
-            card.addEventListener('animationend', function resetHighlight() {
-                // After animation ends, keep the class but reset for future animations
-                card.classList.remove('playing');
-                
-                // If still playing (didn't get stopped during animation), re-add class immediately
-                if (state.currentlyPlaying.has(soundId)) {
-                    requestAnimationFrame(() => {
-                        card.classList.add('playing');
-                    });
-                }
-                
-                // Remove this specific instance of the event listener
-                card.removeEventListener('animationend', resetHighlight);
+                if (indexA === -1 && indexB === -1) return 0; // Both not in order, keep relative order
+                if (indexA === -1) return 1; // A not in order, put it after B
+                if (indexB === -1) return -1; // B not in order, put it after A
+                return indexA - indexB; // Both in order, sort by index
             });
-        } 
-        // If sound is no longer playing
-        else if (!state.currentlyPlaying.has(soundId) && card.classList.contains('playing')) {
-            card.classList.remove('playing');
+             console.log(`Applied custom order for tab ${tabId}, layout ${currentLayout}`);
+        } else {
+             console.log(`No custom order found for tab ${tabId}, layout ${currentLayout}. Using default order.`);
+             // Optionally apply default sorting from tab settings if needed
+             // const tabData = state.tabs.find(t => t.id == tabId);
+             // if (tabData && tabData.sortMode) { applySortMode(sounds, tabData.sortMode); }
         }
-    });
-}
-// Global tracking variable for sound progress
-const soundProgress = {
-    polling: false,
-    interval: null,
-    activeSounds: new Map(), // Maps playingId to sound data
-};
 
-// Initialize progress bar
-function initSoundProgressBar() {
-    const progressContainer = document.getElementById('sound-progress-container');
-    const progressBar = document.getElementById('sound-progress-bar');
-    
-    if (!progressContainer || !progressBar) return;
-    
-    // Initially set it as inactive
-    progressContainer.classList.add('inactive');
-}
 
-// Handle sound played event
-function handleSoundPlayed(soundData) {
-    // Store the length of the sound for progress tracking
-    soundProgressData = {
-        isPlaying: true,
-        currentPosition: 0,
-        totalLength: soundData.lengthInMs,
-        soundId: soundData.id
-    };
-    
-    // Activate progress container
-    const progressContainer = document.getElementById('sound-progress-container');
-    if (progressContainer) {
-        progressContainer.classList.remove('inactive');
-        progressContainer.classList.add('active');
+        displaySounds(sounds);
+    } catch (error) {
+        console.error(`Error loading sounds for tab ${tabId}:`, error);
+        soundsContainerEl.innerHTML = '<p class="error-text">Failed to load sounds.</p>'; // Show error in UI
     }
-    
-    // Reset progress bar to 0
-    updateProgressBar(0);
 }
 
-// Update progress bar with data from sound progress updates
-function handleSoundProgress(soundData) {
-    // Find corresponding DOM element for this sound
-    const soundElement = document.querySelector(`.sound-card[data-sound-id="${soundData.soundId}"]`);
-    
-    // Calculate percentage
-    const percentage = (soundData.readInMs / soundData.lengthInMs) * 100;
-    
-    // Update progress bar - for now just show the first active sound's progress
-    if (soundProgress.activeSounds.size === 1 || soundData.id === [...soundProgress.activeSounds.keys()][0]) {
-        updateProgressBar(percentage);
-    }
-    
-    // Optional: Add individual progress indicators to each sound card
-    if (soundElement) {
-        // Add progress indication to the specific sound
-        soundElement.style.background = `linear-gradient(to right, var(--v-primary-base) ${percentage}%, var(--v-surface-dark) ${percentage}%)`;
+// Function to reload sounds for the currently active tab
+function reloadSoundsForCurrentTab() {
+    if (state.currentTab !== null) {
+        console.log(`Reloading sounds for current tab: ${state.currentTab}`);
+        loadSounds(state.currentTab);
     }
 }
 
 
-// Update the progress bar width
-function updateProgressBar(percentage) {
-    const progressBar = document.getElementById('sound-progress-bar');
-    if (progressBar) {
-        progressBar.style.width = `${percentage}%`;
-    }
-}
-
-// Handle sound finished event
-function handleSoundFinished() {
-    // Animate to 100% then reset
-    updateProgressBar(100);
-    
-    // After a moment, hide the progress bar
-    setTimeout(() => {
-        const progressContainer = document.getElementById('sound-progress-container');
-        if (progressContainer) {
-            progressContainer.classList.remove('active');
-            progressContainer.classList.add('inactive');
-        }
-        
-        // Reset to 0 after transition completes
-        setTimeout(() => {
-            updateProgressBar(0);
-        }, 500);
-    }, 300);
-}
-
-// Function to start polling for sound progress
-function startProgressPolling() {
-    if (soundProgress.polling) return; // Already polling
-    
-    soundProgress.polling = true;
-    
-    // Poll every 250ms (4 times per second)
-    soundProgress.interval = setInterval(fetchSoundProgress, 250);
-}
-
-// Function to stop polling
-function stopProgressPolling() {
-    if (!soundProgress.polling) return; // Not polling
-    
-    soundProgress.polling = false;
-    
-    if (soundProgress.interval) {
-        clearInterval(soundProgress.interval);
-        soundProgress.interval = null;
-    }
-}
-
-// Function to fetch sound progress from the server
-function fetchSoundProgress() {
-    // Only fetch if we have active sounds
-    if (soundProgress.activeSounds.size === 0) {
-        stopProgressPolling();
+function displaySounds(sounds) {
+    soundsContainerEl.innerHTML = ''; // Clear previous sounds
+    if (!sounds || sounds.length === 0) {
+         soundsContainerEl.innerHTML = '<p class="no-sounds">No sounds in this tab.</p>';
         return;
     }
-    
-    fetch('/api/sounds/progress')
-        .then(response => response.json())
-        .then(data => {
-            // Process progress data
-            if (Array.isArray(data) && data.length > 0) {
-                data.forEach(sound => {
-                    soundProgress.activeSounds.set(sound.id, sound);
-                    handleSoundProgress(sound);
-                });
-            } else {
-                // No sounds playing
-                soundProgress.activeSounds.clear();
-                stopProgressPolling();
-                handleSoundFinished();
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching sound progress:', error);
-        });
-}
 
-function addFullscreenReentryFeature() {
-    // Get all navbar elements
-    const header = document.querySelector('header');
-    const logo = document.querySelector('.logo');
-    const title = document.querySelector('h1');
-    const serverStatus = document.querySelector('.server-status');
-    const stopButton = document.getElementById('stop-all');
-    
-    // Function to request fullscreen
-    function requestFullscreen() {
-        if (!document.fullscreenElement) {
-            console.log('Re-entering fullscreen mode');
-            const elem = document.documentElement;
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen();
-            } else if (elem.mozRequestFullScreen) { // Firefox
-                elem.mozRequestFullScreen();
-            } else if (elem.webkitRequestFullscreen) { // Chrome, Safari and Opera
-                elem.webkitRequestFullscreen();
-            } else if (elem.msRequestFullscreen) { // IE/Edge
-                elem.msRequestFullscreen();
-            }
-        }
-    }
-    
-    // Add click event listeners to all navbar elements
-    const navbarElements = [header, logo, title, serverStatus, stopButton];
-    
-    navbarElements.forEach(element => {
-        if (element) {
-            element.addEventListener('click', (e) => {
-                // Prevent click from propagating if it's just for fullscreen
-                if (!document.fullscreenElement) {
-                    e.stopPropagation();
-                    requestFullscreen();
-                    
-                    // Also re-enable NoSleep if necessary
-                    if (typeof noSleep !== 'undefined' && typeof noSleepEnabled !== 'undefined') {
-                        if (!noSleepEnabled) {
-                            enableNoSleep();
-                        }
-                    }
-                }
-            });
-        }
-    });
-    
-    // Also add listener to tabs container
-    const tabsContainer = document.getElementById('tabs-container');
-    if (tabsContainer) {
-        tabsContainer.addEventListener('click', (e) => {
-            // Only handle clicks directly on the container, not on tabs
-            if (e.target === tabsContainer) {
-                if (!document.fullscreenElement) {
-                    requestFullscreen();
-                }
-            }
-        });
-    }
-    
-    // Add listener for app visibility changes to re-enter fullscreen when app regains focus
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-            // Short delay to let the UI stabilize
-            setTimeout(() => {
-                requestFullscreen();
-            }, 300);
-        }
+    sounds.forEach(sound => {
+        const soundElement = createSoundCardElement(sound);
+        soundsContainerEl.appendChild(soundElement);
     });
 }
 
-// Add these functions to app.js
+function createSoundCardElement(sound) {
+    const soundElement = document.createElement('div');
+    soundElement.className = 'sound-card fade-in';
+    soundElement.dataset.soundId = sound.id;
+    soundElement.dataset.soundPath = sound.path; // Store path for persistence key
 
-// Function to check for favorited and custom volume sounds
-function checkForSoundSettings() {
-    // Check for sounds with existing settings when displayed
-    fetch('/api/sounds/settings')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Store settings for immediate application when cards are added
-                window.soundSettingsCache = window.soundSettingsCache || new Map();
-                
-                // Process favorites
-                if (data.favorites && Array.isArray(data.favorites)) {
-                    data.favorites.forEach(id => {
-                        window.soundSettingsCache.set(id, {...(window.soundSettingsCache.get(id) || {}), favorite: true});
-                    });
-                }
-                
-                // Process custom volumes
-                if (data.customVolumes && Array.isArray(data.customVolumes)) {
-                    data.customVolumes.forEach(sound => {
-                        window.soundSettingsCache.set(sound.id, {...(window.soundSettingsCache.get(sound.id) || {}), customVolume: true});
-                    });
-                }
-                
-                // Apply settings to existing sound cards
-                document.querySelectorAll('.sound-card').forEach(card => {
-                    const soundId = parseInt(card.dataset.soundId);
-                    const settings = window.soundSettingsCache.get(soundId);
-                    if (settings) {
-                        updateSoundCardWithSettings(card, settings);
-                    }
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching sound settings:', error);
-        });
+    // Content wrapper for text and potential background emoji
+    const contentWrapper = document.createElement('div');
+    contentWrapper.className = 'sound-content-wrapper';
+
+    // Text element
+    const textElement = document.createElement('span');
+    textElement.className = 'sound-text';
+    textElement.textContent = sound.name;
+
+     // Add text to wrapper
+     contentWrapper.appendChild(textElement);
+
+     // Add wrapper to card
+     soundElement.appendChild(contentWrapper);
+
+    // Apply persisted settings (color, emoji)
+    updateSoundCardDisplay(sound.id, soundElement); // Pass the element to avoid re-querying
+
+    // Check if this sound is currently playing
+    if (state.currentlyPlaying.has(sound.id)) {
+        soundElement.classList.add('playing');
+        // Re-trigger animation if needed, handled in updatePlayingState logic
+    }
+
+    // Add indicators container (will be populated by updateSoundCardDisplay)
+    const indicators = document.createElement('div');
+    indicators.className = 'sound-indicators';
+    soundElement.appendChild(indicators);
+
+
+    return soundElement;
 }
 
-// Update a sound card with settings indicators
-function updateSoundCardWithSettings(card, settings) {
+// Update visual display of a sound card (color, emoji, indicators)
+function updateSoundCardDisplay(soundId, cardElement = null) {
+    const card = cardElement || soundsContainerEl.querySelector(`.sound-card[data-sound-id="${soundId}"]`);
     if (!card) return;
-    
-    // Get or create indicators container
+
+    const soundPath = card.dataset.soundPath;
+    if (!soundPath) return; // Need path to get settings
+
+    const soundSettings = persistence.getSoundSettings(soundPath);
+    const contentWrapper = card.querySelector('.sound-content-wrapper');
+    const textElement = card.querySelector('.sound-text');
     let indicators = card.querySelector('.sound-indicators');
     if (!indicators) {
         indicators = document.createElement('div');
         indicators.className = 'sound-indicators';
         card.appendChild(indicators);
     }
-    
-    // Add favorite indicator if needed
-    if (settings.favorite) {
-        card.dataset.favorite = 'true';
-        
-        // Add favorite indicator if not already there
-        if (!indicators.querySelector('.favorite-indicator')) {
-            const favoriteIcon = document.createElement('span');
-            favoriteIcon.className = 'indicator-icon material-symbols-outlined favorite-indicator';
-            favoriteIcon.textContent = 'favorite';
-            favoriteIcon.style.fontVariationSettings = "'FILL' 1";
-            favoriteIcon.style.color = '#555';
-            indicators.appendChild(favoriteIcon);
+    indicators.innerHTML = ''; // Clear existing indicators
+
+    // --- Apply Color ---
+    // Remove existing color classes
+    card.classList.forEach(className => {
+        if (className.startsWith('sound-color-')) {
+            card.classList.remove(className);
+        }
+    });
+    // Add new color class if set
+    if (soundSettings.color && soundSettings.color !== 'default') {
+        card.classList.add(`sound-color-${soundSettings.color}`);
+    }
+
+    // --- Apply Emoji ---
+    // Remove existing emoji elements (pseudo or actual)
+    const existingEmojiPseudo = card.style.getPropertyValue('--sound-emoji'); // Check CSS variable
+    if (existingEmojiPseudo) card.style.removeProperty('--sound-emoji');
+    const existingEmojiSpan = contentWrapper?.querySelector('.sound-emoji-list');
+    if (existingEmojiSpan) contentWrapper.removeChild(existingEmojiSpan);
+
+    if (soundSettings.emoji) {
+        // Check current layout mode to decide placement
+        const currentLayout = soundsContainerEl.className.match(/layout-([a-z0-9\-]+)/)?.[0]; // layout-grid-3, layout-list etc.
+
+        if (currentLayout && currentLayout.includes('list')) {
+            // List View: Prepend emoji span
+            const emojiSpan = document.createElement('span');
+            emojiSpan.className = 'sound-emoji-list';
+            emojiSpan.textContent = soundSettings.emoji;
+            contentWrapper.insertBefore(emojiSpan, textElement);
+        } else {
+            // Grid View: Use CSS variable for pseudo-element
+            card.style.setProperty('--sound-emoji', `"${soundSettings.emoji}"`);
         }
     }
-    
-    // Add custom volume indicator if needed
-    if (settings.customVolume) {
-        card.dataset.customVolume = 'true';
-        
-        // Add volume indicator if not already there
-        if (!indicators.querySelector('.volume-indicator')) {
-            const volumeIcon = document.createElement('span');
-            volumeIcon.className = 'indicator-icon material-symbols-outlined volume-indicator';
-            volumeIcon.textContent = 'volume_up';
-            indicators.appendChild(volumeIcon);
+
+    // --- Update Indicators ---
+    const isFavorite = state.settings.soundSettings[soundPath]?.favorite ?? soundSettings.favorite; // Check global state too if needed
+    const hasCustomVolume = state.settings.soundSettings[soundPath]?.hasOwnProperty('localVolume') || state.settings.soundSettings[soundPath]?.hasOwnProperty('remoteVolume') || soundSettings.customVolume; // More robust check
+
+
+    if (isFavorite) {
+        card.dataset.favorite = 'true';
+        const favIcon = document.createElement('span');
+        favIcon.className = 'indicator-icon material-symbols-outlined favorite-indicator';
+        favIcon.textContent = 'favorite';
+        indicators.appendChild(favIcon);
+    } else {
+         card.dataset.favorite = 'false';
+    }
+
+    if (hasCustomVolume) {
+         card.dataset.customVolume = 'true';
+        const volIcon = document.createElement('span');
+        volIcon.className = 'indicator-icon material-symbols-outlined volume-indicator';
+        volIcon.textContent = 'volume_up';
+        indicators.appendChild(volIcon);
+    } else {
+         card.dataset.customVolume = 'false';
+    }
+
+     // Remove indicators container if empty
+     if (indicators.children.length === 0) {
+         card.removeChild(indicators);
+     }
+}
+
+
+// --- Playback Control ---
+async function playSound(soundId) {
+    // Prevent playing in edit mode
+    if (editMode.isActive()) return;
+
+    console.log(`Attempting to play sound: ${soundId}`);
+    try {
+        const data = await apiFetch(`/api/sounds/${soundId}/play`, { method: 'POST' });
+        if (data.success && data.playingId) {
+            console.log(`Sound ${soundId} started playing with instance ID: ${data.playingId}`);
+            // Store mapping: soundId -> playingId
+            state.currentlyPlaying.set(soundId, data.playingId);
+
+            // Store additional details for progress tracking
+            soundProgress.activeSounds.set(data.playingId, {
+                 id: data.playingId,
+                 soundId: soundId,
+                 lengthInMs: data.lengthInMs,
+                 readInMs: 0, // Start at 0
+                 name: data.name || 'Sound', // Get name if provided
+            });
+
+            updatePlayingStateVisuals();
+            handleSoundPlayedVisuals(data); // Update progress bar etc.
+            startProgressPolling(); // Start polling if not already active
+        } else {
+            console.error(`Failed to play sound ${soundId}:`, data.error || 'Unknown server error');
+            // Optionally remove from playing state if it failed immediately
+            state.currentlyPlaying.delete(soundId);
+            updatePlayingStateVisuals();
         }
+    } catch (error) {
+        console.error(`Error playing sound ${soundId}:`, error);
+        // Optionally update UI to show error
     }
 }
 
-// Add event listener when sounds are loaded
-document.addEventListener('DOMContentLoaded', () => {
-    // Create a CSS style for sound indicators
-    const style = document.createElement('style');
-    style.textContent = `
-        .sound-indicators {
-            position: absolute;
-            bottom: 3px;
-            right: 3px;
-            display: flex;
-            gap: 3px;
-            z-index: 5;
-            pointer-events: none; /* Allow clicks to pass through */
-        }
-        
-        .indicator-icon {
-            font-size: 12px; /* Smaller size */
-            color: rgba(255, 255, 255, 0.7);
-        }
-        
-        .indicator-icon.favorite-indicator {
-            color: #555;
-            font-variation-settings: 'FILL' 1;
-        }
-        
-        /* Ensure sound-card has proper positioning for absolute children */
-        .sound-card {
-            position: relative !important; /* Ensure absolute positioning works inside */
-        }
-    `;
-    document.head.appendChild(style);
-    
-    // Load sound settings initially
-    window.soundSettingsCache = new Map();
-    checkForSoundSettings();
-    
-    // Observe the sounds container for newly added sound cards
-    const soundsContainer = document.getElementById('sounds-container');
-    if (soundsContainer) {
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach(mutation => {
-                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                    // Process each new node
-                    mutation.addedNodes.forEach(node => {
-                        if (node.classList && node.classList.contains('sound-card')) {
-                            const soundId = parseInt(node.dataset.soundId);
-                            const settings = window.soundSettingsCache.get(soundId);
-                            if (settings) {
-                                // Apply settings immediately, don't wait
-                                updateSoundCardWithSettings(node, settings);
-                            }
-                        }
-                    });
-                }
-            });
-        });
-        
-        // Start observing
-        observer.observe(soundsContainer, { 
-            childList: true, 
-            subtree: false
-        });
+async function stopAllSounds() {
+    console.log("Stopping all sounds...");
+    try {
+        await apiFetch('/api/sounds/stop', { method: 'POST' });
+        // Clear local state *after* successful API call
+        state.currentlyPlaying.clear();
+        soundProgress.activeSounds.clear();
+        updatePlayingStateVisuals();
+        stopProgressPolling();
+        handleAllSoundsFinishedVisuals(); // Reset progress bar etc.
+    } catch (error) {
+        console.error('Error stopping sounds:', error);
     }
-    
-    // Also observe tab switching
-    const tabsContainer = document.getElementById('tabs-container');
-    if (tabsContainer) {
-        const tabObserver = new MutationObserver(() => {
-            // Refresh settings when tabs change
-            setTimeout(checkForSoundSettings, 50);
-        });
-        
-        tabObserver.observe(tabsContainer, { 
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['class']
-        });
+}
+
+// --- Progress Polling ---
+const soundProgress = {
+    polling: false,
+    interval: null,
+    activeSounds: new Map(), // Maps playingId -> { id, soundId, lengthInMs, readInMs, name, ... }
+};
+
+function startProgressPolling() {
+    if (soundProgress.polling) return;
+    console.log("Starting progress polling.");
+    soundProgress.polling = true;
+    // Clear any existing interval just in case
+    if (soundProgress.interval) clearInterval(soundProgress.interval);
+    // Poll immediately first time
+    fetchSoundProgress();
+    // Then set interval
+    soundProgress.interval = setInterval(fetchSoundProgress, 250); // Poll 4 times/sec
+}
+
+function stopProgressPolling() {
+    if (!soundProgress.polling) return;
+    console.log("Stopping progress polling.");
+    soundProgress.polling = false;
+    if (soundProgress.interval) {
+        clearInterval(soundProgress.interval);
+        soundProgress.interval = null;
     }
-});
+}
 
+async function fetchSoundProgress() {
+    // If no sounds are supposed to be playing according to our state, stop polling
+    if (soundProgress.activeSounds.size === 0) {
+        // console.log("No active sounds tracked, stopping polling.");
+        stopProgressPolling();
+        handleAllSoundsFinishedVisuals(); // Ensure UI is reset
+        return;
+    }
 
-// Listen for volume change events from the server
-function setupVolumeChangeListeners() {
-    // Listen for custom events dispatched from the server
-    window.addEventListener('soundVolumeChanged', (event) => {
-        const { id, hasCustomVolume, localVolume, remoteVolume } = event.detail;
-        
-        // Update our local cache
-        if (window.soundSettingsCache) {
-            window.soundSettingsCache.set(id, {
-                ...window.soundSettingsCache.get(id),
-                customVolume: hasCustomVolume,
-                localVolume,
-                remoteVolume
-            });
-        }
-        
-        // Find and update the sound card if it's visible
-        const soundCard = document.querySelector(`.sound-card[data-sound-id="${id}"]`);
-        if (soundCard) {
-            updateSoundCardWithSettings(soundCard, { customVolume: hasCustomVolume });
-            
-            // If we're currently viewing this sound in the settings panel, update the slider
-            if (currentSoundId === id && soundSettingsOverlay && !soundSettingsOverlay.classList.contains('hidden')) {
-                if (hasCustomVolume && localVolume) {
-                    // Calculate slider position based on volume ratio
-                    const defaultLocalVolume = currentSoundData?.defaultLocalVolume || 100;
-                    const ratio = localVolume / defaultLocalVolume;
-                    
-                    let sliderPos = 0;
-                    if (ratio > 1.0) {
-                        // Right side (volume increase)
-                        sliderPos = Math.round((ratio - 1.0) * 50);
-                        sliderPos = Math.min(50, sliderPos);
-                    } else if (ratio < 1.0) {
-                        // Left side (volume decrease)
-                        sliderPos = Math.round((ratio - 1.0) * 50);
-                        sliderPos = Math.max(-50, sliderPos);
-                    }
-                    
-                    // Update slider without triggering change events
-                    volumeSlider.value = sliderPos;
-                    resetVolumeButton.classList.remove('hidden');
-                } else {
-                    // Reset to center
-                    volumeSlider.value = 0;
-                    resetVolumeButton.classList.add('hidden');
-                }
+    try {
+        const playingSoundsData = await apiFetch('/api/sounds/progress');
+
+        // Keep track of playing IDs received from the server
+        const currentPlayingIdsFromServer = new Set(playingSoundsData.map(s => s.id));
+
+        // Update or add sounds received from the server
+        playingSoundsData.forEach(soundUpdate => {
+            const existingSound = soundProgress.activeSounds.get(soundUpdate.id);
+            if (existingSound) {
+                // Update existing sound data
+                existingSound.readInMs = soundUpdate.readInMs;
+                // Update other properties if necessary (e.g., paused state)
+                 existingSound.paused = soundUpdate.paused;
+                 existingSound.repeat = soundUpdate.repeat;
+
+                handleSoundProgressVisuals(existingSound);
+            } else {
+                // This case should ideally not happen if soundStarted events are handled
+                // But as a fallback, add it if we missed the start event
+                console.warn(`Received progress for untracked playingId ${soundUpdate.id}. Adding.`);
+                 soundProgress.activeSounds.set(soundUpdate.id, {
+                     id: soundUpdate.id,
+                     soundId: soundUpdate.soundId, // Ensure soundId is part of progress payload
+                     lengthInMs: soundUpdate.lengthInMs,
+                     readInMs: soundUpdate.readInMs,
+                     name: soundUpdate.name,
+                     paused: soundUpdate.paused,
+                     repeat: soundUpdate.repeat,
+                 });
+                 // Also update the main playing state
+                 state.currentlyPlaying.set(soundUpdate.soundId, soundUpdate.id);
+                 updatePlayingStateVisuals();
+                 handleSoundProgressVisuals(soundProgress.activeSounds.get(soundUpdate.id));
             }
+        });
+
+        // Remove sounds from our tracking if they are no longer reported by the server
+        const finishedSoundPlayingIds = [];
+        soundProgress.activeSounds.forEach((soundData, playingId) => {
+            if (!currentPlayingIdsFromServer.has(playingId)) {
+                finishedSoundPlayingIds.push(playingId);
+            }
+        });
+
+        finishedSoundPlayingIds.forEach(playingId => {
+            const soundData = soundProgress.activeSounds.get(playingId);
+            if (soundData) {
+                 console.log(`Sound instance ${playingId} (Sound ID: ${soundData.soundId}) finished.`);
+                state.currentlyPlaying.delete(soundData.soundId); // Remove from main playing map
+                soundProgress.activeSounds.delete(playingId); // Remove from progress tracking
+                handleSoundFinishVisuals(soundData); // Update visuals for this specific sound
+            }
+        });
+
+        // If after cleanup, no sounds are active, stop polling and reset global progress bar
+        if (soundProgress.activeSounds.size === 0) {
+            console.log("All sounds finished, stopping polling.");
+            stopProgressPolling();
+            handleAllSoundsFinishedVisuals();
+        }
+
+         // Refresh the playing state visuals based on the updated state.currentlyPlaying
+         updatePlayingStateVisuals();
+
+
+    } catch (error) {
+        console.error('Error fetching sound progress:', error);
+        // Consider stopping polling on error or implementing retry logic
+        stopProgressPolling();
+        // Reset UI potentially
+        state.currentlyPlaying.clear();
+        soundProgress.activeSounds.clear();
+        updatePlayingStateVisuals();
+        handleAllSoundsFinishedVisuals();
+    }
+}
+
+// --- Visual Updates for Playback & Progress ---
+
+function initSoundProgressBar() {
+    if (progressContainerEl) progressContainerEl.classList.add('inactive');
+    updateProgressBar(0);
+}
+
+function handleSoundPlayedVisuals(soundData) {
+    // Only show progress bar if it's not already active for another sound
+    // Or maybe always show the *latest* sound's progress? Decided: show latest.
+    if (progressContainerEl) {
+        progressContainerEl.classList.remove('inactive');
+        progressContainerEl.classList.add('active');
+    }
+    updateProgressBar(0); // Start at 0%
+}
+
+function handleSoundProgressVisuals(soundData) {
+    const percentage = soundData.lengthInMs > 0 ? (soundData.readInMs / soundData.lengthInMs) * 100 : 0;
+
+    // Update global progress bar - Show progress of the *first* sound in the map for simplicity
+     const firstPlayingSound = soundProgress.activeSounds.values().next().value;
+     if (firstPlayingSound && soundData.id === firstPlayingSound.id) {
+         updateProgressBar(percentage);
+     }
+
+    // Update individual sound card visuals
+    const soundCard = soundsContainerEl.querySelector(`.sound-card[data-sound-id="${soundData.soundId}"]`);
+    if (soundCard) {
+        // Example: Use background gradient for progress
+         soundCard.style.background = `linear-gradient(to right, var(--v-primary-darken1) ${percentage}%, var(--v-surface-dark) ${percentage}%)`;
+         // Re-apply base color class if it exists
+         const colorClass = Array.from(soundCard.classList).find(c => c.startsWith('sound-color-'));
+         if (colorClass && soundSettings.color !== 'default') { // Check persistence
+             // Adjust background logic if color class is present
+              const baseColor = getComputedStyle(soundCard).getPropertyValue('--sound-base-color') || 'var(--v-surface-dark)'; // Get color from CSS variable or default
+              soundCard.style.background = `linear-gradient(to right, var(--v-primary-darken1) ${percentage}%, ${baseColor} ${percentage}%)`;
+         }
+
+    }
+}
+
+function handleSoundFinishVisuals(soundData) {
+    const soundCard = soundsContainerEl.querySelector(`.sound-card[data-sound-id="${soundData.soundId}"]`);
+    if (soundCard) {
+        soundCard.style.background = ''; // Reset background gradient
+        // Re-apply base color if needed
+        updateSoundCardDisplay(soundData.soundId, soundCard); // Re-apply color/emoji/indicators
+    }
+    // Note: Global progress bar reset is handled in handleAllSoundsFinishedVisuals
+}
+
+function handleAllSoundsFinishedVisuals() {
+    // Hide global progress bar
+    if (progressContainerEl) {
+        progressContainerEl.classList.remove('active');
+        progressContainerEl.classList.add('inactive');
+    }
+    // Reset to 0 after transition
+    setTimeout(() => updateProgressBar(0), 500); // Match transition duration
+
+    // Reset background for all cards (redundant if handleSoundFinishVisuals works, but safe)
+    soundsContainerEl.querySelectorAll('.sound-card').forEach(card => {
+         card.style.background = '';
+         updateSoundCardDisplay(parseInt(card.dataset.soundId), card); // Re-apply base styles
+    });
+
+     updatePlayingStateVisuals(); // Ensure all 'playing' classes are removed
+}
+
+
+function updatePlayingStateVisuals() {
+    soundsContainerEl.querySelectorAll('.sound-card').forEach(card => {
+        const soundId = parseInt(card.dataset.soundId);
+        card.classList.toggle('playing', state.currentlyPlaying.has(soundId));
+        // If not playing, ensure background is reset (might have progress)
+        if (!state.currentlyPlaying.has(soundId)) {
+             card.style.background = ''; // Clear potential progress gradient
+             updateSoundCardDisplay(soundId, card); // Re-apply base color/emoji
         }
     });
 }
 
-
-// Function to periodically refresh sound settings to keep UI in sync
-function setupSoundSettingsRefresh() {
-    // Start a timer to refresh sound settings every minute
-    // This ensures that any changes made in the main app or via 
-    // other remote connections get reflected in the current UI
-    setInterval(() => {
-        checkForSoundSettings();
-    }, 60000); // 60 seconds
+// Initial check for sounds already playing when the page loads
+async function checkForPlayingSounds() {
+    console.log("Checking for initially playing sounds...");
+    await fetchSoundProgress(); // Use the polling function once to populate initial state
 }
 
-// Function to update settings when a sound volume changes on another client
-window.updateSoundVolumeIndicator = function(soundId, hasCustomVolume) {
-    const soundCard = document.querySelector(`.sound-card[data-sound-id="${soundId}"]`);
-    if (soundCard) {
-        updateSoundCardWithSettings(soundCard, {
-            customVolume: hasCustomVolume,
-            favorite: soundCard.dataset.favorite === 'true' 
-        });
-    }
+// Make reload function globally accessible if needed by layout.js
+window.app = {
+    reloadSoundsForCurrentTab: reloadSoundsForCurrentTab,
+    updateSoundCardDisplay: updateSoundCardDisplay // Expose for sound-settings.js
 };
 
-// Add this to the initialization code in the DOMContentLoaded listener
-document.addEventListener('DOMContentLoaded', () => {
-    init();
-    checkForPlayingSounds();
-    addFullscreenReentryFeature();
-    initTabSwiping();
-    
-    // Add this line - start periodic settings refreshes
-    setupSoundSettingsRefresh();
-
-    // Add volume change listeners
-    setupVolumeChangeListeners();
-});
+// --- Initialization ---
+document.addEventListener('DOMContentLoaded', init);

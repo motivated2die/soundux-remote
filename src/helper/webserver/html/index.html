@@ -2,102 +2,86 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
     <!-- PWA Essential Meta Tags -->
-    <meta name="theme-color" content="#52b18c">
+    <meta name="theme-color" content="#2c2c2c"> <!-- Match top bar color -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
+
     <!-- Manifest and Icons -->
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/assets/icon-192x192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192x192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/assets/icon-512x512.png">
 
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-
     <!-- Fallback Splash Screen for Apple Devices -->
     <link href="/assets/splash-2048x2732.png" sizes="2048x2732" rel="apple-touch-startup-image">
-    
+
     <title>Soundux Remote</title>
-    
+
     <!-- Fonts and Styles -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="icon" href="assets/favicon.ico" type="image/x-icon"> 
+    <link rel="icon" href="assets/favicon.ico" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
-    
+
     <!-- NoSleep.js library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.12.0/NoSleep.min.js"></script>
-    
-    <style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-            overscroll-behavior-y: contain;
-        }
+    <!-- SortableJS library (Add this or include locally) -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <!-- Emoji Picker (Using Picmo for example - Choose one and include) -->
+    <script src="https://cdn.jsdelivr.net/npm/@picmo/popup-picker@latest/dist/index.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/picmo@latest/dist/index.umd.js"></script>
 
-        body {
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
-            touch-action: manipulation;
-        }
-        
-        /* Wakelock indicator as eye icon */
-        #wakelock-indicator {
-            display: inline-flex;
-            align-items: center;
-            font-size: 14px;
-            margin: 0 4px;
-            color: #777;
-            vertical-align: middle;
-        }
-        
-        #wakelock-indicator.active {
-            color: var(--v-primary-base);
-        }
-        
-        #wakelock-indicator .material-symbols-outlined {
-            font-size: 14px;
-            font-variation-settings: 'FILL' 1;
-        }
-    </style>
 </head>
 <body>
-    <!-- Screen wakelock indicator is now placed inside server-status -->
-    
+    <!-- Top status/action bar -->
+    <div class="top-bar" id="top-bar">
+        <div class="status-info">
+             <span id="status-indicator" class="status-dot"></span>
+             <span id="wakelock-indicator"><span class="material-symbols-outlined">visibility_off</span></span>
+             <span id="server-status">Connecting...</span>
+        </div>
+        <div class="action-buttons">
+            <!-- Layout Button (Hidden initially) -->
+            <button id="layout-mode-button" class="icon-button top-bar-button hidden" aria-label="Change Layout">
+                <span class="material-symbols-outlined">view_module</span>
+            </button>
+            <!-- Edit Button -->
+            <button id="edit-mode-button" class="icon-button top-bar-button" aria-label="Toggle Edit Mode">
+                <span class="material-symbols-outlined">edit</span>
+            </button>
+             <!-- Settings Button (for Export/Import) -->
+            <button id="app-settings-button" class="icon-button top-bar-button" aria-label="App Settings">
+                <span class="material-symbols-outlined">settings</span>
+            </button>
+        </div>
+    </div>
+
     <div class="container">
-        <main class="sounds-grid" id="sounds-container">
+        <!-- Main sound grid -->
+        <main class="sounds-grid layout-grid-3" id="sounds-container">
             <!-- Sounds will be dynamically added here -->
         </main>
-        
-        <!-- Add progress bar here -->
-        <div id="sound-progress-container">
+
+        <!-- Progress bar -->
+        <div id="sound-progress-container" class="inactive">
             <div id="sound-progress-bar"></div>
         </div>
-        
+
+        <!-- Tab navigation -->
         <nav class="tabs" id="tabs-container">
             <!-- Tabs will be dynamically added here -->
         </nav>
 
+        <!-- Bottom header (Logo, Title, Stop Button) -->
         <header>
             <div class="app-title">
                 <img src="assets/soundux-logo.svg" alt="Soundux Logo" class="logo">
                 <div class="title-group">
                     <h1>Soundux 🎮</h1>
-                    <div class="server-status">
-                        <span id="status-indicator" class="status-dot"></span>
-                        <span id="wakelock-indicator"><span class="material-symbols-outlined">visibility_off</span></span>
-                        <span id="server-status">Connecting...</span>
-                    </div>
                 </div>
             </div>
             <div class="header-actions">
@@ -109,273 +93,208 @@
         </header>
     </div>
 
-    <!-- Sound Settings Menu - Add this before the closing body tag in index.html -->
+    <!-- Sound Settings Slide-in Menu -->
     <div id="sound-settings-overlay" class="hidden">
         <div id="settings-backdrop"></div>
         <div id="settings-card">
-        <div class="handle-bar"></div>
-        
-        <div class="sound-info">
-            <h2 id="settings-sound-name">Sound Name</h2>
-            <p id="settings-tab-name">Tab Name</p>
-        </div>
-        
-        <div class="action-buttons">
-            <button id="favorite-button" class="icon-button" data-type="favorite">
-            <span class="material-symbols-outlined">favorite</span>
-            </button>
-            <button id="preview-button" class="action-button" data-state="preview">
-            <span class="material-symbols-outlined">volume_up</span>
-            <span class="button-text">Preview</span>
-            </button>
-        </div>
-        
-        <div class="divider"></div>
-        
-        <div class="volume-control">
-            <h3>Volume Adjustment</h3>
-            <div class="slider-container">
-            <span class="material-symbols-outlined">volume_down</span>
-            <input type="range" id="volume-slider" min="-50" max="50" value="0">
-            <span class="material-symbols-outlined">volume_up</span>
+            <div class="handle-bar"></div>
+
+            <div class="sound-info">
+                <h2 id="settings-sound-name">Sound Name</h2>
+                <p id="settings-tab-name">Tab Name</p>
             </div>
-            <div class="volume-info">
-            <span>Adjusts both local and remote volume</span>
-            <button id="reset-volume" class="reset-button hidden">Reset</button>
+
+            <div class="action-buttons">
+                <button id="favorite-button" class="icon-button" data-type="favorite" aria-label="Toggle Favorite">
+                    <span class="material-symbols-outlined">favorite</span>
+                </button>
+                <button id="preview-button" class="action-button" data-state="preview">
+                    <span class="material-symbols-outlined">volume_up</span>
+                    <span class="button-text">Preview</span>
+                </button>
             </div>
-        </div>
+
+            <div class="divider"></div>
+
+            <!-- Color Selector -->
+            <div class="settings-section">
+                <h3>Button Color</h3>
+                <div id="color-selector" class="color-selector">
+                    <button class="color-swatch default" data-color="default" aria-label="Default color"></button>
+                    <button class="color-swatch red" data-color="red" aria-label="Red color"></button>
+                    <button class="color-swatch orange" data-color="orange" aria-label="Orange color"></button>
+                    <button class="color-swatch yellow" data-color="yellow" aria-label="Yellow color"></button>
+                    <button class="color-swatch green" data-color="green" aria-label="Green color"></button>
+                    <button class="color-swatch blue" data-color="blue" aria-label="Blue color"></button>
+                    <button class="color-swatch purple" data-color="purple" aria-label="Purple color"></button>
+                    <button class="color-swatch pink" data-color="pink" aria-label="Pink color"></button>
+                </div>
+            </div>
+
+            <!-- Emoji Selector -->
+             <div class="settings-section">
+                 <h3>Button Emoji</h3>
+                 <div class="emoji-selector-container">
+                     <button id="emoji-selector-button" class="action-button">
+                         <span id="current-emoji-display" class="current-emoji">❓</span> <!-- Placeholder -->
+                         <span class="button-text">Select Emoji</span>
+                     </button>
+                     <button id="clear-emoji-button" class="reset-button small-reset hidden" aria-label="Clear Emoji">
+                         <span class="material-symbols-outlined">delete</span>
+                    </button>
+                 </div>
+             </div>
+
+
+            <div class="divider"></div>
+
+            <!-- Volume Control -->
+            <div class="volume-control settings-section">
+                <h3>Volume Adjustment</h3>
+                <div class="slider-container">
+                    <span class="material-symbols-outlined">volume_down</span>
+                    <input type="range" id="volume-slider" min="-50" max="50" value="0">
+                    <span class="material-symbols-outlined">volume_up</span>
+                </div>
+                <div class="volume-info">
+                    <span>Adjusts local & remote volume</span>
+                    <button id="reset-volume" class="reset-button hidden">Reset</button>
+                </div>
+            </div>
         </div>
     </div>
 
+     <!-- App Settings Modal -->
+     <div id="app-settings-modal-overlay" class="hidden">
+         <div id="app-settings-modal">
+             <h2>App Settings</h2>
+             <div class="settings-section">
+                 <h3>Layout Data</h3>
+                 <div class="modal-actions">
+                    <button id="export-settings-button" class="action-button">Export Layout</button>
+                    <button id="import-settings-button" class="action-button">Import Layout</button>
+                 </div>
+                 <input type="file" id="import-file-input" accept=".json" style="display: none;">
+                 <p class="modal-info">Export your current layout and sound customizations to a file, or import settings from a previously exported file.</p>
+             </div>
+              <div class="divider"></div>
+              <div class="modal-actions">
+                  <button id="close-app-settings-button" class="action-button secondary">Close</button>
+              </div>
+         </div>
+     </div>
+
+
+    <!-- Screen Wake Lock Script -->
     <script>
-        // Improved screen wake lock implementation
+        // Screen Wake Lock Implementation (Keep existing improved version)
         (function() {
-            // Variables
             const noSleep = new NoSleep();
             let wakelockEnabled = false;
             const wakelockIndicator = document.getElementById('wakelock-indicator');
-            let wakelockAttempts = 0;
-            const MAX_ATTEMPTS = 5;
-            
-            // Main function to enable wakelock
-            function enableWakeLock() {
-                if (wakelockEnabled) return; // Already enabled
-                
-                try {
-                    // First try the modern Screen Wake Lock API
-                    if ('wakeLock' in navigator) {
-                        requestWakeLock();
-                    } else {
-                        // Fall back to NoSleep.js
-                        enableNoSleep();
-                    }
-                } catch (err) {
-                    console.error('Error enabling wake lock:', err);
-                    fallbackToNoSleep();
-                }
-            }
-            
-            // Modern Screen Wake Lock API implementation
-            async function requestWakeLock() {
-                try {
-                    const wakeLock = await navigator.wakeLock.request('screen');
-                    wakelockEnabled = true;
-                    updateWakeLockIndicator(true);
-                    console.log('Wake Lock enabled with the Screen Wake Lock API');
-                    
-                    // Re-request wake lock when document becomes visible again
-                    wakeLock.addEventListener('release', () => {
-                        console.log('Wake Lock released');
-                        wakelockEnabled = false;
-                        updateWakeLockIndicator(false);
-                        
-                        // Try to re-acquire when released
-                        if (document.visibilityState === 'visible') {
-                            enableWakeLock();
-                        }
-                    });
-                    
-                } catch (err) {
-                    console.warn('Screen Wake Lock API failed:', err.message);
-                    fallbackToNoSleep();
-                }
-            }
-            
-            // NoSleep.js implementation
-            function enableNoSleep() {
-                noSleep.enable()
-                    .then(() => {
-                        wakelockEnabled = true;
-                        updateWakeLockIndicator(true);
-                        console.log('NoSleep enabled successfully');
-                        
-                        // Set up a periodic check to ensure it stays enabled
-                        setUpPeriodicWakeLockCheck();
-                    })
-                    .catch(error => {
-                        console.error('NoSleep error:', error);
-                        
-                        // If we haven't exceeded max attempts, try again on next user interaction
-                        if (wakelockAttempts < MAX_ATTEMPTS) {
-                            wakelockAttempts++;
-                            console.log(`Attempt ${wakelockAttempts}/${MAX_ATTEMPTS} failed. Will retry on next user interaction.`);
-                            setupWakeLockTriggers();
-                        }
-                    });
-            }
-            
-            // Fallback method if primary method fails
-            function fallbackToNoSleep() {
-                console.log('Falling back to NoSleep.js');
-                enableNoSleep();
-            }
-            
-            // Set up periodic checking to make sure wakelock stays active
-            function setUpPeriodicWakeLockCheck() {
-                // Check every 15 seconds if the wakelock is still active
-                setInterval(() => {
-                    if (!wakelockEnabled || (noSleep && !noSleep.isEnabled)) {
-                        console.log('Wake lock appears to be inactive, re-enabling...');
-                        enableWakeLock();
-                    }
-                }, 15000);
-            }
-            
-            // Update visual indicator
+            let wakeLockSentinel = null; // For modern API
+
             function updateWakeLockIndicator(active) {
                 if (wakelockIndicator) {
-                    if (active) {
-                        wakelockIndicator.classList.add('active');
-                        wakelockIndicator.innerHTML = '<span class="material-symbols-outlined">visibility</span>';
-                    } else {
-                        wakelockIndicator.classList.remove('active');
-                        wakelockIndicator.innerHTML = '<span class="material-symbols-outlined">visibility_off</span>';
-                    }
+                    wakelockIndicator.classList.toggle('active', active);
+                    wakelockIndicator.innerHTML = `<span class="material-symbols-outlined">${active ? 'visibility' : 'visibility_off'}</span>`;
                 }
             }
-            
-            // Set up event listeners to enable wakelock on interaction
-            function setupWakeLockTriggers() {
-                const interactiveElements = [
-                    document.body,
-                    document.getElementById('stop-all'),
-                    document.getElementById('sounds-container'),
-                    document.getElementById('tabs-container')
-                ];
-                
-                interactiveElements.forEach(el => {
-                    if (el) {
-                        el.addEventListener('click', handleUserInteraction);
-                        el.addEventListener('touchstart', handleUserInteraction);
+
+             async function requestWakeLock() {
+                 try {
+                    if ('wakeLock' in navigator) {
+                        wakeLockSentinel = await navigator.wakeLock.request('screen');
+                        wakeLockSentinel.addEventListener('release', () => {
+                            console.log('Screen Wake Lock released');
+                            wakeLockSentinel = null;
+                            wakelockEnabled = false;
+                            updateWakeLockIndicator(false);
+                             // Attempt to reacquire if the document is visible
+                            if (document.visibilityState === 'visible') {
+                                console.log('Re-acquiring wake lock after release');
+                                enableWakeLock();
+                            }
+                        });
+                        console.log('Screen Wake Lock acquired');
+                        wakelockEnabled = true;
+                        updateWakeLockIndicator(true);
+                    } else {
+                         enableNoSleep(); // Fallback if API not supported
                     }
-                });
+                 } catch (err) {
+                     console.warn(`Screen Wake Lock failed: ${err.name}, ${err.message}. Falling back to NoSleep.js`);
+                     enableNoSleep(); // Fallback on error
+                 }
+             }
+
+            function enableNoSleep() {
+                 noSleep.enable().then(() => {
+                    console.log('NoSleep.js enabled');
+                    wakelockEnabled = true;
+                    updateWakeLockIndicator(true);
+                 }).catch(err => {
+                    console.error('Failed to enable NoSleep.js:', err);
+                    wakelockEnabled = false;
+                    updateWakeLockIndicator(false);
+                 });
             }
-            
-            // Handle user interaction
+
+            function releaseWakeLock() {
+                 if (wakeLockSentinel) {
+                     wakeLockSentinel.release();
+                     wakeLockSentinel = null;
+                     console.log('Screen Wake Lock explicitly released.');
+                 }
+                 if (noSleep && noSleep.isEnabled) { // Check if noSleep exists and is enabled
+                     noSleep.disable();
+                     console.log('NoSleep.js explicitly disabled.');
+                 }
+                 wakelockEnabled = false;
+                 updateWakeLockIndicator(false);
+            }
+
+             async function enableWakeLock() {
+                 if (wakelockEnabled) return; // Already active
+                 await requestWakeLock();
+            }
+
+            function handleVisibilityChange() {
+                if (!wakeLockSentinel) return; // Only handle for modern API
+                if (document.visibilityState === 'visible') {
+                    console.log('Document became visible, attempting to re-acquire wake lock.');
+                    enableWakeLock();
+                }
+            }
+
             function handleUserInteraction() {
                 if (!wakelockEnabled) {
-                    console.log('User interaction detected, enabling wake lock');
-                    enableWakeLock();
+                     console.log('User interaction detected, enabling wake lock.');
+                     enableWakeLock(); // Attempt to enable wake lock on interaction
                 }
-                
-                // Also request fullscreen if not already fullscreen
-                if (!document.fullscreenElement) {
-                    requestFullscreen();
-                }
+                 // Optionally request fullscreen on interaction
+                 // requestFullscreen();
             }
-            
-            // Fullscreen request function
-            function requestFullscreen() {
-                const elem = document.documentElement;
-                if (elem.requestFullscreen) {
-                    elem.requestFullscreen().catch(err => {
-                        console.warn('Fullscreen request failed:', err);
-                    });
-                } else if (elem.mozRequestFullScreen) {
-                    elem.mozRequestFullScreen();
-                } else if (elem.webkitRequestFullscreen) {
-                    elem.webkitRequestFullscreen();
-                } else if (elem.msRequestFullscreen) {
-                    elem.msRequestFullscreen();
-                }
-            }
-            
-            // Handle visibility change
-            document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'visible') {
-                    console.log('Document became visible, re-enabling wake lock');
-                    enableWakeLock();
-                    
-                    // When returning to the app, try to go fullscreen again
-                    if (!document.fullscreenElement) {
-                        requestFullscreen();
-                    }
-                }
-            }, false);
-            
-            // Standalone mode detection
-            function checkStandaloneMode() {
-                const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                                    window.navigator.standalone || 
-                                    document.referrer.includes('android-app://');
-                                    
-                if (isStandalone) {
-                    console.log('Running in standalone/PWA mode');
-                    document.body.classList.add('standalone-mode');
-                    
-                    // In standalone mode, enable wakelock immediately
-                    setTimeout(enableWakeLock, 1000);
-                }
-            }
-            
-            // Observer for dynamically added interactive elements
-            function setupObserver() {
-                const observer = new MutationObserver((mutations) => {
-                    mutations.forEach((mutation) => {
-                        if (mutation.addedNodes && mutation.addedNodes.length > 0) {
-                            mutation.addedNodes.forEach((node) => {
-                                if (node.nodeType === 1) { // Element node
-                                    if (node.classList && 
-                                       (node.classList.contains('sound-card') || 
-                                        node.classList.contains('tab'))) {
-                                        node.addEventListener('click', handleUserInteraction);
-                                        node.addEventListener('touchstart', handleUserInteraction);
-                                    }
-                                }
-                            });
-                        }
-                    });
-                });
 
-                observer.observe(document.body, {
-                    childList: true,
-                    subtree: true
-                });
-            }
-            
-            // Initialize everything
-            document.addEventListener('DOMContentLoaded', () => {
-                checkStandaloneMode();
-                setupWakeLockTriggers();
-                setupObserver();
-                setUpPeriodicWakeLockCheck();
-                
-                // Try to enable on first load with a slight delay
-                setTimeout(() => {
-                    // Try to enable wake lock automatically
-                    enableWakeLock();
-                }, 2000);
-            });
-            
-            // Expose the functions globally for debugging
-            window.screenWakeLock = {
-                enable: enableWakeLock,
-                isEnabled: () => wakelockEnabled
-            };
+             // Add event listeners for user interaction
+            document.addEventListener('click', handleUserInteraction, { once: true, capture: true });
+            document.addEventListener('touchstart', handleUserInteraction, { once: true, capture: true });
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+
+            // Initial attempt to enable wake lock after a short delay
+            setTimeout(enableWakeLock, 1500);
+
+            window.screenWakeLock = { enable: enableWakeLock, release: releaseWakeLock, isEnabled: () => wakelockEnabled };
         })();
     </script>
-    <script src="js/app.js"></script>
-    <script src="js/tabs.js"></script>
+    <!-- App Scripts -->
+    <script src="js/persistence.js"></script>
+    <script src="js/editMode.js"></script>
+    <script src="js/layout.js"></script>
+    <script src="js/dragDrop.js"></script>
     <script src="js/sound-settings.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/tabs.js"></script> <!-- Keep tabs.js, likely still needed -->
+
 </body>
 </html>

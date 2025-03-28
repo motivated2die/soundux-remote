@@ -1,197 +1,13 @@
-// Update the app.js file to show favorite indicators properly
-function initFavoriteIndicators() {
-    // First, make sure all hearts in favorites tab use FILL style
-    document.addEventListener('DOMContentLoaded', () => {
-        // When tabs are loaded
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach(mutation => {
-                if (mutation.type === 'childList' && mutation.addedNodes.length) {
-                    // Check for the favorites tab
-                    const favTab = Array.from(document.querySelectorAll('.tab')).find(tab => 
-                        tab.dataset.tabId === 'favorites' || 
-                        tab.querySelector('.material-symbols-outlined')?.textContent === 'favorite');
-                    
-                    if (favTab) {
-                        const favIcon = favTab.querySelector('.material-symbols-outlined');
-                        if (favIcon) {
-                            favIcon.style.fontVariationSettings = "'FILL' 1";
-                            favIcon.style.color = '#555';
-                        }
-                    }
-                }
-            });
-        });
-        
-        observer.observe(document.getElementById('tabs-container'), { childList: true, subtree: true });
-    });
-}
-
-// Update favorites styling when they are loaded
-function initFavoritesStyling() {
-    // Add a mutation observer to watch for when sound cards are added
-    const soundsObserver = new MutationObserver((mutations) => {
-        mutations.forEach(mutation => {
-            if (mutation.type === 'childList') {
-                mutation.addedNodes.forEach(node => {
-                    if (node.nodeType === 1) { // Element node
-                        // Find all sound cards that might already have the favorite attribute
-                        const favoriteSounds = node.querySelectorAll?.('.sound-card[data-favorite="true"]') || [];
-                        
-                        favoriteSounds.forEach(card => {
-                            updateSoundCardIndicator(card.dataset.soundId, 'favorite', true);
-                        });
-                        
-                        // Also check for existing volume customizations
-                        const volumeSounds = node.querySelectorAll?.('.sound-card[data-custom-volume="true"]') || [];
-                        
-                        volumeSounds.forEach(card => {
-                            updateSoundCardIndicator(card.dataset.soundId, 'volume', true);
-                        });
-                    }
-                });
-            }
-        });
-    });
-    
-    // Start observing the sounds container
-    const soundsContainer = document.getElementById('sounds-container');
-    if (soundsContainer) {
-        soundsObserver.observe(soundsContainer, { childList: true, subtree: true });
-    }
-}
-
-// Initialize favorite styling
-document.addEventListener('DOMContentLoaded', () => {
-    initFavoriteIndicators();
-    initFavoritesStyling();
-});
-
-// Setup sound card right-click behavior
-function setupRightClickBehavior() {
-    // Prevent default context menu on all sound cards
-    document.addEventListener('contextmenu', (e) => {
-        const soundCard = e.target.closest('.sound-card');
-        if (soundCard) {
-            e.preventDefault();
-            
-            const soundId = parseInt(soundCard.dataset.soundId);
-            openSoundSettings(soundId);
-        }
-        
-        // Also prevent context menu on settings menu elements
-        if (e.target.closest('#settings-card')) {
-            e.preventDefault();
-        }
-    });
-}
-
-
-// Visualize volume level change based on slider position
-function visualizeVolumeChange(sliderPos) {
-    if (!currentSoundId) return;
-    
-    // Get a sound card element if it exists in the current view
-    const soundCard = document.querySelector(`.sound-card[data-sound-id="${currentSoundId}"]`);
-    if (!soundCard) return;
-    
-    const defaultLocalVolume = currentSoundData?.defaultLocalVolume || 100;
-    let volumePercent = 100; // Default is 100%
-    
-    // Right side: 100% to 200%
-    if (sliderPos > 0) {
-        volumePercent = 100 + (sliderPos * 3); // 0-50 → 100-200%
-    } 
-    // Left side: 0% to 100%
-    else if (sliderPos < 0) {
-        volumePercent = 100 + (sliderPos * 2); // -50-0 → 0-100%
-    }
-    
-    // Show a subtle visual indicator on the sound card
-    // This gives immediate visual feedback when adjusting volume
-    soundCard.setAttribute('data-volume-level', volumePercent + '%');
-    
-    // Optional: add a temporary pulse animation to show volume change
-    soundCard.classList.add('volume-adjusting');
-    setTimeout(() => {
-        soundCard.classList.remove('volume-adjusting');
-    }, 300);
-}
-
-// Keep track of volume settings across application sessions
-function setupVolumeStateTracking() {
-    // Add a periodic check for volume settings to stay in sync with core application
-    // This helps ensure the web UI reflects any changes made in the desktop app
-    setInterval(() => {
-        if (window.soundSettingsCache) {
-            fetch('/api/sounds/settings')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.customVolumes) {
-                        // Update our local cache
-                        data.customVolumes.forEach(sound => {
-                            window.soundSettingsCache.set(sound.id, 
-                                {...(window.soundSettingsCache.get(sound.id) || {}), 
-                                    customVolume: true, 
-                                    localVolume: sound.localVolume,
-                                    remoteVolume: sound.remoteVolume
-                                });
-                            
-                            // Update any visible sound cards
-                            const soundCard = document.querySelector(`.sound-card[data-sound-id="${sound.id}"]`);
-                            if (soundCard) {
-                                updateSoundCardWithSettings(soundCard, {customVolume: true});
-                            }
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error refreshing volume settings:', error);
-                });
-        }
-    }, 30000); // Check every 30 seconds
-}
-
-// Define CSS for volume visualization
-function addVolumeStyles() {
-    const style = document.createElement('style');
-    style.textContent = `
-        /* Volume adjustment visualization */
-        .sound-card.volume-adjusting {
-            transition: all 0.3s ease-out;
-            box-shadow: 0 0 15px rgba(82, 177, 140, 0.5);
-        }
-        
-        /* Add a subtle volume level indicator */
-        .sound-card[data-volume-level]::after {
-            content: attr(data-volume-level);
-            position: absolute;
-            bottom: 3px;
-            left: 3px;
-            font-size: 9px;
-            opacity: 0.7;
-            color: var(--text-secondary);
-            pointer-events: none;
-        }
-        
-        /* Style for volume indicator icon */
-        .indicator-icon.volume-indicator {
-            color: #555;
-        }
-    `;
-    document.head.appendChild(style);
-}
-
-
-// Sound Settings Menu - Create as js/sound-settings.js
-
+// --- ENTIRE FILE REPLACE ---
 // State management
 let currentSoundId = null;
-let currentSoundData = null;
+let currentSoundData = null; // Stores details fetched for the current sound
 let startY = 0;
 let currentY = 0;
 let isDragging = false;
 let cardHeight = 0;
 let currentPreviewId = null;
+let emojiPicker = null; // Reference to the emoji picker instance
 
 // Elements
 const settingsOverlay = document.getElementById('sound-settings-overlay');
@@ -203,6 +19,11 @@ const favoriteButton = document.getElementById('favorite-button');
 const previewButton = document.getElementById('preview-button');
 const volumeSlider = document.getElementById('volume-slider');
 const resetVolumeButton = document.getElementById('reset-volume');
+const colorSelector = document.getElementById('color-selector');
+const emojiSelectorButton = document.getElementById('emoji-selector-button');
+const currentEmojiDisplay = document.getElementById('current-emoji-display');
+const clearEmojiButton = document.getElementById('clear-emoji-button');
+
 
 // Initialize the settings menu
 function initSoundSettings() {
@@ -211,239 +32,299 @@ function initSoundSettings() {
     // Set up event listeners
     setupDragBehavior();
     setupButtonActions();
-    setupLongPressDetection();
+    setupColorSelection();
+    setupEmojiSelection();
+    setupLongPressDetection(); // Keep long-press/right-click for non-edit mode
     setupRightClickBehavior();
 
     // Close when clicking backdrop
     settingsBackdrop.addEventListener('click', closeSettingsMenu);
+
+    // Initialize emoji picker (using Picmo example)
+    if (window.picmo && window.PicmoPopup) {
+        const rootElement = document.querySelector('body'); // Picker needs a root element
+        emojiPicker = window.PicmoPopup.createPopup({}, {
+            rootElement: rootElement,
+            referenceElement: emojiSelectorButton,
+            triggerElement: emojiSelectorButton,
+            position: 'bottom-start', // Adjust as needed
+            showCloseButton: false,
+            showPreview: false, // Optional: hide the preview
+            theme: 'dark' // Match the app theme
+        });
+
+        emojiPicker.addEventListener('emoji:select', (event) => {
+            console.log('Emoji selected:', event.emoji);
+            if (currentSoundId && currentSoundData) {
+                setEmoji(event.emoji); // Function to handle setting the emoji
+            }
+        });
+    } else {
+         console.error("Picmo or PicmoPopup library not loaded.");
+    }
+
 }
 
-// Set up long press detection for sound cards
+// Function to set the selected emoji
+function setEmoji(emoji) {
+    if (!currentSoundId || !currentSoundData) return;
+
+    const soundPath = currentSoundData.path;
+    persistence.setSoundEmoji(soundPath, emoji);
+
+    // Update UI immediately
+    currentEmojiDisplay.textContent = emoji;
+    clearEmojiButton.classList.remove('hidden');
+    app.updateSoundCardDisplay(currentSoundId); // Use app.js function to update the card
+}
+
+// Function to clear the emoji
+function clearEmoji() {
+    if (!currentSoundId || !currentSoundData) return;
+
+    const soundPath = currentSoundData.path;
+    persistence.clearSoundEmoji(soundPath);
+
+    // Update UI immediately
+    currentEmojiDisplay.textContent = '❓'; // Reset to placeholder
+    clearEmojiButton.classList.add('hidden');
+    app.updateSoundCardDisplay(currentSoundId); // Use app.js function to update the card
+}
+
+// Set up long press detection (only active when NOT in edit mode)
 function setupLongPressDetection() {
-    // Use event delegation for dynamically added sound cards
-    document.addEventListener('touchstart', handleTouchStart, { passive: false });
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    document.addEventListener('touchend', handleTouchEnd, { passive: false });
+    document.addEventListener('touchstart', (e) => {
+        if (editMode.isActive()) return; // Only work when not in edit mode
+        handleTouchStart(e);
+    }, { passive: false });
+    document.addEventListener('touchmove', (e) => {
+         if (editMode.isActive()) return;
+         handleTouchMove(e);
+     }, { passive: false });
+    document.addEventListener('touchend', (e) => {
+         if (editMode.isActive()) return;
+         handleTouchEnd(e);
+     }, { passive: false });
 }
 
-// Touch variables
+// Setup right-click (only active when NOT in edit mode)
+function setupRightClickBehavior() {
+    document.addEventListener('contextmenu', (e) => {
+        const soundCard = e.target.closest('.sound-card');
+        if (soundCard) {
+            e.preventDefault(); // Always prevent default context menu on sound cards
+
+            // Only open settings if NOT in edit mode
+            if (!editMode.isActive()) {
+                 const soundId = parseInt(soundCard.dataset.soundId);
+                 openSoundSettings(soundId);
+            }
+        }
+        // Also prevent context menu on settings menu elements
+        if (e.target.closest('#settings-card')) {
+            e.preventDefault();
+        }
+    });
+}
+
+// Touch variables (same as before)
 let longPressTimer;
-const longPressDuration = 500; // ms
+const longPressDuration = 500;
 let longPressSoundCard = null;
 let longPressStartPosition = null;
 let hasMoved = false;
 
-// Handle touch start
+// Handle touch start (same as before)
 function handleTouchStart(e) {
     const soundCard = e.target.closest('.sound-card');
     if (!soundCard) return;
-
-    // Store the initial position
-    longPressStartPosition = {
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY
-    };
-    
+    longPressStartPosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     hasMoved = false;
     longPressSoundCard = soundCard;
-    
-    // Start the long press timer
     longPressTimer = setTimeout(() => {
         if (!hasMoved && longPressSoundCard) {
-            // Provide haptic feedback if available
-            if (navigator.vibrate) {
-                navigator.vibrate(50);
-            }
-            
+            if (navigator.vibrate) navigator.vibrate(50);
             const soundId = parseInt(longPressSoundCard.dataset.soundId);
             openSoundSettings(soundId);
         }
     }, longPressDuration);
 }
 
-// Handle touch move
+// Handle touch move (same as before)
 function handleTouchMove(e) {
     if (!longPressSoundCard || !longPressStartPosition) return;
-    
     const xDiff = Math.abs(e.touches[0].clientX - longPressStartPosition.x);
     const yDiff = Math.abs(e.touches[0].clientY - longPressStartPosition.y);
-    
-    // If moved more than 10px, cancel long press
     if (xDiff > 10 || yDiff > 10) {
         hasMoved = true;
         clearTimeout(longPressTimer);
     }
 }
 
-// Handle touch end
+// Handle touch end (same as before)
 function handleTouchEnd() {
     clearTimeout(longPressTimer);
     longPressSoundCard = null;
     longPressStartPosition = null;
 }
 
-// Setup drag behavior for the settings card
+// Setup drag behavior for the settings card (same as before)
 function setupDragBehavior() {
     settingsCard.addEventListener('touchstart', onCardTouchStart, { passive: true });
     settingsCard.addEventListener('touchmove', onCardTouchMove, { passive: false });
     settingsCard.addEventListener('touchend', onCardTouchEnd, { passive: true });
 }
 
-// Handle card touch start
+// Handle card touch start (same as before)
 function onCardTouchStart(e) {
-    if (e.target === volumeSlider) return;
-    
+    if (e.target === volumeSlider || e.target.closest('.color-selector') || e.target.closest('.emoji-selector-container')) return; // Ignore drag on controls
     startY = e.touches[0].clientY;
     cardHeight = settingsCard.offsetHeight;
     isDragging = true;
     settingsCard.style.transition = 'none';
 }
 
-// Handle card touch move
+// Handle card touch move (same as before)
 function onCardTouchMove(e) {
     if (!isDragging) return;
-    
     currentY = e.touches[0].clientY;
     const deltaY = currentY - startY;
-    
-    // Only allow dragging down
     if (deltaY > 0) {
         e.preventDefault();
         const translateY = Math.min(deltaY, cardHeight);
         settingsCard.style.transform = `translateY(${translateY}px)`;
-        
-        // Adjust backdrop opacity based on drag distance
         const opacity = 1 - (translateY / cardHeight) * 0.5;
         settingsBackdrop.style.opacity = opacity;
     }
 }
 
-// Handle card touch end
+// Handle card touch end (same as before)
 function onCardTouchEnd() {
     if (!isDragging) return;
-    
     isDragging = false;
     settingsCard.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
     settingsBackdrop.style.transition = 'opacity 0.3s ease';
-    
     const deltaY = currentY - startY;
-    
     if (deltaY > cardHeight * 0.4) {
-        // If dragged more than 40% of card height, close it
         closeSettingsMenu();
     } else {
-        // Otherwise snap back
         settingsCard.style.transform = 'translateY(0)';
         settingsBackdrop.style.opacity = '1';
     }
 }
 
-// Updated setup button actions for better volume handling
+// Setup button actions (including volume, favorite, preview)
 function setupButtonActions() {
-    // Favorite button code remains the same
+    // Favorite button
     favoriteButton.addEventListener('click', () => {
-        if (!currentSoundId) return;
-        
+        if (!currentSoundId || !currentSoundData) return;
+        const soundPath = currentSoundData.path;
         const isCurrentlyFavorite = favoriteButton.classList.contains('active');
         const newFavoriteState = !isCurrentlyFavorite;
-        
-        // Optimistic UI update
-        favoriteButton.classList.toggle('active', newFavoriteState);
-        
-        // Update the server
-        fetch(`/api/sounds/${currentSoundId}/favorite`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ favorite: newFavoriteState })
-        })
+
+        // Update server/persistence (using sound.path)
+        fetch(`/api/sounds/${currentSoundId}/favorite`, { method: 'POST' }) // Assume API works with ID for toggle
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Update the sound card in the grid
-                updateSoundCardIndicator(currentSoundId, 'favorite', newFavoriteState);
-            } else {
-                // Revert UI if failed
-                favoriteButton.classList.toggle('active', isCurrentlyFavorite);
-            }
-        })
-        .catch(() => {
-            // Revert UI on error
-            favoriteButton.classList.toggle('active', isCurrentlyFavorite);
-        });
+                 favoriteButton.classList.toggle('active', newFavoriteState);
+                 app.updateSoundCardDisplay(currentSoundId); // Update main grid card
+            } else { console.error("Failed to toggle favorite on server."); }
+        }).catch(err => console.error("Error toggling favorite:", err));
     });
-    
-    // Preview button code remains the same
+
+    // Preview button
     previewButton.addEventListener('click', () => {
         if (!currentSoundId) return;
-        
         const currentState = previewButton.getAttribute('data-state');
-        
         if (currentState === 'preview') {
-            // Preview implementation...
-            previewButton.setAttribute('data-state', 'stop');
-            previewButton.querySelector('.material-symbols-outlined').textContent = 'stop_circle';
-            previewButton.querySelector('.button-text').textContent = 'Stop';
-            
-            fetch(`/api/sounds/${currentSoundId}/preview`, {
-                method: 'POST'
-            })
+             // Stop any previous preview first
+             if (currentPreviewId) stopPreviewSound(currentPreviewId);
+
+            fetch(`/api/sounds/${currentSoundId}/preview`, { method: 'POST' })
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.playingId) {
                     currentPreviewId = data.playingId;
-                }
-            });
+                    previewButton.setAttribute('data-state', 'stop');
+                    previewButton.querySelector('.material-symbols-outlined').textContent = 'stop_circle';
+                    previewButton.querySelector('.button-text').textContent = 'Stop';
+                } else { console.error("Failed to start preview"); }
+            }).catch(err => console.error("Error starting preview:", err));
         } else {
-            // Stop implementation...
+            stopPreviewSound(currentPreviewId); // Function defined below
+            currentPreviewId = null;
             previewButton.setAttribute('data-state', 'preview');
             previewButton.querySelector('.material-symbols-outlined').textContent = 'volume_up';
             previewButton.querySelector('.button-text').textContent = 'Preview';
-            
-            // Stop the preview - use the main stop endpoint which is more reliable
-            stopPreviewSound(currentPreviewId);
-            currentPreviewId = null;
         }
     });
-    
-    // Volume slider with improved implementation
+
+    // Volume slider (debounced update)
     let sliderDebounceTimer = null;
-    
-    // Update volume indicator while sliding without sending API requests
     volumeSlider.addEventListener('input', () => {
         const sliderPos = parseInt(volumeSlider.value);
-        
-        // Toggle reset button visibility
         resetVolumeButton.classList.toggle('hidden', sliderPos === 0);
-        
-        // Clear any pending requests
-        if (sliderDebounceTimer) {
-            clearTimeout(sliderDebounceTimer);
-        }
+        // Clear existing timer
+        clearTimeout(sliderDebounceTimer);
+        // Set a new timer
+        sliderDebounceTimer = setTimeout(() => {
+             if (currentSoundId) updateVolumeWithSlider(sliderPos);
+        }, 250); // 250ms debounce
     });
-    
-    // Send volume update when slider is released or clicked
+    // Also update on final change event
     volumeSlider.addEventListener('change', () => {
-        const sliderPos = parseInt(volumeSlider.value);
-        
-        // If there's a pending timer, clear it
-        if (sliderDebounceTimer) {
-            clearTimeout(sliderDebounceTimer);
-        }
-        
-        // Send the new slider position to the server
-        updateVolumeWithSlider(sliderPos);
+        clearTimeout(sliderDebounceTimer); // Clear debounce timer if exists
+        if (currentSoundId) updateVolumeWithSlider(parseInt(volumeSlider.value));
     });
-    
+
     // Reset volume button
     resetVolumeButton.addEventListener('click', resetVolume);
 
+     // Clear emoji button
+     clearEmojiButton.addEventListener('click', clearEmoji);
 }
 
-// Function to update volume with slider position
+// Setup color selection
+function setupColorSelection() {
+    colorSelector.addEventListener('click', (e) => {
+        const swatch = e.target.closest('.color-swatch');
+        if (swatch && currentSoundId && currentSoundData) {
+            const color = swatch.dataset.color;
+            const soundPath = currentSoundData.path;
+
+            // Update persistence
+            persistence.setSoundColor(soundPath, color);
+
+            // Update swatch UI
+            document.querySelectorAll('#color-selector .color-swatch').forEach(s => s.classList.remove('selected'));
+            swatch.classList.add('selected');
+
+            // Update sound card in grid
+            app.updateSoundCardDisplay(currentSoundId);
+        }
+    });
+}
+
+// Setup emoji selection
+function setupEmojiSelection() {
+    if (emojiSelectorButton) {
+        emojiSelectorButton.addEventListener('click', () => {
+             if(emojiPicker && !emojiPicker.isOpen) {
+                 emojiPicker.toggle();
+             } else {
+                 console.log("Emoji picker not ready or already open");
+             }
+        });
+    }
+}
+
+
+// Function to update volume via API (using slider position)
 function updateVolumeWithSlider(sliderPos) {
-    if (!currentSoundId) return;
-    
-    // Send the slider position to the server
+    if (!currentSoundId || !currentSoundData) return;
+    const soundPath = currentSoundData.path;
+
     fetch(`/api/sounds/${currentSoundId}/volume`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -452,244 +333,168 @@ function updateVolumeWithSlider(sliderPos) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Update the sound card indicator
-            updateSoundCardIndicator(currentSoundId, 'volume', sliderPos !== 0);
-            
-            // Update current sound data with the returned values
-            if (currentSoundData) {
-                currentSoundData.localVolume = data.localVolume;
-                currentSoundData.remoteVolume = data.remoteVolume;
-                currentSoundData.hasCustomVolume = (sliderPos !== 0);
-                currentSoundData.sliderPosition = sliderPos;
-            }
-            
-            // Show/hide reset button based on whether we have custom volume
-            resetVolumeButton.classList.toggle('hidden', sliderPos === 0);
-        }
+            // Update sound card indicator
+            app.updateSoundCardDisplay(currentSoundId); // Let app.js handle the card update
+            // Update local data if needed (though fetching again on open is safer)
+            currentSoundData.hasCustomVolume = (sliderPos !== 0);
+            currentSoundData.sliderPosition = sliderPos;
+            // Ensure reset button visibility is correct
+             resetVolumeButton.classList.toggle('hidden', sliderPos === 0);
+        } else { console.error("Server failed to update volume."); }
     })
-    .catch(error => {
-        console.error('Error updating volume:', error);
-    });
+    .catch(error => console.error('Error updating volume:', error));
 }
 
-// Reset volume with improved implementation
+// Reset volume via API
 function resetVolume() {
-    if (!currentSoundId) return;
-    
-    // First update UI immediately for responsiveness
-    volumeSlider.value = 0;
-    resetVolumeButton.classList.add('hidden');
-    
-    // Send reset request to server
-    fetch(`/api/sounds/${currentSoundId}/volume/reset`, {
-        method: 'POST'
-    })
+    if (!currentSoundId || !currentSoundData) return;
+    const soundPath = currentSoundData.path;
+
+    fetch(`/api/sounds/${currentSoundId}/volume/reset`, { method: 'POST' })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // Update UI
+            volumeSlider.value = 0;
+            resetVolumeButton.classList.add('hidden');
             // Update sound card indicator
-            updateSoundCardIndicator(currentSoundId, 'volume', false);
-            
-            // Update current sound data
-            if (currentSoundData) {
-                // Remove custom volumes
-                delete currentSoundData.localVolume;
-                delete currentSoundData.remoteVolume;
-                currentSoundData.hasCustomVolume = false;
-                currentSoundData.sliderPosition = 0;
-            }
-        }
+             app.updateSoundCardDisplay(currentSoundId); // Let app.js handle the card update
+            // Update local data
+            currentSoundData.hasCustomVolume = false;
+            currentSoundData.sliderPosition = 0;
+        } else { console.error("Server failed to reset volume."); }
     })
-    .catch(error => {
-        console.error('Error resetting volume:', error);
-    });
+    .catch(error => console.error('Error resetting volume:', error));
 }
 
-// Improved open settings menu function that properly loads volume state
+// Open settings menu and load data
 function openSoundSettings(soundId) {
+    if (!settingsOverlay) return;
     currentSoundId = soundId;
-    
-    // Fetch sound details with volume info
+
+    // Reset menu state before fetching
+    resetMenuState();
+
     fetch(`/api/sounds/${soundId}`)
     .then(response => response.json())
     .then(sound => {
-        currentSoundData = sound;
-        
-        // Reset menu state
-        resetMenuState();
-        
-        // Update UI
-        soundNameElement.textContent = sound.name;
-        tabNameElement.textContent = sound.tabName || '';
-        
-        // Update favorite state
+        if (!sound || !sound.id) throw new Error("Sound data not found or invalid.");
+
+        currentSoundData = sound; // Store fetched data
+
+        // Update UI elements
+        soundNameElement.textContent = sound.name || 'Unknown Sound';
+        tabNameElement.textContent = sound.tabName || 'Unknown Tab';
+
+        // Set favorite state
         favoriteButton.classList.toggle('active', sound.isFavorite);
-        
-        // Update volume slider with correct position
-        if (sound.hasCustomVolume && sound.sliderPosition !== undefined) {
+
+        // Set color state
+        const savedSoundSettings = persistence.getSoundSettings(sound.path);
+        document.querySelectorAll('#color-selector .color-swatch').forEach(s => s.classList.remove('selected'));
+        const color = savedSoundSettings.color || 'default';
+        const activeSwatch = document.querySelector(`#color-selector .color-swatch[data-color="${color}"]`);
+        if (activeSwatch) activeSwatch.classList.add('selected');
+
+        // Set emoji state
+        const emoji = savedSoundSettings.emoji;
+        if (emoji) {
+            currentEmojiDisplay.textContent = emoji;
+            clearEmojiButton.classList.remove('hidden');
+        } else {
+            currentEmojiDisplay.textContent = '❓'; // Placeholder
+            clearEmojiButton.classList.add('hidden');
+        }
+
+
+        // Set volume slider state
+        if (sound.hasCustomVolume && typeof sound.sliderPosition === 'number') {
             volumeSlider.value = sound.sliderPosition;
             resetVolumeButton.classList.remove('hidden');
         } else {
-            volumeSlider.value = 0; // Default to center
+            volumeSlider.value = 0;
             resetVolumeButton.classList.add('hidden');
         }
-        
-        // Reset backdrop and card styles before showing
-        settingsBackdrop.style.opacity = '0';
-        settingsBackdrop.style.transition = 'opacity 0.3s ease';
-        settingsCard.style.transform = 'translateY(100%)';
-        settingsCard.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-        
-        // Show the settings overlay first
+
+        // Animate in
         settingsOverlay.classList.remove('hidden');
-        
-        // Force a reflow to ensure styles are applied
-        void settingsOverlay.offsetWidth;
-        
-        // Then animate in the backdrop and card
-        requestAnimationFrame(() => {
+        requestAnimationFrame(() => { // Ensure display is set before animating
             settingsBackdrop.style.opacity = '1';
             settingsCard.style.transform = 'translateY(0)';
         });
+
     })
     .catch(error => {
         console.error('Failed to fetch sound details:', error);
+        currentSoundId = null; // Reset ID on error
+        currentSoundData = null;
+        // Optionally show an error message to the user
     });
 }
 
-
-
 // Reset the menu state to default
 function resetMenuState() {
+    if (!settingsOverlay) return;
     // Reset preview button
     previewButton.setAttribute('data-state', 'preview');
     previewButton.querySelector('.material-symbols-outlined').textContent = 'volume_up';
     previewButton.querySelector('.button-text').textContent = 'Preview';
-    
-    // Stop any playing preview
-    if (currentPreviewId) {
-        stopPreviewSound(currentPreviewId);
-        currentPreviewId = null;
-    }
-    
-    // Reset volume slider
+    stopPreviewSound(currentPreviewId); // Stop any active preview
+    currentPreviewId = null;
+
+    // Reset volume slider and button
     volumeSlider.value = 0;
     resetVolumeButton.classList.add('hidden');
+
+    // Reset favorite button state (will be set when data loads)
+    favoriteButton.classList.remove('active');
+
+     // Reset color swatches
+     document.querySelectorAll('#color-selector .color-swatch').forEach(s => s.classList.remove('selected'));
+     const defaultSwatch = document.querySelector('#color-selector .color-swatch[data-color="default"]');
+     if (defaultSwatch) defaultSwatch.classList.add('selected');
+
+     // Reset emoji display
+     currentEmojiDisplay.textContent = '❓';
+     clearEmojiButton.classList.add('hidden');
+
+    // Clear displayed names
+    soundNameElement.textContent = 'Loading...';
+    tabNameElement.textContent = '';
 }
 
-// Close settings menu
+// Close settings menu (same as before, ensures preview stops)
 function closeSettingsMenu() {
+    if (!settingsOverlay) return;
     settingsCard.style.transform = 'translateY(100%)';
     settingsBackdrop.style.opacity = '0';
-    
-    // Stop any playing preview
-    if (previewButton.getAttribute('data-state') === 'stop' && currentPreviewId) {
-        stopPreviewSound(currentPreviewId);
-        currentPreviewId = null;
-    }
-    
-    // Hide the overlay after animation completes
+
+    stopPreviewSound(currentPreviewId); // Stop preview on close
+    currentPreviewId = null;
+
     setTimeout(() => {
         settingsOverlay.classList.add('hidden');
-        
-        // Reset styles completely
-        settingsCard.style.transform = '';
-        settingsCard.style.transition = '';
-        settingsBackdrop.style.opacity = '';
-        settingsBackdrop.style.transition = '';
-        
-        // Reset UI elements
-        previewButton.setAttribute('data-state', 'preview');
-        previewButton.querySelector('.material-symbols-outlined').textContent = 'volume_up';
-        previewButton.querySelector('.button-text').textContent = 'Preview';
-        
-        // Reset state
+        resetMenuState(); // Reset state after hiding
         currentSoundId = null;
         currentSoundData = null;
+        // Ensure styles are reset for next open
+        settingsCard.style.transform = '';
+        settingsBackdrop.style.opacity = '';
     }, 300);
 }
 
-// Helper function to stop preview sound
-function stopPreviewSound(soundId) {
-    // Use the main stop endpoint which is more reliable
-    fetch('/api/sounds/stop', {
-        method: 'POST'
-    })
-    .catch(error => {
-        console.error('Error stopping preview sound:', error);
-    });
+// Helper function to stop preview sound (uses main stop endpoint)
+function stopPreviewSound(playingId) {
+    // No specific API to stop just one sound *instance*, use general stop
+     if (playingId) { // Only stop if we have an ID
+         console.log("Stopping preview sound (via general stop)...");
+         fetch('/api/sounds/stop', { method: 'POST' })
+             .catch(error => console.error('Error stopping preview sound:', error));
+     }
 }
-
-// Update sound card indicator
-function updateSoundCardIndicator(soundId, type, state) {
-    const soundCard = document.querySelector(`.sound-card[data-sound-id="${soundId}"]`);
-    if (!soundCard) return;
-    
-    // Get or create indicators container
-    let indicators = soundCard.querySelector('.sound-indicators');
-    if (!indicators) {
-        indicators = document.createElement('div');
-        indicators.className = 'sound-indicators';
-        soundCard.appendChild(indicators);
-    }
-    
-    // Handle favorite indicator
-    if (type === 'favorite') {
-        // Update data attribute
-        soundCard.dataset.favorite = state ? 'true' : 'false';
-        
-        // Remove existing favorite indicator if exists
-        const existingFavorite = indicators.querySelector('.favorite-indicator');
-        if (existingFavorite) {
-            indicators.removeChild(existingFavorite);
-        }
-        
-        // Add new indicator if favorited
-        if (state) {
-            const favoriteIcon = document.createElement('span');
-            favoriteIcon.className = 'indicator-icon material-symbols-outlined favorite-indicator';
-            favoriteIcon.textContent = 'favorite';
-            // Add filled style
-            favoriteIcon.style.color = '#555';
-            favoriteIcon.style.fontVariationSettings = "'FILL' 1";
-            indicators.appendChild(favoriteIcon);
-        }
-    }
-    
-    // Handle volume indicator
-    if (type === 'volume') {
-        // Update data attribute
-        soundCard.dataset.customVolume = state ? 'true' : 'false';
-        
-        // Remove existing volume indicator if exists
-        const existingVolume = indicators.querySelector('.volume-indicator');
-        if (existingVolume) {
-            indicators.removeChild(existingVolume);
-        }
-        
-        // Add new indicator if has custom volume
-        if (state) {
-            const volumeIcon = document.createElement('span');
-            volumeIcon.className = 'indicator-icon material-symbols-outlined volume-indicator';
-            volumeIcon.textContent = 'volume_up';
-            indicators.appendChild(volumeIcon);
-        }
-    }
-    
-    // Remove the indicators container if empty
-    if (indicators.children.length === 0) {
-        soundCard.removeChild(indicators);
-    }
-}
-
-
-// Call this during initialization
-document.addEventListener('DOMContentLoaded', () => {
-    addVolumeStyles();
-    setupVolumeStateTracking();
-});
-
 
 // Initialize when DOM content is loaded
 document.addEventListener('DOMContentLoaded', initSoundSettings);
 
+// Expose openSoundSettings globally if needed by app.js (or use custom events)
+window.soundSettings = { open: openSoundSettings };
