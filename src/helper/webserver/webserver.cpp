@@ -71,46 +71,71 @@ namespace Soundux::Objects
         std::uniform_int_distribution<> distrib(0, static_cast<int>(chars.size()) - 1);
         std::string token;
         token.reserve(32);
+        for (int i = 0; i < 32; ++i) { token += chars[distrib(gen)]; }
 
+        // ---> Log Generated Token <---
+        std::cout << "[WebServer DEBUG] Generated token: [" << token << "] (Length: " << token.length() << ")" << std::endl;
+        if (token.empty()) {
+            std::cerr << "[WebServer ERROR] Generated token is EMPTY!" << std::endl;
+            // Optionally throw or return an error state? For now, just log.
+        }
 
-        bool added = false;
+        bool addedToSettings = false;
         {
             std::lock_guard<std::mutex> lock(tokensMutex);
-            validTokens.insert(token);
+            validTokens.insert(token); // Add to in-memory set
 
+            // Add to persisted list in settings
             if (std::find(Globals::gSettings.authorizedTokens.begin(),
                           Globals::gSettings.authorizedTokens.end(), token) == Globals::gSettings.authorizedTokens.end())
             {
                  Globals::gSettings.authorizedTokens.push_back(token);
-                 added = true; // Mark that we modified the settings
+                 addedToSettings = true;
+                 std::cout << "[WebServer DEBUG] Added token [" << token << "] to gSettings.authorizedTokens." << std::endl;
+            } else {
+                 std::cout << "[WebServer DEBUG] Token [" << token << "] already exists in gSettings.authorizedTokens." << std::endl;
             }
         }
-        // Save settings immediately if a new token was added to the persistent list
-        if (added) {
-            saveSettingsImmediately("New token generated");
+        if (addedToSettings) {
+            // ---> Log Before Save <---
+            std::cout << "[WebServer DEBUG] Saving settings. authorizedTokens now contains:" << std::endl;
+            for(const auto& t : Globals::gSettings.authorizedTokens) {
+                std::cout << "  - [" << t << "]" << std::endl;
+            }
+            saveSettingsImmediately("New token generated"); // Log inside this function confirms save attempt
         }
         return token;
-
     }
+
 
 
     // Check if a token is valid
     bool WebServer::isValidToken(const std::string& token)
     {
+        // ---> Log Token Being Validated <---
+        std::cout << "[WebServer DEBUG] Validating token: [" << token << "]" << std::endl;
+        if (token.empty()) {
+             std::cerr << "[WebServer WARNING] Attempting to validate an EMPTY token!" << std::endl;
+             // Decide if empty token should EVER be valid (Likely NO)
+             // return false; // Explicitly reject empty tokens?
+        }
+
         std::lock_guard<std::mutex> lock(tokensMutex);
-        // Check in-memory set first (performance)
+        // Check in-memory set
         if (validTokens.find(token) != validTokens.end()) {
+            std::cout << "[WebServer DEBUG] Token [" << token << "] found in memory set." << std::endl;
             return true;
         }
-        // Check persisted list (slower, but needed for restored sessions)
+        // Check persisted list
         const auto& persistedTokens = Globals::gSettings.authorizedTokens;
         if (std::find(persistedTokens.begin(), persistedTokens.end(), token) != persistedTokens.end()) {
-             // Optional: Add persisted token to in-memory set for faster subsequent checks?
-             // validTokens.insert(token);
+             std::cout << "[WebServer DEBUG] Token [" << token << "] found in persisted settings." << std::endl;
             return true;
         }
+        std::cout << "[WebServer DEBUG] Token [" << token << "] NOT valid." << std::endl;
         return false;
     }
+
 
 
     // Authentication middleware - Using logic from latest plan
@@ -135,18 +160,18 @@ namespace Soundux::Objects
         // Check for valid token in cookies
         if (req.has_header("Cookie")) {
             std::string cookies = req.get_header_value("Cookie");
+            std::cout << "[WebServer DEBUG] authenticateRequest: Received Cookies: " << cookies << std::endl; // Log received cookies
             std::istringstream stream(cookies);
             std::string cookie;
             while (std::getline(stream, cookie, ';')) {
                 size_t start = cookie.find_first_not_of(" ");
-                if (start != std::string::npos) {
-                    cookie = cookie.substr(start);
-                }
+                if (start != std::string::npos) { cookie = cookie.substr(start); }
                 const std::string authTokenPrefix = "soundux_auth=";
                 if (cookie.rfind(authTokenPrefix, 0) == 0) {
                     std::string token = cookie.substr(authTokenPrefix.length());
-                    if (isValidToken(token)) {
-                        return true; // Valid token found
+                    std::cout << "[WebServer DEBUG] authenticateRequest: Found auth token in cookie: [" << token << "]" << std::endl; // Log found token
+                    if (isValidToken(token)) { // isValidToken now logs details
+                        return true;
                     }
                 }
             }
@@ -188,28 +213,29 @@ namespace Soundux::Objects
 
                  // Check if PIN is correct
                  if (!pinCode.empty() && submittedPin == pinCode) {
-                     // Generate session token
-                     std::string token = generateToken();
-
-                     // Calculate expiration (1 year from now)
-                     auto now = std::chrono::system_clock::now();
-                     auto expiration = now + std::chrono::hours(24 * 365); // TODO: Make duration configurable?
-                     auto expTime = std::chrono::system_clock::to_time_t(expiration);
-
-                     // Format expiration for cookie (RFC 1123 format)
-                     std::tm gmt = *std::gmtime(&expTime); // Use gmtime for GMT/UTC
-                     std::stringstream ss;
-                     // Format: Wdy, DD Mon YYYY HH:MM:SS GMT
-                     ss << std::put_time(&gmt, "%a, %d %b %Y %H:%M:%S GMT");
-
-                     res.set_header("Set-Cookie",
-                         "soundux_auth=" + token +
-                         "; Path=/; Expires=" + ss.str() +
-                         "; SameSite=Strict; HttpOnly"); // Added HttpOnly
-
-                     res.set_content("{\"success\":true}", "application/json");
-                     Fancy::fancy.logTime().success() << "Successful login via PIN" << std::endl;
-                 } else {
+                    std::string token = generateToken(); // generateToken now logs details
+   
+                    // ---> Log Token Before Sending Cookie <---
+                    std::cout << "[WebServer DEBUG] Setting cookie with token: [" << token << "]" << std::endl;
+                    if (token.empty()) {
+                        std::cerr << "[WebServer ERROR] Attempting to set cookie with EMPTY token!" << std::endl;
+                    }
+   
+                    // ... (calculate expiration, format cookie string) ...
+                    auto now = std::chrono::system_clock::now();
+                    auto expiration = now + std::chrono::hours(24 * 365);
+                    auto expTime = std::chrono::system_clock::to_time_t(expiration);
+                    std::tm gmt = *std::gmtime(&expTime);
+                    std::stringstream ss;
+                    ss << std::put_time(&gmt, "%a, %d %b %Y %H:%M:%S GMT");
+                    std::string cookieValue = "soundux_auth=" + token + "; Path=/; Expires=" + ss.str() + "; SameSite=Strict; HttpOnly";
+                    std::cout << "[WebServer DEBUG] Set-Cookie header: " << cookieValue << std::endl; // Log the exact header
+                    res.set_header("Set-Cookie", cookieValue);
+   
+                    res.set_content("{\"success\":true}", "application/json");
+                    // ... (log success) ...
+                } else {
+   
                      res.status = 401;
                      res.set_content("{\"success\":false,\"error\":\"Invalid PIN\"}", "application/json");
                      Fancy::fancy.logTime().warning() << "Failed login attempt with PIN: " << submittedPin << std::endl;
@@ -290,10 +316,19 @@ namespace Soundux::Objects
     void WebServer::loadPersistedTokens()
     {
         std::lock_guard<std::mutex> lock(tokensMutex);
-        validTokens.clear(); // Start fresh in memory
+        validTokens.clear();
         const auto& persistedTokens = Globals::gSettings.authorizedTokens;
+        // ---> Log Tokens Being Loaded <---
+        std::cout << "[WebServer DEBUG] Loading persisted tokens. Found " << persistedTokens.size() << " in settings:" << std::endl;
+        for(const auto& t : persistedTokens) {
+            std::cout << "  - [" << t << "]" << std::endl;
+            if (t.empty()) {
+                std::cerr << "[WebServer WARNING] Loaded an EMPTY token string from settings!" << std::endl;
+            }
+        }
         validTokens.insert(persistedTokens.begin(), persistedTokens.end());
-        Fancy::fancy.logTime().message() << "Loaded " << validTokens.size() << " persisted authentication tokens.";
+        std::cout << "[WebServer DEBUG] In-memory validTokens count after load: " << validTokens.size() << std::endl;
+        // Fancy::fancy.logTime().message() << "Loaded " << validTokens.size() << " persisted authentication tokens."; // Keep original log too
     }
 
     // Modified Constructor: Calls loadPersistedTokens
