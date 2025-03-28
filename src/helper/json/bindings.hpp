@@ -3,6 +3,15 @@
 #include <helper/audio/windows/winsound.hpp>
 #include <helper/version/check.hpp>
 #include <nlohmann/json.hpp>
+#include <vector>
+#include <string>
+#include <type_traits>
+#include <iostream> // For cerr logging
+
+
+// Make sure Settings definition is fully visible BEFORE this file is included/processed
+#include <core/objects/settings.hpp>
+
 
 namespace nlohmann
 {
@@ -101,10 +110,13 @@ namespace nlohmann
             obj.readInMs.store(j.at("readInMs").get<std::uint64_t>());
         }
     };
+
+
     template <> struct adl_serializer<Soundux::Objects::Settings>
     {
         static void to_json(json &j, const Soundux::Objects::Settings &obj)
         {
+            // Added web server fields and authorizedTokens
             j = {
                 {"theme", obj.theme},
                 {"outputs", obj.outputs},
@@ -123,22 +135,72 @@ namespace nlohmann
                 {"muteDuringPlayback", obj.muteDuringPlayback},
                 {"useAsDefaultDevice", obj.useAsDefaultDevice},
                 {"allowMultipleOutputs", obj.allowMultipleOutputs},
+                {"enableWebServer", obj.enableWebServer},
+                {"webServerHost", obj.webServerHost},
+                {"webServerPort", obj.webServerPort},
+                {"webServerRoot", obj.webServerRoot},
+                {"remotePin", obj.remotePin},
+                {"requirePin", obj.requirePin},
+                {"authorizedTokens", obj.authorizedTokens} // Ensure this is present
             };
         }
 
-        template <typename T> static void get_to_safe(const json &j, const std::string &key, T &member) noexcept
+        // REVISED Helper function to safely get values from JSON
+        template <typename T>
+        static void get_to_safe(const json &j, const std::string &key, T &member) noexcept
         {
-            if (j.find(key) != j.end())
-            {
-                if (j.at(key).type_name() == nlohmann::basic_json(T{}).type_name())
-                {
-                    j.at(key).get_to(member);
+            auto it = j.find(key);
+            if (it != j.end()) {
+                const auto& value = *it;
+                try {
+                    if (!value.is_null()) {
+                        // Special handling for vector: Ensure it's an array in JSON
+                        if constexpr (std::is_same_v<T, std::vector<std::string>>) { // Check if T is the specific vector type
+                            if (value.is_array()) {
+                                value.get_to(member);
+                            } else {
+                                // Value exists but is not an array, clear the member vector
+                                member.clear();
+                                std::cerr << "[JSON Warning] Expected array for key '" << key << "', but got " << value.type_name() << ". Resetting member.\n";
+                            }
+                        } else {
+                            // For other types, attempt direct conversion
+                            value.get_to(member);
+                        }
+                    } else {
+                        // Handle JSON null value
+                        // If T is optional or pointer, nlohmann might handle this in get_to.
+                        // If T is a vector, treat null as empty.
+                        // If T is a basic type (int, bool, enum), this will likely throw in get_to below.
+                         if constexpr (std::is_same_v<T, std::vector<std::string>>) {
+                             member.clear(); // Treat null as empty vector
+                         } else {
+                              value.get_to(member); // Let get_to handle or throw for other types
+                         }
+                    }
+                } catch (const nlohmann::json::exception& e) {
+                    std::cerr << "[JSON Error] Failed to deserialize key '" << key << "': " << e.what() << std::endl;
+                    // Ensure vector is cleared on error if it was the target
+                     if constexpr (std::is_same_v<T, std::vector<std::string>>) {
+                         member.clear();
+                     }
+                    // Other types retain default value
+                } catch (const std::exception& e) {
+                     std::cerr << "[Error] Unexpected error deserializing key '" << key << "': " << e.what() << std::endl;
+                     if constexpr (std::is_same_v<T, std::vector<std::string>>) { member.clear(); }
+                } catch (...) {
+                     std::cerr << "[Error] Unknown error deserializing key '" << key << "'." << std::endl;
+                     if constexpr (std::is_same_v<T, std::vector<std::string>>) { member.clear(); }
                 }
             }
+            // Key not found: member retains default value
         }
+
+
 
         static void from_json(const json &j, Soundux::Objects::Settings &obj)
         {
+            // Load all members using the revised safe helper
             get_to_safe(j, "theme", obj.theme);
             get_to_safe(j, "outputs", obj.outputs);
             get_to_safe(j, "viewMode", obj.viewMode);
@@ -156,8 +218,18 @@ namespace nlohmann
             get_to_safe(j, "useAsDefaultDevice", obj.useAsDefaultDevice);
             get_to_safe(j, "muteDuringPlayback", obj.muteDuringPlayback);
             get_to_safe(j, "allowMultipleOutputs", obj.allowMultipleOutputs);
+            get_to_safe(j, "enableWebServer", obj.enableWebServer);
+            get_to_safe(j, "webServerHost", obj.webServerHost);
+            get_to_safe(j, "webServerPort", obj.webServerPort);
+            get_to_safe(j, "webServerRoot", obj.webServerRoot);
+            get_to_safe(j, "remotePin", obj.remotePin);
+            get_to_safe(j, "requirePin", obj.requirePin);
+            get_to_safe(j, "authorizedTokens", obj.authorizedTokens); // Ensure this is present
         }
     };
+
+
+
     template <> struct adl_serializer<Soundux::Objects::Tab>
     {
         static void to_json(json &j, const Soundux::Objects::Tab &obj)

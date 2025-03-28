@@ -1,15 +1,13 @@
-
 #include <backward.hpp>
 #include <core/enums/enums.hpp>
 #include <core/global/globals.hpp>
+#include <core/config/config.hpp>
 #include <fancy.hpp>
 #include <ui/impl/webview/webview.hpp>
 #include <signal.h>
-
-
-
 #include <filesystem>
-
+#include <thread> // Include for std::thread
+#include <chrono> // Include for std::chrono
 
 #if defined(__linux__)
 #include <helper/audio/linux/backend.hpp>
@@ -158,65 +156,38 @@ int main(int argc, char **arguments)
 
     gGui->mainLoop();
 
-    gAudio.destroy();
-#if defined(__linux__)
-    if (gAudioBackend)
-    {
-        gAudioBackend->destroy();
-    }
-#endif
-    gConfig.data.set(gData);
-    gConfig.settings = gSettings;
-    gConfig.save();
-
-    // Shutdown in reverse order of initialization
+    
+    // --- Shutdown Sequence ---
+    Fancy::fancy.logTime().message() << "Starting shutdown sequence...";
     try {
-        // First stop the web server as it might be using other components
-        if (gWebServer && gWebServer->isRunning()) {
-            Fancy::fancy.logTime().message() << "Stopping web server..." << std::endl;
-            gWebServer->stop();
-        }
-
-        // Then stop audio-related services
-        Fancy::fancy.logTime().message() << "Cleaning up audio resources..." << std::endl;
-        gAudio.destroy();
-
+        if (gWebServer && gWebServer->isRunning()) { Fancy::fancy.logTime().message() << "Stopping web server..."; gWebServer->stop(); }
+        Fancy::fancy.logTime().message() << "Cleaning up audio resources..."; gAudio.destroy();
         #if defined(__linux__)
-        if (gAudioBackend) {
-            gAudioBackend->destroy();
-        }
+        if (gAudioBackend) { gAudioBackend->destroy(); }
         #endif
 
-        // Save configuration last
-        Fancy::fancy.logTime().message() << "Saving configuration..." << std::endl;
-        gConfig.data.set(gData);
-        gConfig.settings = gSettings;
-        gConfig.save();
+        Fancy::fancy.logTime().message() << "Attempting final save before exit...";
+        try {
+            // Use fully qualified names here
+            Soundux::Globals::gConfig.data.set(Soundux::Globals::gData);
+            Soundux::Globals::gConfig.settings = Soundux::Globals::gSettings;
+            Soundux::Globals::gConfig.save();
+            Fancy::fancy.logTime().success() << "Final configuration saved successfully.";
+        } catch (const std::exception& e) {
+            Fancy::fancy.logTime().failure() << "Error during final configuration save: " << e.what();
+        } catch (...) {
+            Fancy::fancy.logTime().failure() << "Unknown error during final configuration save.";
+        }
+        // Removed potentially redundant success log here
+    } catch (const std::exception& e) { Fancy::fancy.logTime().failure() << "Error during shutdown sequence: " << e.what() << std::endl; }
 
-        Fancy::fancy.logTime().success() << "Shutdown completed successfully" << std::endl;
-    } catch (const std::exception& e) {
-        Fancy::fancy.logTime().failure() << "Error during shutdown: " << e.what() << std::endl;
-    }
-
+    // Shutdown guard
     std::thread shutdownGuard([]() {
-        // Wait 5 seconds then force exit if still running
         std::this_thread::sleep_for(std::chrono::seconds(5));
-        Fancy::fancy.logTime().warning() << "Forcing exit after timeout" << std::endl;
-        std::_Exit(0); // Force immediate exit - use only as last resort
+        Fancy::fancy.logTime().warning() << "Forcing exit after 5s timeout.";
+        std::_Exit(0);
     });
     shutdownGuard.detach();
-
-    // Make one final save attempt before exiting
-    try {
-        Soundux::Globals::gConfig.data.set(Soundux::Globals::gData);
-        Soundux::Globals::gConfig.settings = Soundux::Globals::gSettings;
-        Soundux::Globals::gConfig.save();
-    } catch (const std::exception& e) {
-        Fancy::fancy.logTime().warning() << "Final save attempt failed: " << e.what() << std::endl;
-    } catch (...) {
-        Fancy::fancy.logTime().warning() << "Final save attempt failed" << std::endl;
-    }
-
 
     return 0;
 }

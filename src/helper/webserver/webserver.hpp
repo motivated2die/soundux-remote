@@ -1,4 +1,5 @@
-
+// --- START OF FILE webserver.hpp ---
+// Add clearAllTokens method
 #pragma once
 #include <atomic>
 #include <core/objects/settings.hpp>
@@ -6,9 +7,10 @@
 #include <memory>
 #include <string>
 #include <thread>
-#include <random> // Added
-#include <unordered_set> // Added
-#include <mutex> // Added
+#include <random>
+#include <unordered_set>
+#include <mutex>
+#include <vector> // Include vector for authorizedTokens
 
 namespace Soundux
 {
@@ -21,23 +23,20 @@ namespace Soundux
             std::thread serverThread;
             std::unique_ptr<httplib::Server> server;
             std::string webRoot;
-
-            // Authentication-related members
             std::string pinCode;
-            std::unordered_set<std::string> validTokens;
+            std::unordered_set<std::string> validTokens; // In-memory active tokens
             std::mutex tokensMutex;
 
             void setupRoutes();
             void setupTabEndpoints();
             void setupSoundEndpoints();
-            void setupAuthEndpoints(); // Added
+            void setupAuthEndpoints();
             void serveStaticFiles();
-
-            // Authentication methods
-            void generatePin(); // Added
-            std::string generateToken(); // Added
-            bool isValidToken(const std::string& token); // Added
-            bool authenticateRequest(const httplib::Request& req, httplib::Response& res); // Added
+            void generatePin();
+            std::string generateToken(); // Modifies settings
+            bool isValidToken(const std::string& token); // Reads settings
+            bool authenticateRequest(const httplib::Request& req, httplib::Response& res);
+            void loadPersistedTokens(); // ADDED: Load tokens on start
 
           public:
             WebServer();
@@ -46,9 +45,11 @@ namespace Soundux
             bool start(const std::string &host, int port, const std::string &webRootPath);
             void stop();
             bool isRunning() const;
+            const std::string& getPin() const { return pinCode; }
 
-            // Getter for the PIN code to display in UI
-            const std::string& getPin() const { return pinCode; } // Added
+            // ADDED: Public method to clear all tokens
+            void clearAllTokens();
         };
     } // namespace Objects
 } // namespace Soundux
+// --- END OF FILE webserver.hpp ---
