@@ -66,14 +66,37 @@ const layoutManager = (() => {
             console.error("Layout mode button not found");
         }
 
-         // Listen for tab changes to apply the correct layout
-         document.addEventListener('tabChanged', (event) => {
-             const { tabId } = event.detail;
-             if (tabId) {
-                const layoutMode = getCurrentLayoutModeForTab(tabId);
-                applyLayoutMode(layoutMode);
-             }
-         });
+        // Listen for tab changes to apply the correct layout
+        document.addEventListener('tabChanged', (event) => {
+            const { tabId } = event.detail;
+            if (tabId !== null && typeof tabId !== 'undefined') {
+               console.log(`Layout Manager: Tab changed to: ${tabId}. Applying layout.`);
+               // --- NEW CODE START ---
+               if (!soundsContainer) {
+                    console.error("Layout Manager: Cannot apply layout, soundsContainer not found.");
+                    return;
+               }
+               // --- NEW CODE END ---
+               const layoutMode = getCurrentLayoutModeForTab(tabId);
+               applyLayoutMode(layoutMode);
+            } else {
+               console.warn("Layout Manager: Tab changed event received with invalid tabId:", tabId);
+            }
+        });
+
+        // Apply layout for the initial tab once it's loaded
+        // We rely on app.js setting state.currentTab correctly first
+        // Add a small delay or listen for an 'appReady' event if needed
+        setTimeout(() => {
+            if (state.currentTab !== null && typeof state.currentTab !== 'undefined') {
+                    console.log(`Applying initial layout for tab: ${state.currentTab}`);
+                    const initialLayoutMode = getCurrentLayoutModeForTab(state.currentTab);
+                    applyLayoutMode(initialLayoutMode);
+            } else {
+                    console.warn("Initial layout application skipped: state.currentTab not set.");
+            }
+        }, 100); // Delay slightly to allow initial state setup
+
     };
 
     return {

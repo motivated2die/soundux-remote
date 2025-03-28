@@ -32,12 +32,21 @@ function initTabSwiping() {
     });
     
     function handleSwipe() {
+        // --- NEW CODE START ---
+        // Disable swipe if in edit mode
+        if (typeof editMode !== 'undefined' && editMode.isActive()) {
+            console.log("Swipe disabled in edit mode.");
+            return;
+        }
+        // --- NEW CODE END ---
+
         // Get fresh tabs information at the moment of the swipe
         const { tabs, currentTabIndex } = getTabsInfo();
-        
+
         if (tabs.length <= 1) return; // No need to swipe with 0 or 1 tabs
-        
+
         const swipeThreshold = 100; // Minimum swipe distance in pixels
+
         const swipeDistance = touchEndX - touchStartX;
         
         // Debug logs to help understand what's happening

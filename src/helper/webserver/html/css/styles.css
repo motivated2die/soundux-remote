@@ -9,12 +9,13 @@
     --v-secondary-darken2: #171717;
     --v-background-dark: #121212;
     --v-surface-dark: #1e1e1e;
+    --edit-mode-color: #009688; /* Green */
     --text-primary: #e0e0e0;
     --text-secondary: #b0b0b0;
     --error-color: #ff5252;
     --warning-color: #fb8c00;
     --success-color: #4caf50;
-    --edit-mode-color: #e91e63; /* Accent color for edit mode */
+    --edit-mode-color: #009688; /* Changed to Green for Edit Mode */
 
     /* Sound Card Colors (Muted/Desaturated for dark theme) */
     --sound-color-red-bg: #4a2a2a;
@@ -28,10 +29,10 @@
     /* Layout */
     --border-radius: 6px;
     --transition-speed: 0.2s;
-    --top-bar-height: 50px;
+    --top-bar-height: 35px; /* Reduced height */
     --header-height: 80px;
     --tabs-height: 60px;
-    --progress-bar-height: 4px; /* Increased visibility */
+    --progress-bar-height: 3px; /* Slightly thinner */
 }
 
 /* --- Base & Reset --- */
@@ -39,25 +40,25 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
+    -webkit-tap-highlight-color: transparent;
 }
 
 html, body {
     font-family: "Roboto", sans-serif;
     background-color: var(--v-background-dark);
     color: var(--text-primary);
-    line-height: 1.4; /* Slightly reduced for better density */
+    line-height: 1.4;
     width: 100vw;
     height: 100vh;
-    overflow: hidden; /* Prevent pull-to-refresh */
-    overscroll-behavior-y: contain; /* Prevent pull-to-refresh */
-    -webkit-touch-callout: none; /* Disable callout menu */
-    -webkit-user-select: none; /* Disable text selection */
+    overflow: hidden;
+    overscroll-behavior-y: contain;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
     user-select: none;
-    touch-action: manipulation; /* Improve touch responsiveness */
+    touch-action: manipulation;
 }
 
-/* Safe area insets for iOS PWA */
+/* Safe area insets */
 body {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
@@ -69,120 +70,137 @@ body {
 .container {
     display: flex;
     flex-direction: column;
-    height: 100%; /* Full viewport height */
+    height: 100%;
+    padding-top: calc(var(--top-bar-height) + var(--progress-bar-height)); /* Adjust padding for fixed top elements */
+}
+
+
+/* NEW: Edit Mode Info Styles */
+.edit-mode-info {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem; /* Smaller text */
+    color: rgba(255, 255, 255, 0.8); /* White but slightly transparent */
+    position: absolute; /* Position it absolutely */
+    left: 10px; /* Align left */
+    top: 50%; /* Center vertically */
+    transform: translateY(-50%);
+}
+.edit-mode-info .material-symbols-outlined {
+    font-size: 16px; /* Smaller icon */
+}
+.edit-mode .edit-mode-info { /* Show only in edit mode */
+    display: flex;
 }
 
 /* --- Top Bar --- */
 .top-bar {
+    position: fixed;
+    top: env(safe-area-inset-top, 0px); /* Use safe area, fallback to 0 */
+    left: env(safe-area-inset-left, 0px);
+    right: env(safe-area-inset-right, 0px);
+    z-index: 110;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    height: var(--top-bar-height);
-    padding: 0 12px;
+    justify-content: space-between; /* Pushes placeholder & buttons apart */
+    align-items: center; /* Vertically center all items */
+    height: var(--top-bar-height); /* Use reduced height */
+    padding: 0 10px;
     background-color: var(--v-secondary-darken1);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    flex-shrink: 0;
-    order: 1; /* Top */
     transition: background-color var(--transition-speed) ease;
 }
 
 .top-bar.edit-mode-active {
-    background-color: var(--edit-mode-color); /* Edit mode color */
+    background-color: var(--edit-mode-color); /* Green */
 }
 
-.status-info {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-}
-
-.status-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background-color: var(--v-secondary-base);
-    transition: background-color var(--transition-speed) ease;
-}
-.status-dot.connected { background-color: var(--success-color); }
-.status-dot.error { background-color: var(--error-color); }
-
-#wakelock-indicator {
-    display: inline-flex;
-    align-items: center;
-    font-size: 14px;
-    color: var(--text-secondary);
-    transition: color var(--transition-speed) ease;
-}
-#wakelock-indicator.active { color: var(--v-primary-base); }
-#wakelock-indicator .material-symbols-outlined {
-    font-size: 16px;
-    vertical-align: middle;
+.top-bar .top-bar-placeholder {
+    /* No flex-grow needed if edit info is absolute */
+    /* Used just to push action buttons right */
+    flex-shrink: 0; /* Prevent shrinking */
+    width: 10px; /* Minimal width */
+    margin-right: auto; /* Push action buttons to the right */
 }
 
 .top-bar .action-buttons {
     display: flex;
-    gap: 4px;
+    align-items: center; /* Vertically center items within this container */
+    gap: 7px;
+    margin-left: auto;
+    flex-shrink: 0;
+    height: 100%; /* Make the container take full height of top-bar */
 }
-
 .icon-button.top-bar-button {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background-color: transparent;
-    color: var(--text-primary);
-    transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease;
+    width: 32px; /* Smaller buttons */
+    height: 32px;
+    color: var(--text-secondary); /* Muted icon color */
 }
 .icon-button.top-bar-button:hover,
-.icon-button.top-bar-button.active { /* Visual feedback for active edit button */
+.icon-button.top-bar-button.active {
     background-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
 }
 .top-bar.edit-mode-active .icon-button.top-bar-button {
-    color: white; /* Ensure icons are visible on colored bg */
+    color: white; /* White icons on green */
 }
 .top-bar.edit-mode-active .icon-button.top-bar-button:hover,
 .top-bar.edit-mode-active .icon-button.top-bar-button.active {
     background-color: rgba(0, 0, 0, 0.2);
 }
 .icon-button.top-bar-button .material-symbols-outlined {
-    font-size: 22px;
+    font-size: 20px; /* Smaller icon */
 }
 
-/* --- Main Sound Grid --- */
+/* --- Progress Bar --- */
+#sound-progress-container {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + var(--top-bar-height)); /* Below top bar, respect safe area */
+    left: env(safe-area-inset-left, 0px);
+    right: env(safe-area-inset-right, 0px);
+    height: var(--progress-bar-height);
+    background-color: transparent;
+
+    z-index: 105; /* Below top bar */
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+}
+#sound-progress-container.active { opacity: 1; transition: opacity 0.2s ease; }
+#sound-progress-bar {
+    height: 100%;
+    width: 0;
+    background-color: var(--v-primary-base);
+    transition: width 0.1s linear; /* Keep smooth update */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); /* Add subtle shadow */
+}
+
+/* --- Main Sound Grid (adjust padding) --- */
 main#sounds-container {
-    order: 2; /* Below top bar */
-    flex-grow: 1; /* Fill remaining space */
+    order: 1;
+    flex-grow: 1;
     display: grid;
-    gap: 10px; /* Slightly reduced gap */
+    gap: 10px;
     padding: 10px;
     overflow-y: auto;
     background-color: var(--v-background-dark);
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none; /* Hide scrollbar Firefox */
-    padding-bottom: calc(var(--tabs-height) + var(--header-height) + var(--progress-bar-height) + 10px); /* Space for fixed bottom elements */
+    scrollbar-width: none;
+    /* Calculate padding to avoid fixed elements at the bottom */
+    padding-bottom: calc(var(--header-height) + var(--tabs-height) + env(safe-area-inset-bottom, 0px) + 10px); /* +10px extra space */
 }
-main#sounds-container::-webkit-scrollbar { display: none; } /* Hide scrollbar Chrome/Safari */
 
-/* Default layout (3 columns) */
-main#sounds-container.layout-grid-3 {
-    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-}
-/* 2 columns layout */
-main#sounds-container.layout-grid-2 {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-}
-/* List layout */
-main#sounds-container.layout-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px; /* Smaller gap for list */
-}
+main#sounds-container::-webkit-scrollbar { display: none; }
+
+/* Layout modes (keep existing) */
+main#sounds-container.layout-grid-3 { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+main#sounds-container.layout-grid-2 { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+main#sounds-container.layout-list { display: flex; flex-direction: column; gap: 0; /* Remove gap for list */ padding: 0 10px; /* Add padding for list items */}
 
 /* --- Sound Card --- */
 .sound-card {
-    position: relative; /* Needed for indicators and emoji background */
+    position: relative;
     background-color: var(--v-surface-dark);
     border-radius: var(--border-radius);
     padding: 10px;
@@ -193,15 +211,15 @@ main#sounds-container.layout-list {
     align-items: center;
     justify-content: center;
     min-height: 75px;
-    max-height: 90px; /* Limit height */
+    max-height: 90px;
     color: var(--text-primary);
     border: 2px solid transparent;
     font-size: 0.9rem;
-    line-height: 1.2; /* Adjusted */
+    line-height: 1.2;
     word-break: break-word;
     hyphens: auto;
-    overflow: hidden; /* Prevent large emojis overflowing */
-    --sound-base-color: var(--v-surface-dark); /* Base color for gradient reset */
+    overflow: hidden;
+    --sound-base-color: var(--v-surface-dark);
 }
 .sound-card:hover {
     background-color: var(--v-secondary-darken1);
@@ -209,105 +227,77 @@ main#sounds-container.layout-list {
     --sound-base-color: var(--v-secondary-darken1);
 }
 
-/* Edit Mode Sound Card Styles */
-.edit-mode .sound-card {
-    cursor: default; /* No pointer cursor */
-}
-.edit-mode .sound-card:hover {
-     background-color: var(--v-secondary-darken1); /* Keep hover effect minimal */
-     box-shadow: none;
-}
-.sortable-ghost { /* Style for drag placeholder */
-    opacity: 0.4;
-    background-color: var(--v-secondary-base) !important; /* Important to override other styles */
-}
-.sortable-chosen, .sortable-drag { /* Style for the item being dragged */
-    opacity: 0.8;
-    box-shadow: 0 5px 15px rgba(0,0,0,.3);
-    transform: scale(1.05);
-    cursor: grabbing !important;
-}
+/* Edit Mode Sound Card Styles (keep existing) */
+.edit-mode .sound-card { cursor: default; }
+.edit-mode .sound-card:hover { background-color: var(--v-secondary-darken1); box-shadow: none; }
+.sortable-ghost { opacity: 0.4; background-color: var(--v-secondary-base) !important; }
+.sortable-chosen, .sortable-drag { opacity: 0.8; box-shadow: 0 5px 15px rgba(0,0,0,.3); transform: scale(1.05); cursor: grabbing !important; }
 
-
-/* Playing State */
-.sound-card.playing {
-    animation: highlightFade 1.5s forwards; /* Animation for playing state */
-}
+/* Playing State (keep existing) */
+.sound-card.playing { animation: highlightFade 1.5s forwards; }
 @keyframes highlightFade {
     0%, 70% { border-color: var(--v-primary-base); box-shadow: 0 0 8px var(--v-primary-base); }
     100% { border-color: transparent; box-shadow: none; }
 }
 
-/* Sound Card Content Wrapper */
+/* Sound Card Content Wrapper (keep existing) */
 .sound-content-wrapper {
-    position: relative; /* To allow emoji pseudo-element positioning */
-    z-index: 1; /* Ensure text is above background emoji */
-    display: flex; /* For list view alignment */
-    align-items: center; /* For list view alignment */
-    width: 100%; /* For list view */
-    justify-content: center; /* Default center for grid */
+    position: relative; z-index: 1; display: flex;
+    align-items: center; width: 100%; justify-content: center;
 }
 
-/* List Layout Specific Styles */
-.layout-list .sound-card {
-    min-height: 45px; /* Shorter for list */
-    max-height: 50px;
-    justify-content: flex-start; /* Align content left */
-    padding: 8px 12px;
+/* List Layout Specific Styles (Revised) */
+main#sounds-container.layout-list .sound-card {
+    min-height: auto;
+    max-height: none;
+    justify-content: flex-start;
+    padding: 4% 15px; /* ADJUSTED padding */
     text-align: left;
+    border-radius: 0;
+    border: none; /* Remove side borders */
+    border-bottom: 1px solid var(--v-secondary-darken1); /* Separator line */
+    background-color: transparent; /* Use main background */
+    --sound-base-color: transparent;
+}
+main#sounds-container.layout-list .sound-card:hover {
+    background-color: var(--v-secondary-darken2); /* Hover effect */
+     --sound-base-color: var(--v-secondary-darken2);
+}
+main#sounds-container.layout-list .sound-card:last-child {
+    border-bottom: none; /* No border on last item */
 }
 .layout-list .sound-content-wrapper {
-    justify-content: flex-start; /* Align text and emoji left */
-    gap: 8px; /* Space between emoji and text */
+    justify-content: flex-start;
+    gap: 10px; /* Increased gap */
 }
 .layout-list .sound-text {
-     white-space: nowrap;
-     overflow: hidden;
-     text-overflow: ellipsis;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: 1rem; /* Slightly larger text */
 }
 .layout-list .sound-emoji-list {
-    font-size: 1.2em; /* Emoji size in list view */
+    font-size: 1.4em; /* Emoji size */
+    width: 24px; /* Fixed width for alignment */
+    text-align: center;
 }
 
-/* Grid Layout Emoji (Background) */
+/* Grid Layout Emoji (keep existing) */
 .layout-grid-2 .sound-card::before,
 .layout-grid-3 .sound-card::before {
-    content: var(--sound-emoji, ''); /* Use CSS variable set by JS */
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 4.5em; /* Large emoji */
-    color: var(--text-primary); /* Base color */
-    opacity: 0.15; /* Reduced opacity */
-    z-index: 0; /* Behind the text */
-    pointer-events: none;
-    line-height: 1;
+    content: var(--sound-emoji, '');
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 4.5em; color: var(--text-primary); opacity: 0.15;
+    z-index: 0; pointer-events: none; line-height: 1;
 }
 
-/* Sound Card Indicators */
+/* Sound Card Indicators (keep existing) */
 .sound-indicators {
-    position: absolute;
-    bottom: 3px;
-    right: 3px;
-    display: flex;
-    gap: 3px;
-    z-index: 2; /* Above background emoji, below text(?) */
-    pointer-events: none;
+    position: absolute; bottom: 3px; right: 3px; display: flex; gap: 3px;
+    z-index: 2; pointer-events: none;
 }
-.indicator-icon {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.6);
-}
-.indicator-icon.favorite-indicator {
-    color: var(--edit-mode-color); /* Use edit mode color for fav */
-    font-variation-settings: "'FILL' 1"; /* Filled heart */
-}
-.indicator-icon.volume-indicator {
-    /* Keep default color or choose another */
-}
+.indicator-icon { font-size: 12px; color: rgba(255, 255, 255, 0.6); }
+.indicator-icon.favorite-indicator { color: var(--edit-mode-color); font-variation-settings: "'FILL' 1"; }
 
-/* Sound Card Custom Colors */
+/* Sound Card Custom Colors (keep existing) */
 .sound-card.sound-color-red    { background-color: var(--sound-color-red-bg); --sound-base-color: var(--sound-color-red-bg); }
 .sound-card.sound-color-orange { background-color: var(--sound-color-orange-bg); --sound-base-color: var(--sound-color-orange-bg); }
 .sound-card.sound-color-yellow { background-color: var(--sound-color-yellow-bg); --sound-base-color: var(--sound-color-yellow-bg); }
@@ -316,325 +306,313 @@ main#sounds-container.layout-list {
 .sound-card.sound-color-purple { background-color: var(--sound-color-purple-bg); --sound-base-color: var(--sound-color-purple-bg); }
 .sound-card.sound-color-pink   { background-color: var(--sound-color-pink-bg); --sound-base-color: var(--sound-color-pink-bg); }
 
-
-/* --- Progress Bar --- */
-#sound-progress-container {
-    position: fixed;
-    bottom: calc(var(--tabs-height) + var(--header-height)); /* Above tabs */
-    left: 0;
-    right: 0;
-    height: var(--progress-bar-height);
-    background-color: rgba(255, 255, 255, 0.1);
-    z-index: 95; /* Below tabs/header, above content */
-    opacity: 0;
-    transition: opacity 0.5s ease;
-    pointer-events: none; /* Allow clicks through */
-}
-#sound-progress-container.active { opacity: 1; transition: opacity 0.2s ease; }
-#sound-progress-bar {
-    height: 100%;
-    width: 0;
-    background-color: var(--v-primary-base);
-    transition: width 0.1s linear; /* Smooth progress update */
-}
-
-/* --- Tabs --- */
+/* --- Tabs --- (keep existing) */
 nav#tabs-container {
-    order: 3; /* Below main content */
+    order: 2;
     position: fixed;
-    bottom: var(--header-height); /* Above header */
-    left: 0;
-    right: 0;
+    bottom: calc(var(--header-height) + env(safe-area-inset-bottom, 0px)); /* Above header, respect safe area */
+    left: env(safe-area-inset-left, 0px);
+    right: env(safe-area-inset-right, 0px);
     z-index: 90;
     height: var(--tabs-height);
-    display: flex;
-    overflow-x: auto;
-    white-space: nowrap;
-    scrollbar-width: none; /* Hide scrollbar Firefox */
-    -webkit-overflow-scrolling: touch;
-    background-color: var(--v-secondary-darken1);
-    border-top: 1px solid rgba(255, 255, 255, 0.05); /* Subtle top border */
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05); /* Subtle bottom border */
+
+    display: flex; overflow-x: auto; white-space: nowrap; scrollbar-width: none;
+    -webkit-overflow-scrolling: touch; background-color: var(--v-secondary-darken1);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
-nav#tabs-container::-webkit-scrollbar { display: none; } /* Hide scrollbar Chrome/Safari */
+nav#tabs-container::-webkit-scrollbar { display: none; }
 
 .tab {
-    flex: 0 0 auto; /* Prevent shrinking/growing */
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 20px;
-    height: var(--tabs-height);
-    background-color: transparent; /* Tabs transparent by default */
-    color: var(--text-secondary); /* Muted color for inactive tabs */
-    border: 0;
-    border-top: 4px solid transparent; /* Placeholder for active indicator */
-    cursor: pointer;
-    transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease, border-color var(--transition-speed) ease;
-    font-size: 0.9rem;
-    font-weight: 600; /* Bold */
-    gap: 6px;
+    flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+    padding: 0 20px; height: var(--tabs-height); background-color: transparent;
+    color: var(--text-secondary); border: 0; border-top: 4px solid transparent;
+    cursor: pointer; transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease, border-color var(--transition-speed) ease;
+    font-size: 0.9rem; font-weight: 600; gap: 6px;
+    text-transform: uppercase;
+
 }
 .tab .material-symbols-outlined { font-size: 20px; }
-.tab:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-    color: var(--text-primary);
-}
+.tab:hover { background-color: rgba(255, 255, 255, 0.05); color: var(--text-primary); }
 .tab.active {
-    color: var(--v-primary-base); /* Active color */
-    border-top-color: var(--v-primary-base); /* Top border indicator */
-    background-color: rgba(82, 177, 140, 0.1); /* Subtle background highlight */
+    color: var(--v-primary-base); border-top-color: var(--v-primary-base);
+    background-color: rgba(82, 177, 140, 0.1);
 }
-.tab.active .material-symbols-outlined { /* Ensure icon matches active color */
-     color: var(--v-primary-base);
-     font-variation-settings: "'FILL' 1"; /* Fill favorite icon when active */
-}
+.tab.active .material-symbols-outlined { color: var(--v-primary-base); font-variation-settings: "'FILL' 1"; }
 
 /* --- Bottom Header --- */
 header {
-    order: 4; /* Bottom */
+    order: 3;
     position: fixed;
-    bottom: env(safe-area-inset-bottom); /* Respect safe area */
-    left: env(safe-area-inset-left);
-    right: env(safe-area-inset-right);
+    bottom: env(safe-area-inset-bottom, 0px); /* Respect safe area, fallback 0 */
+    left: env(safe-area-inset-left, 0px);
+    right: env(safe-area-inset-right, 0px);
     z-index: 100;
     height: var(--header-height);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 16px;
-    background-color: var(--v-secondary-darken2); /* Darker background */
-    border-top: 1px solid rgba(255,255,255,0.1);
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 16px; background-color: var(--v-secondary-darken2);
+    border-top: 1px solid rgba(255,255,255,0.1); box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
 }
 
-.app-title {
+.app-title { display: flex; align-items: center; gap: 10px; }
+.logo { width: 40px; height: 40px; }
+.title-group { display: flex; flex-direction: column; }
+h1 { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); line-height: 1; }
+
+
+/* Server Status - Moved here */
+/* Server Status - Moved here */
+.server-status {
     display: flex;
     align-items: center;
-    gap: 10px;
+    font-size: .8rem; /* Match original */
+    color: var(--text-secondary);
+    margin-top: 4px; /* Spacing below title */
+    gap: 5px; /* Gap between elements */
 }
-.logo { width: 40px; height: 40px; }
-h1 { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); line-height: 1; }
-.title-group { display: flex; flex-direction: column; }
+/* Ensure status dot comes first */
+#status-indicator { order: 1; }
+/* Text next */
+#server-status-text { order: 2; }
+/* Wakelock indicator last */
+.wakelock-indicator {
+    order: 3;
+    display: inline-flex; /* Keep display type */
+    align-items: center;
+    font-size: 14px; /* Match original */
+    color: var(--text-secondary);
+    transition: color var(--transition-speed) ease;
+}
+.wakelock-indicator.active { color: var(--v-primary-base); }
+.wakelock-indicator .material-symbols-outlined {
+    font-size: 14px; /* Match original icon size */
+    vertical-align: middle;
+}
 
 /* Stop Button */
-.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    transition: background-color var(--transition-speed) ease;
-    background-color: transparent;
-    color: var(--text-primary);
-    min-height: 44px; /* Ensure tappable */
+.btn { /* Base button reset */
+    display: inline-flex; align-items: center; justify-content: center; border: 0;
+    border-radius: var(--border-radius); cursor: pointer; transition: background-color var(--transition-speed) ease;
+    background-color: transparent; color: var(--text-primary); min-height: 44px;
 }
+
 .btn-danger {
-    background-color: var(--error-color);
-    color: white;
-    width: 100px; /* Fixed width */
-    height: 50px;
-    padding: 8px;
-    border-radius: 25px; /* Rounded pill shape */
-    gap: 6px;
+    background-color: var(--error-color); color: white;
+    width: 120px; /* Back to original width */
+    height: 60px; /* Back to original height */
+    padding: 8px; border-radius: 30px; /* Adjust radius */ gap: 8px;
 }
 .btn-danger:hover { background-color: #ff6b6b; }
-.btn-danger .material-symbols-outlined { font-size: 28px; }
-.stop-text { font-weight: 700; font-size: 0.9rem; }
+.btn-danger .material-symbols-outlined { font-size: 32px; } /* Original icon size */
+.stop-text { font-weight: 700; font-size: 1rem; } /* Original text size */
 
 /* --- Sound Settings Menu --- */
-#sound-settings-overlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    z-index: 1000;
-    transition: visibility 0.3s;
-}
-#sound-settings-overlay.hidden {
-    visibility: hidden;
-    pointer-events: none;
-}
-#settings-backdrop {
-    position: absolute;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.6);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    backdrop-filter: blur(2px);
-}
+/* Overlay and Backdrop (keep existing) */
+#sound-settings-overlay { position: fixed; inset: 0; z-index: 1000; transition: visibility 0.3s; }
+#sound-settings-overlay.hidden { visibility: hidden; pointer-events: none; }
+#settings-backdrop { position: absolute; inset: 0; background-color: rgba(0, 0, 0, 0.6); opacity: 0; transition: opacity 0.3s ease; backdrop-filter: blur(2px); }
 #sound-settings-overlay:not(.hidden) #settings-backdrop { opacity: 1; }
 
+/* Card (keep existing, adjust padding) */
 #settings-card {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background-color: var(--v-secondary-darken1);
-    border-radius: 16px 16px 0 0;
-    padding: 12px 20px calc(env(safe-area-inset-bottom) + 20px) 20px; /* Add bottom padding for safe area */
-    transform: translateY(110%);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    max-height: 85vh; /* Limit height */
-    overflow-y: auto;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+    position: absolute; bottom: 0; left: 0; right: 0; background-color: var(--v-secondary-darken1);
+    border-radius: 16px 16px 0 0; padding: 12px 20px calc(env(safe-area-inset-bottom) + 20px) 20px;
+    transform: translateY(110%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height: 85vh; overflow-y: auto; box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+    /* Add scrollbar styling for desktop */
+    scrollbar-width: thin;
+    scrollbar-color: var(--v-secondary-base) transparent;
 }
+#settings-card::-webkit-scrollbar { width: 6px; }
+#settings-card::-webkit-scrollbar-thumb { background-color: var(--v-secondary-base); border-radius: 3px; }
 #sound-settings-overlay:not(.hidden) #settings-card { transform: translateY(0); }
 
-.handle-bar {
-    width: 40px;
-    height: 4px;
-    background-color: var(--text-secondary);
-    border-radius: 2px;
-    margin: 0 auto 12px;
-}
+/* Handle, Info, Action Buttons, Divider (keep existing) */
+.handle-bar { width: 40px; height: 4px; background-color: var(--text-secondary); border-radius: 2px; margin: 0 auto 12px; }
 .sound-info { margin-bottom: 16px; text-align: center; }
 #settings-sound-name { font-size: 1.4rem; margin: 0; word-break: break-word; }
 #settings-tab-name { color: var(--text-secondary); margin: 4px 0 0; font-size: 0.8rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
-
-.action-buttons { display: flex; justify-content: center; gap: 16px; margin-bottom: 20px; }
-.icon-button {
-    width: 48px; height: 48px; border-radius: 50%; background-color: var(--v-secondary-base);
+.action-buttons { display: flex; justify-content: center; gap: 16px; }
+.icon-button { /* General icon button style */
+    width: 48px; height: 48px; border-radius: 50%; background-color: var(--v-secondary-darken1);
     border: none; display: flex; align-items: center; justify-content: center; color: var(--text-primary);
-    transition: background-color var(--transition-speed) ease;
+    transition: background-color var(--transition-speed) ease; cursor: pointer;
 }
 .icon-button .material-symbols-outlined { font-size: 24px; }
-.icon-button[data-type="favorite"] .material-symbols-outlined {
-    transition: color 0.2s, transform 0.2s, font-variation-settings 0.2s;
-    font-variation-settings: "'FILL' 0"; color: var(--text-secondary);
-}
-.icon-button[data-type="favorite"].active .material-symbols-outlined {
-    color: var(--edit-mode-color); transform: scale(1.1); font-variation-settings: "'FILL' 1";
-}
-
-.action-button {
+.icon-button[data-type="favorite"] .material-symbols-outlined { transition: color 0.2s, transform 0.2s, font-variation-settings 0.2s; font-variation-settings: "'FILL' 0"; color: var(--text-secondary); }
+.icon-button[data-type="favorite"].active .material-symbols-outlined { color: var(--edit-mode-color); transform: scale(1.1); font-variation-settings: "'FILL' 1"; }
+.action-button { /* General text button style */
     padding: 0 18px; height: 48px; border-radius: 24px; background-color: var(--v-secondary-base);
     border: none; display: flex; align-items: center; justify-content: center; color: var(--text-primary);
-    gap: 8px; transition: all var(--transition-speed) ease; min-width: 120px; font-weight: 500; font-size: 0.9rem;
+    gap: 8px; transition: all var(--transition-speed) ease; min-width: 120px; font-weight: 500; font-size: 0.9rem; cursor: pointer;
 }
 .action-button:active { background-color: var(--v-secondary-darken2); }
 .action-button .material-symbols-outlined { font-size: 22px; }
 .action-button[data-state="stop"] { background-color: var(--error-color); }
-
 .divider { height: 1px; background-color: rgba(255, 255, 255, 0.1); margin: 16px 0; }
-
 .settings-section { margin-bottom: 20px; }
 .settings-section h3 { font-size: 1rem; margin-bottom: 12px; color: var(--text-primary); font-weight: 500; }
 
-/* Color Selector */
-.color-selector { display: flex; flex-wrap: wrap; gap: 10px; }
-.color-swatch {
-    width: 36px; height: 36px; border-radius: 50%; border: 2px solid transparent;
-    cursor: pointer; transition: transform var(--transition-speed) ease, border-color var(--transition-speed) ease;
-}
-.color-swatch:hover { transform: scale(1.1); }
-.color-swatch.selected { border-color: var(--text-primary); transform: scale(1.1); }
-.color-swatch.default { background-color: var(--v-surface-dark); border-color: var(--text-secondary); } /* Default */
-.color-swatch.red     { background-color: var(--sound-color-red-bg); }
-.color-swatch.orange  { background-color: var(--sound-color-orange-bg); }
-.color-swatch.yellow  { background-color: var(--sound-color-yellow-bg); }
-.color-swatch.green   { background-color: var(--sound-color-green-bg); }
-.color-swatch.blue    { background-color: var(--sound-color-blue-bg); }
-.color-swatch.purple  { background-color: var(--sound-color-purple-bg); }
-.color-swatch.pink    { background-color: var(--sound-color-pink-bg); }
-
-
-/* Emoji Selector */
-.emoji-selector-container {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-#emoji-selector-button {
-     min-width: 150px; /* Ensure enough space */
-     justify-content: flex-start; /* Align content left */
-}
-.current-emoji {
-    font-size: 1.4em; /* Make emoji slightly larger */
-    margin-right: 8px;
-    display: inline-block;
-    width: 24px; /* Ensure space even if no emoji */
-    text-align: center;
-}
-.small-reset {
-     width: 36px;
-     height: 36px;
-     min-width: 36px;
-     padding: 0;
-     border-radius: 50%;
-     background-color: var(--v-secondary-darken2);
-}
-.small-reset .material-symbols-outlined { font-size: 20px; }
-
-
-/* Volume Control */
+/* Volume Control (keep existing) */
 .volume-control { margin-top: 16px; }
 .slider-container { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .slider-container .material-symbols-outlined { color: var(--text-secondary); }
 .volume-info { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-secondary); }
-#volume-slider {
-    flex: 1; -webkit-appearance: none; height: 6px; border-radius: 3px;
-    background-color: var(--v-secondary-darken2); outline: none; position: relative;
-}
-#volume-slider::before { /* Center mark */
-    content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: 2px; height: 12px; background-color: var(--text-secondary); z-index: 1;
-}
-#volume-slider::-webkit-slider-thumb {
-    -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
-    background: var(--text-primary); cursor: pointer; transition: background 0.15s;
-}
-#volume-slider::-moz-range-thumb {
-    width: 20px; height: 20px; border-radius: 50%; background: var(--text-primary);
-    cursor: pointer; transition: background 0.15s; border: none;
-}
-.reset-button {
-    background-color: transparent; border: 1px solid var(--text-secondary); color: var(--text-secondary);
-    padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; cursor: pointer; transition: all var(--transition-speed) ease;
-}
+#volume-slider { flex: 1; -webkit-appearance: none; height: 6px; border-radius: 3px; background-color: var(--v-secondary-darken2); outline: none; position: relative; }
+#volume-slider::before { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 2px; height: 12px; background-color: var(--text-secondary); z-index: 1; }
+#volume-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--text-primary); cursor: pointer; transition: background 0.15s; }
+#volume-slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--text-primary); cursor: pointer; transition: background 0.15s; border: none; }
+.reset-button { background-color: transparent; border: 1px solid var(--text-secondary); color: var(--text-secondary); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; cursor: pointer; transition: all var(--transition-speed) ease; }
 .reset-button:hover { background-color: var(--v-secondary-base); color: var(--text-primary); }
 .reset-button.hidden { display: none; }
 
-
-/* --- App Settings Modal --- */
-#app-settings-modal-overlay {
-    position: fixed; inset: 0; z-index: 1100;
-    display: flex; align-items: center; justify-content: center;
-    background-color: rgba(0, 0, 0, 0.7);
-    opacity: 0; transition: opacity 0.3s ease, visibility 0.3s;
-    visibility: hidden; backdrop-filter: blur(2px);
+/* Color Selector (Ensure single line) */
+.color-selector {
+    display: flex;
+    flex-wrap: nowrap; /* Prevent wrapping */
+    gap: 8px; /* Reduced gap */
+    overflow-x: auto; /* Allow horizontal scroll if needed */
+    padding-bottom: 5px; /* Space for scrollbar if it appears */
+    scrollbar-width: thin;
+    scrollbar-color: var(--v-secondary-base) transparent;
 }
+.color-selector::-webkit-scrollbar { height: 4px; }
+.color-selector::-webkit-scrollbar-thumb { background-color: var(--v-secondary-base); border-radius: 2px; }
+.color-swatch {
+    width: 32px; height: 32px; /* Slightly smaller */
+    flex-shrink: 0; /* Prevent shrinking */
+}
+/* Colors (keep existing) */
+.color-swatch.default { background-color: var(--v-surface-dark); border-color: var(--text-secondary); }
+.color-swatch.red { background-color: var(--sound-color-red-bg); }
+.color-swatch.orange { background-color: var(--sound-color-orange-bg); }
+.color-swatch.yellow { background-color: var(--sound-color-yellow-bg); }
+.color-swatch.green { background-color: var(--sound-color-green-bg); }
+.color-swatch.blue { background-color: var(--sound-color-blue-bg); }
+.color-swatch.purple { background-color: var(--sound-color-purple-bg); }
+.color-swatch.pink { background-color: var(--sound-color-pink-bg); }
+
+/* Emoji Selector - Revised for Picmo */
+.emoji-search {
+    width: 100%;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--v-secondary-base);
+    background-color: var(--v-surface-dark);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+#emoji-picker-container {
+    /* Container for the picker - Picmo might style itself */
+    min-height: 200px; /* Ensure space */
+    /* The actual picker will be positioned by Picmo's popup logic */
+}
+/* Style Picmo elements if needed (use browser dev tools to find selectors) */
+/* e.g., .picmo__popupContainer, .picmo__search, .picmo__list */
+.picmo__popupContainer {
+     background-color: var(--v-secondary-darken1) !important; /* Example override */
+     border: 1px solid var(--v-secondary-base) !important;
+     border-radius: var(--border-radius) !important;
+     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4) !important;
+     max-height: 300px !important; /* Limit height */
+}
+/* Trigger element (used by Picmo for positioning) */
+#emoji-picker-trigger {
+     width: 100%; /* Make it span width for better positioning */
+     height: 48px; /* Match action button height */
+     border-radius: 24px;
+     background-color: var(--v-secondary-base);
+     border: none;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     color: var(--text-primary);
+     gap: 8px;
+     cursor: pointer;
+     transition: background-color var(--transition-speed) ease;
+     font-weight: 500;
+     font-size: 0.9rem;
+     margin-bottom: 10px; /* Space before clear button */
+}
+#emoji-picker-trigger:hover {
+    background-color: var(--v-secondary-darken2);
+}
+.current-emoji {
+    font-size: 1.4em; margin-right: 8px; display: inline-block;
+    width: 24px; text-align: center;
+}
+/* Clear button specifically for emoji in settings */
+#clear-emoji-button-settings {
+     position: absolute; /* Position relative to the section */
+     top: 0; right: 0; /* Adjust as needed */
+     width: 32px; height: 32px; min-width: 32px; padding: 0;
+     border-radius: 50%; background-color: var(--v-secondary-darken2);
+}
+#clear-emoji-button-settings .material-symbols-outlined { font-size: 18px; }
+
+
+/* --- App Settings Modal (keep existing, add toggle switch) --- */
+#app-settings-modal-overlay { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; background-color: rgba(0, 0, 0, 0.7); opacity: 0; transition: opacity 0.3s ease, visibility 0.3s; visibility: hidden; backdrop-filter: blur(2px); }
 #app-settings-modal-overlay:not(.hidden) { opacity: 1; visibility: visible; }
-
-#app-settings-modal {
-    background-color: var(--v-secondary-darken1);
-    border-radius: 12px;
-    padding: 25px;
-    width: 90%;
-    max-width: 400px;
-    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
-    transform: scale(0.95);
-    transition: transform 0.3s ease;
-}
+#app-settings-modal { background-color: var(--v-secondary-darken1); border-radius: 12px; padding: 25px; width: 90%; max-width: 400px; box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5); transform: scale(0.95); transition: transform 0.3s ease; }
 #app-settings-modal-overlay:not(.hidden) #app-settings-modal { transform: scale(1); }
-
-#app-settings-modal h2 {
-    text-align: center; margin-bottom: 20px; font-size: 1.3rem;
-}
+#app-settings-modal h2 { text-align: center; margin-bottom: 20px; font-size: 1.3rem; }
 #app-settings-modal .settings-section { margin-bottom: 20px; }
-#app-settings-modal .modal-actions { display: flex; gap: 15px; justify-content: center; margin-top: 10px; }
+#app-settings-modal .modal-actions { display: flex; gap: 15px; justify-content: center; margin-top: 10px; flex-wrap: wrap;} /* Allow wrapping */
 #app-settings-modal .action-button { font-size: 0.9rem; height: 44px; border-radius: 22px; }
 #app-settings-modal .action-button.secondary { background-color: var(--v-secondary-base); }
 #app-settings-modal .modal-info { font-size: 0.85rem; color: var(--text-secondary); margin-top: 15px; text-align: center; }
 
+/* Toggle Switch Styles */
+.toggle-switch {
+    position: relative;
+    display: inline-flex; /* Use flex for alignment */
+    align-items: center; /* Center items vertically */
+    width: auto; /* Adjust width based on content */
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    gap: 10px; /* Space between slider and text */
+}
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.toggle-switch .slider {
+    position: relative;
+    display: inline-block;
+    width: 40px; /* Smaller width */
+    height: 20px; /* Smaller height */
+    background-color: var(--v-secondary-base);
+    border-radius: 10px; /* Fully rounded */
+    transition: var(--transition-speed);
+}
+.toggle-switch .slider:before {
+    position: absolute;
+    content: "";
+    height: 14px; /* Smaller knob */
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: var(--transition-speed);
+}
+.toggle-switch input:checked + .slider {
+    background-color: var(--v-primary-base);
+}
+.toggle-switch input:checked + .slider:before {
+    transform: translateX(20px); /* Adjust translation */
+}
 
 /* --- Utilities --- */
 .hidden { display: none !important; }
 .fade-in { animation: fadeIn 0.3s ease-in; }
 @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
-
 .error-text { color: var(--error-color); text-align: center; padding: 20px; }
 .no-sounds { color: var(--text-secondary); text-align: center; padding: 20px; font-style: italic; }
-
-/* --- Specific Overrides --- */
-/* Ensure material symbols are vertically aligned */
 .material-symbols-outlined { vertical-align: middle; }
+/* --- ENTIRE FILE REPLACE --- */

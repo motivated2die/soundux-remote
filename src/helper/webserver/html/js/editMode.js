@@ -4,7 +4,10 @@ const editMode = (() => {
     const editButton = document.getElementById('edit-mode-button');
     const layoutButton = document.getElementById('layout-mode-button');
     const topBar = document.getElementById('top-bar');
-    const soundsContainer = document.getElementById('sounds-container'); // Needed for cursor style
+    const soundsContainer = document.getElementById('sounds-container');
+    // --- NEW CODE START ---
+    const editModeInfo = document.getElementById('edit-mode-info');
+    // --- NEW CODE END ---
 
     const toggleEditMode = () => {
         isEditModeActive = !isEditModeActive;
@@ -18,7 +21,11 @@ const editMode = (() => {
         document.body.classList.toggle('edit-mode', isEditModeActive);
         topBar?.classList.toggle('edit-mode-active', isEditModeActive);
         layoutButton?.classList.toggle('hidden', !isEditModeActive);
-        editButton?.classList.toggle('active', isEditModeActive); // Add visual feedback to edit button
+        editButton?.classList.toggle('active', isEditModeActive);
+
+        // --- NEW CODE START ---
+        editModeInfo?.classList.toggle('hidden', !isEditModeActive); // Show/hide info text
+        // --- NEW CODE END ---
 
         // Change icon based on state
         const editIcon = editButton?.querySelector('.material-symbols-outlined');

@@ -1,4 +1,3 @@
-// --- ENTIRE FILE REPLACE ---
 // Global state management
 const state = {
     currentlyPlaying: new Map(), // Map soundId -> playingId
@@ -8,10 +7,11 @@ const state = {
     apiBaseUrl: '', // Determined on init
     longPressTimer: null,
     longPressTarget: null,
+    lastLongPressTime: 0, // Timestamp of the last long press end event
 };
 
 // DOM Elements
-const serverStatusEl = document.getElementById('server-status');
+const serverStatusEl = document.getElementById('server-status-text'); // Target the text span specifically
 const statusIndicatorEl = document.getElementById('status-indicator');
 const stopAllButton = document.getElementById('stop-all');
 const tabsContainerEl = document.getElementById('tabs-container');
@@ -26,55 +26,62 @@ const importSettingsButton = document.getElementById('import-settings-button');
 const importFileInput = document.getElementById('import-file-input');
 
 
+// --- Progress Bar Function ---
+// Define globally within the app scope or make part of the 'app' object
+function updateProgressBar(percentage) {
+    const progressBar = progressBarEl; // Use the already selected element
+    if (progressBar) {
+        // Clamp percentage between 0 and 100
+        const clampedPercentage = Math.max(0, Math.min(100, percentage));
+        progressBar.style.width = `${clampedPercentage}%`;
+    } else {
+        // console.warn("Progress bar element not found in updateProgressBar");
+    }
+}
+
+
 // Initialize the application
 function init() {
-    state.apiBaseUrl = window.location.origin; // Assuming server is on same origin
+    state.apiBaseUrl = window.location.origin;
     console.log("API Base URL:", state.apiBaseUrl);
-    checkServerStatus();
+    checkServerStatus(); // This handles initial load sequence
     setupEventListeners();
-    initSoundProgressBar();
-    // Initial load depends on server status check now
-    // checkForPlayingSounds(); // Check for sounds playing on load
 }
+
 
 // --- API Helper ---
 async function apiFetch(endpoint, options = {}) {
     const url = `${state.apiBaseUrl}${endpoint}`;
     try {
         const response = await fetch(url, {
-             credentials: 'include', // Send cookies
+             credentials: 'include',
             ...options
         });
         if (!response.ok) {
             if (response.status === 401) {
                  console.warn("API request unauthorized. Redirecting to login.");
-                 window.location.href = '/login.html'; // Redirect if unauthorized
+                 window.location.href = '/login.html';
                  throw new Error('Unauthorized');
             }
-            // Try to parse error message from server
             try {
                  const errorData = await response.json();
                  throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
             } catch (parseError) {
-                 // If response is not JSON or parsing fails
                  throw new Error(`HTTP error! status: ${response.status}`);
             }
         }
-        // Check content type before parsing JSON
         const contentType = response.headers.get("content-type");
         if (contentType && contentType.indexOf("application/json") !== -1) {
             return await response.json();
         } else {
-            // Handle non-JSON responses if necessary, or just return the response object
             console.log("Received non-JSON response for", endpoint);
-            return response; // Or handle as text, blob etc. if needed
+            return response;
         }
     } catch (error) {
         console.error('API Fetch Error:', error);
-        // Update UI to show connection error state
-        serverStatusEl.textContent = 'Connection Error';
-        statusIndicatorEl.className = 'status-dot error'; // Reset and add error
-        throw error; // Re-throw error for calling function to handle if needed
+        if (serverStatusEl) serverStatusEl.textContent = 'Connection Error';
+        if (statusIndicatorEl) statusIndicatorEl.className = 'status-dot error';
+        throw error;
     }
 }
 
@@ -83,89 +90,103 @@ async function apiFetch(endpoint, options = {}) {
 async function checkServerStatus() {
     try {
         await apiFetch('/api/status');
-        serverStatusEl.textContent = 'Connected';
-        statusIndicatorEl.className = 'status-dot connected'; // Reset and add connected
-        // Load data only after successful status check
-        loadTabs();
-        checkForPlayingSounds();
+        if (serverStatusEl) serverStatusEl.textContent = 'Connected';
+        if (statusIndicatorEl) statusIndicatorEl.className = 'status-dot connected';
+
+        initSoundProgressBar(); // Initialize progress bar state HERE
+
+        // Wait for tabs to load and the first tab to be activated
+        await loadTabs();
+
+        // Now state.currentTab should be set if tabs loaded correctly
+        if (state.currentTab !== null && typeof state.currentTab !== 'undefined') {
+            checkForPlayingSounds(); // Check playing sounds after we know the current tab
+        } else {
+            console.warn("No current tab set after loadTabs, skipping initial checkForPlayingSounds.");
+            // Display a message if no tabs were loaded
+             if (tabsContainerEl && tabsContainerEl.children.length === 0) {
+                 tabsContainerEl.innerHTML = '<p class="error-text">No tabs found.</p>';
+             }
+        }
     } catch (error) {
-        // Error already logged by apiFetch, UI updated there
-        // No further action needed here unless specific error handling is required
+        // Error is logged by apiFetch, UI updated there
+        console.error("Failed initial server status check or tab load sequence.");
+         if (tabsContainerEl) tabsContainerEl.innerHTML = '<p class="error-text">Failed to connect.</p>';
+         if (soundsContainerEl) soundsContainerEl.innerHTML = ''; // Clear sounds area
     }
 }
 
+
 // --- Event Listeners ---
 function setupEventListeners() {
-    stopAllButton.addEventListener('click', stopAllSounds);
+    if (stopAllButton) stopAllButton.addEventListener('click', stopAllSounds);
+    else console.error("Stop All button not found");
 
     // App Settings Modal Listeners
-    if (appSettingsButton) {
-        appSettingsButton.addEventListener('click', openAppSettingsModal);
-    }
+    if (appSettingsButton) appSettingsButton.addEventListener('click', openAppSettingsModal);
+    else console.error("App Settings button not found");
+
     if (appSettingsModalOverlay) {
         appSettingsModalOverlay.addEventListener('click', (e) => {
-             if (e.target === appSettingsModalOverlay) closeAppSettingsModal(); // Close on backdrop click
+             if (e.target === appSettingsModalOverlay) closeAppSettingsModal();
         });
-    }
-    if (closeAppSettingsButton) {
-        closeAppSettingsButton.addEventListener('click', closeAppSettingsModal);
-    }
-    if (exportSettingsButton) {
-        exportSettingsButton.addEventListener('click', persistence.exportSettings);
-    }
-    if (importSettingsButton) {
-        importSettingsButton.addEventListener('click', () => importFileInput?.click());
-    }
-    if (importFileInput) {
-        importFileInput.addEventListener('change', handleImportFile);
-    }
+    } else console.error("App Settings modal overlay not found");
+
+    if (closeAppSettingsButton) closeAppSettingsButton.addEventListener('click', closeAppSettingsModal);
+    else console.error("Close App Settings button not found");
+
+    if (exportSettingsButton) exportSettingsButton.addEventListener('click', persistence.exportSettings);
+    else console.error("Export Settings button not found");
+
+    if (importSettingsButton) importSettingsButton.addEventListener('click', () => importFileInput?.click());
+    else console.error("Import Settings button not found");
+
+    if (importFileInput) importFileInput.addEventListener('change', handleImportFile);
+    else console.error("Import File input not found");
+
+    // Listener for fullscreen toggle changes from the modal
+    const fullscreenToggle = document.getElementById('auto-fullscreen-toggle');
+    if (fullscreenToggle && window.fullscreenManager) {
+        // Initial state is set in fullscreen.js init
+    } else if (!fullscreenToggle) { console.error("Fullscreen toggle not found"); }
+      else { console.error("Fullscreen Manager not found"); }
 
     // --- Sound Card Interactions ---
-     soundsContainerEl.addEventListener('click', (e) => {
-         const card = e.target.closest('.sound-card');
-         if (!card) return;
-         const soundId = parseInt(card.dataset.soundId);
+    if (soundsContainerEl) {
+        soundsContainerEl.addEventListener('click', (e) => {
+            const card = e.target.closest('.sound-card');
+            if (!card) return;
+            const soundId = parseInt(card.dataset.soundId);
 
-         if (editMode.isActive()) {
-             // In edit mode, click opens settings
-             window.soundSettings.open(soundId);
-         } else {
-             // In normal mode, click plays sound
-             playSound(soundId);
-         }
-     });
+            const timeSinceLongPress = Date.now() - (state.lastLongPressTime || 0);
+            if (timeSinceLongPress < 300) {
+                console.log("Click ignored shortly after potential long press/touch end");
+                return;
+            }
 
-     // --- Global listener for events dispatched by other modules ---
+            if (editMode.isActive()) {
+                if (window.soundSettings && typeof window.soundSettings.open === 'function') {
+                    window.soundSettings.open(soundId);
+                } else { console.error("Sound settings module not available."); }
+            } else {
+                playSound(soundId);
+            }
+        });
+    } else { console.error("Sounds container element not found"); }
+
+     // --- Global listener for events ---
      document.addEventListener('settingsChanged', () => {
-         // Maybe refresh UI elements if needed
          console.log("Global settings changed event received.");
-         // Could potentially reload sounds if a major setting affecting display changed
-         // reloadSoundsForCurrentTab();
      });
-
-      // Add listener for progress updates (optional, if backend pushes events)
-     // Example using EventSource (Server-Sent Events)
-     /*
-     const evtSource = new EventSource("/api/events"); // Assuming an SSE endpoint exists
-     evtSource.onmessage = function(event) {
-         const data = JSON.parse(event.data);
-         if (data.type === 'progressUpdate') {
-             handleSoundProgressUpdate(data.payload);
-         } else if (data.type === 'soundFinished') {
-             handleSoundFinishUpdate(data.payload);
-         } else if (data.type === 'soundStarted') {
-             // ... handle new sound starting ...
-         }
-     };
-     evtSource.onerror = function(err) {
-         console.error("EventSource failed:", err);
-         // Maybe try to reconnect or update status indicator
-     };
-     */
 }
 
 // --- App Settings Modal ---
 function openAppSettingsModal() {
+    // Ensure fullscreen toggle reflects current setting when opening
+    if (window.fullscreenManager) {
+        const toggle = document.getElementById('auto-fullscreen-toggle');
+        if (toggle) toggle.checked = window.fullscreenManager.isEnabled();
+    }
     appSettingsModalOverlay?.classList.remove('hidden');
 }
 
@@ -181,56 +202,74 @@ async function handleImportFile(event) {
         await persistence.importSettings(file);
         alert('Settings imported successfully! Reloading sounds...');
         state.settings = persistence.load(); // Reload settings into state
+
+        // Update fullscreen state from imported settings
+        if (window.fullscreenManager && typeof state.settings.autoFullscreenEnabled !== 'undefined') {
+             // Need a way to update fullscreenManager's internal state and UI
+             const fsToggle = document.getElementById('auto-fullscreen-toggle');
+             if(fsToggle) fsToggle.checked = state.settings.autoFullscreenEnabled;
+             // TODO: Add a method to fullscreenManager to set the 'isEnabled' state externally
+             // fullscreenManager.setEnabled(state.settings.autoFullscreenEnabled);
+        }
+
         reloadSoundsForCurrentTab(); // Refresh UI
         closeAppSettingsModal();
     } catch (error) {
         console.error('Import failed:', error);
         alert(`Failed to import settings: ${error.message}`);
     } finally {
-        // Reset file input
-        event.target.value = null;
+        if (event.target) event.target.value = null; // Reset file input
     }
 }
 
 // --- Tabs ---
 async function loadTabs() {
+    if (!tabsContainerEl) {
+         console.error("Tabs container not found, cannot load tabs.");
+         state.currentTab = null;
+         return; // Exit if container missing
+    }
     try {
+        console.log("Loading tabs...");
         const tabs = await apiFetch('/api/tabs');
+        console.log("Tabs fetched:", tabs);
         state.tabs = tabs;
-        tabsContainerEl.innerHTML = ''; // Clear existing tabs
+        tabsContainerEl.innerHTML = ''; // Clear only if successful
 
-        // Add Favorites Tab
         const favTab = createTabElement('Favorites', 'favorites', 'favorite');
         tabsContainerEl.appendChild(favTab);
 
-        // Add Regular Tabs
         tabs.forEach(tab => {
             const tabElement = createTabElement(tab.name, tab.id);
             tabsContainerEl.appendChild(tabElement);
         });
 
-        // Activate the persisted or first tab
-        const persistedTabId = state.settings.lastTabId || 'favorites'; // Assuming you save last tab ID
+        const persistedTabId = state.settings.lastTabId || 'favorites';
         let tabToActivate = tabsContainerEl.querySelector(`[data-tab-id="${persistedTabId}"]`) || tabsContainerEl.children[0];
 
         if (tabToActivate) {
             const tabId = tabToActivate.dataset.tabId;
-             setActiveTab(tabToActivate, tabId);
-            loadSounds(tabId); // Load sounds for the initially active tab
+            console.log(`Activating initial tab: ${tabId}`);
+            // setActiveTab will call loadSounds
+            await setActiveTab(tabToActivate, tabId);
         } else {
-            console.warn("No tabs found to activate.");
+            console.warn("No tabs found or available to activate.");
+            state.currentTab = null;
+            if(soundsContainerEl) soundsContainerEl.innerHTML = '<p class="no-sounds">No tabs available.</p>'; // Show message
         }
 
     } catch (error) {
         console.error('Error loading tabs:', error);
-        // Handle error display in UI if necessary
+        if (tabsContainerEl) tabsContainerEl.innerHTML = '<p class="error-text">Failed to load tabs.</p>';
+        state.currentTab = null; // Ensure state reflects error
     }
 }
 
+// Create tab element (minor refinement for safety)
 function createTabElement(name, id, iconName = null) {
     const tabElement = document.createElement('button');
     tabElement.className = 'tab';
-    tabElement.dataset.tabId = id;
+    tabElement.dataset.tabId = id; // Use string ID consistently
 
     if (iconName) {
         const icon = document.createElement('span');
@@ -238,199 +277,220 @@ function createTabElement(name, id, iconName = null) {
         icon.textContent = iconName;
          if (id === 'favorites') {
              icon.style.fontVariationSettings = "'FILL' 1";
-             icon.style.color = 'var(--text-secondary)'; // Use a muted color for the icon itself
+             icon.style.color = 'var(--text-secondary)';
          }
         tabElement.appendChild(icon);
-        // Add text label for accessibility if desired
-        // const textSpan = document.createElement('span');
-        // textSpan.textContent = name;
-        // textSpan.classList.add('tab-text-label'); // Add class for potential styling/hiding
-        // tabElement.appendChild(textSpan);
-        tabElement.setAttribute('aria-label', name); // Important for accessibility
+        tabElement.setAttribute('aria-label', name || 'Favorites');
     } else {
-        tabElement.textContent = name;
+        tabElement.textContent = name || `Tab ${id}`; // Fallback name
     }
 
     tabElement.addEventListener('click', () => {
-        setActiveTab(tabElement, id);
-        loadSounds(id);
+        // Ensure setActiveTab is called with element and ID
+        setActiveTab(tabElement, String(id)); // Ensure ID is string for consistency
     });
     return tabElement;
 }
 
-function setActiveTab(tabElement, tabId) {
-    if (state.currentTab === tabId) return; // Already active
 
-    // Remove active class from all tabs
+async function setActiveTab(tabElement, tabId) {
+    // Ensure tabId is treated as string for consistency ('favorites' vs numeric IDs)
+    const currentTabStr = state.currentTab !== null ? String(state.currentTab) : null;
+    const newTabIdStr = String(tabId);
+
+    // Check if sounds container exists
+    if (!soundsContainerEl) {
+         console.error("Cannot set active tab: Sounds container not found.");
+         return;
+    }
+
+    // Avoid reload if already active and sounds container has content (implies loaded)
+    if (currentTabStr === newTabIdStr && soundsContainerEl.children.length > 0 && !soundsContainerEl.querySelector('.loading-sounds')) {
+         console.log(`Tab ${tabId} is already active.`);
+         document.dispatchEvent(new CustomEvent('tabChanged', { detail: { tabId: newTabIdStr } }));
+         return;
+    }
+
+    console.log(`Setting active tab to: ${newTabIdStr}`);
     tabsContainerEl.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    if (tabElement) tabElement.classList.add('active'); // Check element exists
 
-    // Add active class to the clicked tab
-    tabElement.classList.add('active');
-    state.currentTab = tabId;
+    state.currentTab = newTabIdStr; // Store as string
+    state.settings.lastTabId = newTabIdStr; // Persist as string
+    persistence.save(state.settings);
 
-     // Save last selected tab (optional)
-     state.settings.lastTabId = tabId; // Add this property to your settings structure if needed
-     persistence.save(state.settings);
+    // Dispatch event *before* loading sounds
+    document.dispatchEvent(new CustomEvent('tabChanged', { detail: { tabId: newTabIdStr } }));
 
-     // Dispatch event for layout manager
-     document.dispatchEvent(new CustomEvent('tabChanged', { detail: { tabId } }));
+    // Load sounds for the new tab
+    await loadSounds(newTabIdStr); // Pass string ID
 }
+
 
 // --- Sounds ---
 async function loadSounds(tabId) {
+     // Ensure sounds container exists
+     if (!soundsContainerEl) {
+          console.error("Cannot load sounds: Sounds container not found.");
+          return;
+     }
+    // Ensure tabId is valid before proceeding
+    if (tabId === null || typeof tabId === 'undefined') {
+        console.warn("loadSounds called with invalid tabId:", tabId);
+        soundsContainerEl.innerHTML = '<p class="no-sounds">Select a tab.</p>';
+        return;
+    }
+     // Clear existing sounds immediately for visual feedback
+     soundsContainerEl.innerHTML = '<p class="loading-sounds">Loading...</p>';
+
     try {
-        const endpoint = (tabId === 'favorites') ? '/api/favorites' : `/api/tabs/${tabId}/sounds`;
+        const endpoint = (String(tabId) === 'favorites') ? '/api/favorites' : `/api/tabs/${tabId}/sounds`;
         let sounds = await apiFetch(endpoint);
 
-        // Apply custom order if available for the current layout
-        const currentLayout = layoutManager.getCurrentLayoutModeForTab(tabId);
+        const currentLayout = persistence.getCurrentLayoutMode(tabId);
+        console.log(`loadSounds: Applying layout '${currentLayout}' for tab '${tabId}'`);
         const customOrder = persistence.getLayoutOrder(tabId, currentLayout);
 
         if (customOrder && Array.isArray(customOrder)) {
             sounds.sort((a, b) => {
                 const indexA = customOrder.indexOf(a.path);
                 const indexB = customOrder.indexOf(b.path);
-
-                if (indexA === -1 && indexB === -1) return 0; // Both not in order, keep relative order
-                if (indexA === -1) return 1; // A not in order, put it after B
-                if (indexB === -1) return -1; // B not in order, put it after A
-                return indexA - indexB; // Both in order, sort by index
+                if (indexA === -1 && indexB === -1) return 0;
+                if (indexA === -1) return 1;
+                if (indexB === -1) return -1;
+                return indexA - indexB;
             });
              console.log(`Applied custom order for tab ${tabId}, layout ${currentLayout}`);
         } else {
              console.log(`No custom order found for tab ${tabId}, layout ${currentLayout}. Using default order.`);
-             // Optionally apply default sorting from tab settings if needed
-             // const tabData = state.tabs.find(t => t.id == tabId);
-             // if (tabData && tabData.sortMode) { applySortMode(sounds, tabData.sortMode); }
         }
 
+        displaySounds(sounds); // Display the (potentially sorted) sounds
 
-        displaySounds(sounds);
     } catch (error) {
         console.error(`Error loading sounds for tab ${tabId}:`, error);
-        soundsContainerEl.innerHTML = '<p class="error-text">Failed to load sounds.</p>'; // Show error in UI
+        if (soundsContainerEl) soundsContainerEl.innerHTML = '<p class="error-text">Failed to load sounds.</p>';
     }
 }
 
 // Function to reload sounds for the currently active tab
 function reloadSoundsForCurrentTab() {
-    if (state.currentTab !== null) {
+    if (state.currentTab !== null && typeof state.currentTab !== 'undefined') {
         console.log(`Reloading sounds for current tab: ${state.currentTab}`);
         loadSounds(state.currentTab);
+    } else {
+        console.warn("Cannot reload sounds: No current tab is set.");
     }
 }
 
 
 function displaySounds(sounds) {
-    soundsContainerEl.innerHTML = ''; // Clear previous sounds
+    if (!soundsContainerEl) return; // Safety check
+    soundsContainerEl.innerHTML = ''; // Clear previous sounds/loading message
     if (!sounds || sounds.length === 0) {
          soundsContainerEl.innerHTML = '<p class="no-sounds">No sounds in this tab.</p>';
         return;
     }
 
     sounds.forEach(sound => {
+        // Basic check for essential sound properties
+        if (!sound || typeof sound.id === 'undefined' || !sound.path || !sound.name) {
+             console.warn("Skipping invalid sound data:", sound);
+             return;
+        }
         const soundElement = createSoundCardElement(sound);
-        soundsContainerEl.appendChild(soundElement);
+        if (soundElement) soundsContainerEl.appendChild(soundElement);
     });
 }
+
 
 function createSoundCardElement(sound) {
     const soundElement = document.createElement('div');
     soundElement.className = 'sound-card fade-in';
     soundElement.dataset.soundId = sound.id;
-    soundElement.dataset.soundPath = sound.path; // Store path for persistence key
+    soundElement.dataset.soundPath = sound.path;
 
-    // Content wrapper for text and potential background emoji
     const contentWrapper = document.createElement('div');
     contentWrapper.className = 'sound-content-wrapper';
 
-    // Text element
     const textElement = document.createElement('span');
     textElement.className = 'sound-text';
     textElement.textContent = sound.name;
 
-     // Add text to wrapper
-     contentWrapper.appendChild(textElement);
+    contentWrapper.appendChild(textElement);
+    soundElement.appendChild(contentWrapper);
 
-     // Add wrapper to card
-     soundElement.appendChild(contentWrapper);
+    // Apply persisted settings (color, emoji, indicators)
+    updateSoundCardDisplay(sound.id, soundElement); // Pass element to avoid re-querying
 
-    // Apply persisted settings (color, emoji)
-    updateSoundCardDisplay(sound.id, soundElement); // Pass the element to avoid re-querying
-
-    // Check if this sound is currently playing
+    // Check playing state
     if (state.currentlyPlaying.has(sound.id)) {
         soundElement.classList.add('playing');
-        // Re-trigger animation if needed, handled in updatePlayingState logic
     }
 
-    // Add indicators container (will be populated by updateSoundCardDisplay)
-    const indicators = document.createElement('div');
-    indicators.className = 'sound-indicators';
-    soundElement.appendChild(indicators);
-
+    // Indicators container will be added by updateSoundCardDisplay if needed
 
     return soundElement;
 }
 
-// Update visual display of a sound card (color, emoji, indicators)
+
 function updateSoundCardDisplay(soundId, cardElement = null) {
-    const card = cardElement || soundsContainerEl.querySelector(`.sound-card[data-sound-id="${soundId}"]`);
+    const card = cardElement || soundsContainerEl?.querySelector(`.sound-card[data-sound-id="${soundId}"]`);
     if (!card) return;
 
     const soundPath = card.dataset.soundPath;
-    if (!soundPath) return; // Need path to get settings
+    if (!soundPath) { console.warn(`Cannot update display for soundId ${soundId}: missing soundPath.`); return; }
 
     const soundSettings = persistence.getSoundSettings(soundPath);
     const contentWrapper = card.querySelector('.sound-content-wrapper');
     const textElement = card.querySelector('.sound-text');
+
+    // Ensure indicators container exists or create it
     let indicators = card.querySelector('.sound-indicators');
     if (!indicators) {
         indicators = document.createElement('div');
         indicators.className = 'sound-indicators';
-        card.appendChild(indicators);
+        // Insert indicators *after* contentWrapper to avoid layout shifts affecting emoji pseudo-element
+        if (contentWrapper) card.insertBefore(indicators, contentWrapper.nextSibling);
+        else card.appendChild(indicators); // Fallback if wrapper not found
     }
     indicators.innerHTML = ''; // Clear existing indicators
 
     // --- Apply Color ---
-    // Remove existing color classes
+    let baseColor = 'var(--v-surface-dark)'; // Default base
     card.classList.forEach(className => {
-        if (className.startsWith('sound-color-')) {
-            card.classList.remove(className);
-        }
+        if (className.startsWith('sound-color-')) card.classList.remove(className);
     });
-    // Add new color class if set
     if (soundSettings.color && soundSettings.color !== 'default') {
-        card.classList.add(`sound-color-${soundSettings.color}`);
+        const colorClass = `sound-color-${soundSettings.color}`;
+        card.classList.add(colorClass);
+        // Update base color variable for progress gradient
+        baseColor = `var(--sound-color-${soundSettings.color}-bg)`; // Use the CSS variable name
     }
+    card.style.setProperty('--sound-base-color', baseColor); // Set CSS variable
 
     // --- Apply Emoji ---
-    // Remove existing emoji elements (pseudo or actual)
-    const existingEmojiPseudo = card.style.getPropertyValue('--sound-emoji'); // Check CSS variable
-    if (existingEmojiPseudo) card.style.removeProperty('--sound-emoji');
+    card.style.removeProperty('--sound-emoji'); // Clear pseudo-element variable
     const existingEmojiSpan = contentWrapper?.querySelector('.sound-emoji-list');
     if (existingEmojiSpan) contentWrapper.removeChild(existingEmojiSpan);
 
-    if (soundSettings.emoji) {
-        // Check current layout mode to decide placement
-        const currentLayout = soundsContainerEl.className.match(/layout-([a-z0-9\-]+)/)?.[0]; // layout-grid-3, layout-list etc.
-
+    if (soundSettings.emoji && textElement && contentWrapper) { // Ensure elements exist
+        const currentLayout = soundsContainerEl?.className.match(/layout-([a-z0-9\-]+)/)?.[0];
         if (currentLayout && currentLayout.includes('list')) {
-            // List View: Prepend emoji span
             const emojiSpan = document.createElement('span');
             emojiSpan.className = 'sound-emoji-list';
             emojiSpan.textContent = soundSettings.emoji;
-            contentWrapper.insertBefore(emojiSpan, textElement);
+            contentWrapper.insertBefore(emojiSpan, textElement); // Prepend in list view
         } else {
-            // Grid View: Use CSS variable for pseudo-element
-            card.style.setProperty('--sound-emoji', `"${soundSettings.emoji}"`);
+            card.style.setProperty('--sound-emoji', `"${soundSettings.emoji}"`); // Set variable for grid view pseudo-element
         }
     }
 
     // --- Update Indicators ---
-    const isFavorite = state.settings.soundSettings[soundPath]?.favorite ?? soundSettings.favorite; // Check global state too if needed
-    const hasCustomVolume = state.settings.soundSettings[soundPath]?.hasOwnProperty('localVolume') || state.settings.soundSettings[soundPath]?.hasOwnProperty('remoteVolume') || soundSettings.customVolume; // More robust check
-
+    // Recalculate based on potentially updated persistence state
+    const currentPersistedSettings = persistence.getSoundSettings(soundPath); // Get latest
+    const isFavorite = currentPersistedSettings.favorite ?? false; // Default to false if not set
+    const hasCustomVolume = currentPersistedSettings.hasCustomVolume ?? false; // Use the flag saved by persistence
 
     if (isFavorite) {
         card.dataset.favorite = 'true';
@@ -452,8 +512,7 @@ function updateSoundCardDisplay(soundId, cardElement = null) {
          card.dataset.customVolume = 'false';
     }
 
-     // Remove indicators container if empty
-     if (indicators.children.length === 0) {
+     if (indicators.children.length === 0 && card.contains(indicators)) { // Remove if empty AND part of card
          card.removeChild(indicators);
      }
 }
@@ -461,38 +520,38 @@ function updateSoundCardDisplay(soundId, cardElement = null) {
 
 // --- Playback Control ---
 async function playSound(soundId) {
-    // Prevent playing in edit mode
     if (editMode.isActive()) return;
 
     console.log(`Attempting to play sound: ${soundId}`);
     try {
+        // Ensure sounds container exists for UI updates
+        if (!soundsContainerEl) throw new Error("Sounds container not found.");
+
         const data = await apiFetch(`/api/sounds/${soundId}/play`, { method: 'POST' });
         if (data.success && data.playingId) {
             console.log(`Sound ${soundId} started playing with instance ID: ${data.playingId}`);
-            // Store mapping: soundId -> playingId
             state.currentlyPlaying.set(soundId, data.playingId);
 
-            // Store additional details for progress tracking
-            soundProgress.activeSounds.set(data.playingId, {
-                 id: data.playingId,
-                 soundId: soundId,
-                 lengthInMs: data.lengthInMs,
-                 readInMs: 0, // Start at 0
-                 name: data.name || 'Sound', // Get name if provided
-            });
+            const newSoundData = {
+                id: data.playingId, soundId: soundId,
+                lengthInMs: data.lengthInMs || 0, // Default length to 0 if missing
+                readInMs: 0, name: data.name || 'Sound',
+                paused: false, repeat: false
+            };
+            soundProgress.activeSounds.set(data.playingId, newSoundData);
 
             updatePlayingStateVisuals();
-            handleSoundPlayedVisuals(data); // Update progress bar etc.
-            startProgressPolling(); // Start polling if not already active
+            handleSoundPlayedVisuals(newSoundData);
+            startProgressPolling();
         } else {
             console.error(`Failed to play sound ${soundId}:`, data.error || 'Unknown server error');
-            // Optionally remove from playing state if it failed immediately
             state.currentlyPlaying.delete(soundId);
             updatePlayingStateVisuals();
         }
     } catch (error) {
         console.error(`Error playing sound ${soundId}:`, error);
-        // Optionally update UI to show error
+        state.currentlyPlaying.delete(soundId); // Clean up state on error
+        updatePlayingStateVisuals();
     }
 }
 
@@ -500,12 +559,11 @@ async function stopAllSounds() {
     console.log("Stopping all sounds...");
     try {
         await apiFetch('/api/sounds/stop', { method: 'POST' });
-        // Clear local state *after* successful API call
         state.currentlyPlaying.clear();
         soundProgress.activeSounds.clear();
         updatePlayingStateVisuals();
         stopProgressPolling();
-        handleAllSoundsFinishedVisuals(); // Reset progress bar etc.
+        handleAllSoundsFinishedVisuals();
     } catch (error) {
         console.error('Error stopping sounds:', error);
     }
@@ -515,19 +573,16 @@ async function stopAllSounds() {
 const soundProgress = {
     polling: false,
     interval: null,
-    activeSounds: new Map(), // Maps playingId -> { id, soundId, lengthInMs, readInMs, name, ... }
+    activeSounds: new Map(),
 };
 
 function startProgressPolling() {
     if (soundProgress.polling) return;
     console.log("Starting progress polling.");
     soundProgress.polling = true;
-    // Clear any existing interval just in case
     if (soundProgress.interval) clearInterval(soundProgress.interval);
-    // Poll immediately first time
-    fetchSoundProgress();
-    // Then set interval
-    soundProgress.interval = setInterval(fetchSoundProgress, 250); // Poll 4 times/sec
+    fetchSoundProgress(); // Poll immediately
+    soundProgress.interval = setInterval(fetchSoundProgress, 250);
 }
 
 function stopProgressPolling() {
@@ -541,52 +596,52 @@ function stopProgressPolling() {
 }
 
 async function fetchSoundProgress() {
-    // If no sounds are supposed to be playing according to our state, stop polling
-    if (soundProgress.activeSounds.size === 0) {
+    if (soundProgress.activeSounds.size === 0 && soundProgress.polling) {
         // console.log("No active sounds tracked, stopping polling.");
         stopProgressPolling();
-        handleAllSoundsFinishedVisuals(); // Ensure UI is reset
+        handleAllSoundsFinishedVisuals();
         return;
     }
+    // If polling stopped but this was already in flight, just exit
+    if (!soundProgress.polling && soundProgress.activeSounds.size === 0) return;
+
 
     try {
         const playingSoundsData = await apiFetch('/api/sounds/progress');
-
-        // Keep track of playing IDs received from the server
         const currentPlayingIdsFromServer = new Set(playingSoundsData.map(s => s.id));
 
-        // Update or add sounds received from the server
         playingSoundsData.forEach(soundUpdate => {
             const existingSound = soundProgress.activeSounds.get(soundUpdate.id);
-            if (existingSound) {
-                // Update existing sound data
-                existingSound.readInMs = soundUpdate.readInMs;
-                // Update other properties if necessary (e.g., paused state)
-                 existingSound.paused = soundUpdate.paused;
-                 existingSound.repeat = soundUpdate.repeat;
+            // Ensure essential data exists in the update
+            if (typeof soundUpdate.id === 'undefined' || typeof soundUpdate.soundId === 'undefined') {
+                console.warn("Received progress update with missing ID:", soundUpdate);
+                return;
+            }
 
+            if (existingSound) {
+                existingSound.readInMs = soundUpdate.readInMs ?? existingSound.readInMs; // Use existing if missing
+                existingSound.paused = soundUpdate.paused ?? existingSound.paused;
+                existingSound.repeat = soundUpdate.repeat ?? existingSound.repeat;
+                 // Update length only if provided and seems valid
+                 if (typeof soundUpdate.lengthInMs === 'number' && soundUpdate.lengthInMs > 0) {
+                      existingSound.lengthInMs = soundUpdate.lengthInMs;
+                 }
                 handleSoundProgressVisuals(existingSound);
             } else {
-                // This case should ideally not happen if soundStarted events are handled
-                // But as a fallback, add it if we missed the start event
                 console.warn(`Received progress for untracked playingId ${soundUpdate.id}. Adding.`);
-                 soundProgress.activeSounds.set(soundUpdate.id, {
-                     id: soundUpdate.id,
-                     soundId: soundUpdate.soundId, // Ensure soundId is part of progress payload
-                     lengthInMs: soundUpdate.lengthInMs,
-                     readInMs: soundUpdate.readInMs,
-                     name: soundUpdate.name,
-                     paused: soundUpdate.paused,
-                     repeat: soundUpdate.repeat,
-                 });
-                 // Also update the main playing state
-                 state.currentlyPlaying.set(soundUpdate.soundId, soundUpdate.id);
+                 const newSoundData = {
+                     id: soundUpdate.id, soundId: soundUpdate.soundId,
+                     lengthInMs: soundUpdate.lengthInMs || 0, readInMs: soundUpdate.readInMs || 0,
+                     name: soundUpdate.name || 'Sound', paused: soundUpdate.paused || false,
+                     repeat: soundUpdate.repeat || false,
+                 };
+                 soundProgress.activeSounds.set(soundUpdate.id, newSoundData);
+                 state.currentlyPlaying.set(newSoundData.soundId, newSoundData.id);
                  updatePlayingStateVisuals();
-                 handleSoundProgressVisuals(soundProgress.activeSounds.get(soundUpdate.id));
+                 handleSoundProgressVisuals(newSoundData);
             }
         });
 
-        // Remove sounds from our tracking if they are no longer reported by the server
         const finishedSoundPlayingIds = [];
         soundProgress.activeSounds.forEach((soundData, playingId) => {
             if (!currentPlayingIdsFromServer.has(playingId)) {
@@ -598,28 +653,27 @@ async function fetchSoundProgress() {
             const soundData = soundProgress.activeSounds.get(playingId);
             if (soundData) {
                  console.log(`Sound instance ${playingId} (Sound ID: ${soundData.soundId}) finished.`);
-                state.currentlyPlaying.delete(soundData.soundId); // Remove from main playing map
-                soundProgress.activeSounds.delete(playingId); // Remove from progress tracking
-                handleSoundFinishVisuals(soundData); // Update visuals for this specific sound
+                state.currentlyPlaying.delete(soundData.soundId);
+                soundProgress.activeSounds.delete(playingId);
+                handleSoundFinishVisuals(soundData);
             }
         });
 
-        // If after cleanup, no sounds are active, stop polling and reset global progress bar
         if (soundProgress.activeSounds.size === 0) {
-            console.log("All sounds finished, stopping polling.");
+            // console.log("Polling: All sounds finished or none were playing.");
             stopProgressPolling();
             handleAllSoundsFinishedVisuals();
+        } else if (!soundProgress.polling) {
+             // If polling was stopped externally but sounds are still active, restart it
+            console.log("Polling: Restarting polling as sounds are still active.");
+            startProgressPolling();
         }
 
-         // Refresh the playing state visuals based on the updated state.currentlyPlaying
-         updatePlayingStateVisuals();
-
+         updatePlayingStateVisuals(); // Refresh playing styles
 
     } catch (error) {
         console.error('Error fetching sound progress:', error);
-        // Consider stopping polling on error or implementing retry logic
         stopProgressPolling();
-        // Reset UI potentially
         state.currentlyPlaying.clear();
         soundProgress.activeSounds.clear();
         updatePlayingStateVisuals();
@@ -631,95 +685,119 @@ async function fetchSoundProgress() {
 
 function initSoundProgressBar() {
     if (progressContainerEl) progressContainerEl.classList.add('inactive');
-    updateProgressBar(0);
+    updateProgressBar(0); // Ensure it starts at 0 width
 }
 
 function handleSoundPlayedVisuals(soundData) {
-    // Only show progress bar if it's not already active for another sound
-    // Or maybe always show the *latest* sound's progress? Decided: show latest.
     if (progressContainerEl) {
         progressContainerEl.classList.remove('inactive');
         progressContainerEl.classList.add('active');
+        // console.log("Progress bar activated"); // Reduce console noise
     }
-    updateProgressBar(0); // Start at 0%
+    // Reset progress for the sound being tracked (if it's the latest)
+    let latestSoundPlayingId = Array.from(soundProgress.activeSounds.keys()).pop();
+    if (soundData.id === latestSoundPlayingId || soundProgress.activeSounds.size === 1) {
+        updateProgressBar(0);
+    }
 }
 
 function handleSoundProgressVisuals(soundData) {
-    const percentage = soundData.lengthInMs > 0 ? (soundData.readInMs / soundData.lengthInMs) * 100 : 0;
+    if (!soundData || typeof soundData.readInMs === 'undefined' || typeof soundData.lengthInMs === 'undefined' || soundData.lengthInMs <= 0) {
+        // Don't update progress if length is invalid
+        return;
+    }
+    const percentage = (soundData.readInMs / soundData.lengthInMs) * 100;
 
-    // Update global progress bar - Show progress of the *first* sound in the map for simplicity
-     const firstPlayingSound = soundProgress.activeSounds.values().next().value;
-     if (firstPlayingSound && soundData.id === firstPlayingSound.id) {
-         updateProgressBar(percentage);
-     }
+    // Global Progress Bar (track latest sound)
+    let latestSoundPlayingId = Array.from(soundProgress.activeSounds.keys()).pop();
+    if (latestSoundPlayingId !== null && soundData.id === latestSoundPlayingId) {
+        updateProgressBar(percentage);
+        if (progressContainerEl && progressContainerEl.classList.contains('inactive')) {
+            progressContainerEl.classList.remove('inactive');
+            progressContainerEl.classList.add('active');
+        }
+    }
 
-    // Update individual sound card visuals
+    // Individual Sound Card Visuals
+    if (!soundsContainerEl) return; // Safety check
     const soundCard = soundsContainerEl.querySelector(`.sound-card[data-sound-id="${soundData.soundId}"]`);
     if (soundCard) {
-        // Example: Use background gradient for progress
-         soundCard.style.background = `linear-gradient(to right, var(--v-primary-darken1) ${percentage}%, var(--v-surface-dark) ${percentage}%)`;
-         // Re-apply base color class if it exists
-         const colorClass = Array.from(soundCard.classList).find(c => c.startsWith('sound-color-'));
-         if (colorClass && soundSettings.color !== 'default') { // Check persistence
-             // Adjust background logic if color class is present
-              const baseColor = getComputedStyle(soundCard).getPropertyValue('--sound-base-color') || 'var(--v-surface-dark)'; // Get color from CSS variable or default
-              soundCard.style.background = `linear-gradient(to right, var(--v-primary-darken1) ${percentage}%, ${baseColor} ${percentage}%)`;
-         }
-
+        if (!soundsContainerEl.classList.contains('layout-list')) {
+            const baseColor = soundCard.style.getPropertyValue('--sound-base-color') || 'var(--v-surface-dark)';
+            soundCard.style.background = `linear-gradient(to right, var(--v-primary-darken1) ${percentage}%, ${baseColor} ${percentage}%)`;
+        } else {
+             soundCard.style.background = '';
+        }
     }
 }
 
+
 function handleSoundFinishVisuals(soundData) {
+    if (!soundsContainerEl) return;
     const soundCard = soundsContainerEl.querySelector(`.sound-card[data-sound-id="${soundData.soundId}"]`);
     if (soundCard) {
         soundCard.style.background = ''; // Reset background gradient
-        // Re-apply base color if needed
-        updateSoundCardDisplay(soundData.soundId, soundCard); // Re-apply color/emoji/indicators
+        updateSoundCardDisplay(soundData.soundId, soundCard); // Re-apply base styles
     }
-    // Note: Global progress bar reset is handled in handleAllSoundsFinishedVisuals
+    // Global bar reset is handled by handleAllSoundsFinishedVisuals when map becomes empty
 }
 
 function handleAllSoundsFinishedVisuals() {
-    // Hide global progress bar
+    // console.log("handleAllSoundsFinishedVisuals called"); // Reduce noise
     if (progressContainerEl) {
-        progressContainerEl.classList.remove('active');
-        progressContainerEl.classList.add('inactive');
+        if (progressContainerEl.classList.contains('active')) { // Check if active before trying to deactivate
+             progressContainerEl.classList.remove('active');
+             progressContainerEl.classList.add('inactive');
+             setTimeout(() => updateProgressBar(0), 500); // Reset width after transition
+             // console.log("Progress bar deactivated");
+        } else {
+            updateProgressBar(0); // Ensure width is 0 if already inactive
+        }
     }
-    // Reset to 0 after transition
-    setTimeout(() => updateProgressBar(0), 500); // Match transition duration
 
-    // Reset background for all cards (redundant if handleSoundFinishVisuals works, but safe)
+    if (!soundsContainerEl) return;
     soundsContainerEl.querySelectorAll('.sound-card').forEach(card => {
          card.style.background = '';
-         updateSoundCardDisplay(parseInt(card.dataset.soundId), card); // Re-apply base styles
+         const soundId = parseInt(card.dataset.soundId);
+         if (!isNaN(soundId)) updateSoundCardDisplay(soundId, card);
     });
 
-     updatePlayingStateVisuals(); // Ensure all 'playing' classes are removed
+     updatePlayingStateVisuals(); // Ensure all 'playing' classes removed
 }
 
 
 function updatePlayingStateVisuals() {
+     if (!soundsContainerEl) return;
     soundsContainerEl.querySelectorAll('.sound-card').forEach(card => {
         const soundId = parseInt(card.dataset.soundId);
-        card.classList.toggle('playing', state.currentlyPlaying.has(soundId));
-        // If not playing, ensure background is reset (might have progress)
-        if (!state.currentlyPlaying.has(soundId)) {
-             card.style.background = ''; // Clear potential progress gradient
-             updateSoundCardDisplay(soundId, card); // Re-apply base color/emoji
+        if (isNaN(soundId)) return; // Skip if soundId is invalid
+
+        const isPlaying = state.currentlyPlaying.has(soundId);
+        card.classList.toggle('playing', isPlaying);
+
+        if (!isPlaying) {
+             // Only reset background if it might have a progress gradient
+             if (!soundsContainerEl.classList.contains('layout-list')) {
+                  card.style.background = '';
+             }
+             // Always re-apply base styles when stopping
+             updateSoundCardDisplay(soundId, card);
         }
     });
 }
 
-// Initial check for sounds already playing when the page loads
+// Initial check for sounds already playing
 async function checkForPlayingSounds() {
     console.log("Checking for initially playing sounds...");
-    await fetchSoundProgress(); // Use the polling function once to populate initial state
+    // Ensure polling starts and potentially stops if no sounds are found initially
+    startProgressPolling();
 }
 
-// Make reload function globally accessible if needed by layout.js
+
+// Make reload function globally accessible
 window.app = {
     reloadSoundsForCurrentTab: reloadSoundsForCurrentTab,
-    updateSoundCardDisplay: updateSoundCardDisplay // Expose for sound-settings.js
+    updateSoundCardDisplay: updateSoundCardDisplay
 };
 
 // --- Initialization ---

@@ -3,61 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-
-    <!-- PWA Essential Meta Tags -->
-    <meta name="theme-color" content="#2c2c2c"> <!-- Match top bar color -->
+    <meta name="theme-color" content="#2c2c2c">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-    <!-- Manifest and Icons -->
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/assets/icon-192x192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192x192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/assets/icon-512x512.png">
-
-    <!-- Fallback Splash Screen for Apple Devices -->
     <link href="/assets/splash-2048x2732.png" sizes="2048x2732" rel="apple-touch-startup-image">
-
     <title>Soundux Remote</title>
-
-    <!-- Fonts and Styles -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="icon" href="assets/favicon.ico" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
-
-    <!-- NoSleep.js library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.12.0/NoSleep.min.js"></script>
-    <!-- SortableJS library (Add this or include locally) -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-    <!-- Emoji Picker (Using Picmo for example - Choose one and include) -->
-    <script src="https://cdn.jsdelivr.net/npm/@picmo/popup-picker@latest/dist/index.umd.js"></script>
+    <!-- Picmo Dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/picmo@latest/dist/index.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@picmo/popup-picker@latest/dist/index.umd.js"></script>
 
 </head>
 <body>
     <!-- Top status/action bar -->
     <div class="top-bar" id="top-bar">
-        <div class="status-info">
-             <span id="status-indicator" class="status-dot"></span>
-             <span id="wakelock-indicator"><span class="material-symbols-outlined">visibility_off</span></span>
-             <span id="server-status">Connecting...</span>
+        <!-- NEW Edit Mode Info (Hidden by default) -->
+        <div class="edit-mode-info hidden" id="edit-mode-info">
+            <span class="material-symbols-outlined">info</span>
+            <span>TAP TO EDIT | DRAG TO REORDER</span>
         </div>
+        <div class="top-bar-placeholder"></div> <!-- Placeholder for spacing -->
         <div class="action-buttons">
-            <!-- Layout Button (Hidden initially) -->
             <button id="layout-mode-button" class="icon-button top-bar-button hidden" aria-label="Change Layout">
                 <span class="material-symbols-outlined">view_module</span>
             </button>
-            <!-- Edit Button -->
             <button id="edit-mode-button" class="icon-button top-bar-button" aria-label="Toggle Edit Mode">
                 <span class="material-symbols-outlined">edit</span>
             </button>
-             <!-- Settings Button (for Export/Import) -->
             <button id="app-settings-button" class="icon-button top-bar-button" aria-label="App Settings">
                 <span class="material-symbols-outlined">settings</span>
             </button>
         </div>
+    </div>
+
+    <!-- Progress bar - Moved below top bar -->
+    <div id="sound-progress-container" class="inactive">
+        <div id="sound-progress-bar"></div>
     </div>
 
     <div class="container">
@@ -66,22 +57,25 @@
             <!-- Sounds will be dynamically added here -->
         </main>
 
-        <!-- Progress bar -->
-        <div id="sound-progress-container" class="inactive">
-            <div id="sound-progress-bar"></div>
-        </div>
-
         <!-- Tab navigation -->
         <nav class="tabs" id="tabs-container">
             <!-- Tabs will be dynamically added here -->
         </nav>
 
-        <!-- Bottom header (Logo, Title, Stop Button) -->
+        <!-- Bottom header (Logo, Title, Status, Stop Button) -->
         <header>
             <div class="app-title">
                 <img src="assets/soundux-logo.svg" alt="Soundux Logo" class="logo">
                 <div class="title-group">
                     <h1>Soundux 🎮</h1>
+                    <!-- Server Status - Restructured -->
+                    <div class="server-status" id="server-status-container">
+                         <span id="status-indicator" class="status-dot"></span>
+                         <span id="server-status-text">Connecting...</span>
+                         <span id="wakelock-indicator" class="wakelock-indicator">
+                             <span class="material-symbols-outlined">visibility_off</span>
+                         </span>
+                    </div>
                 </div>
             </div>
             <div class="header-actions">
@@ -98,12 +92,10 @@
         <div id="settings-backdrop"></div>
         <div id="settings-card">
             <div class="handle-bar"></div>
-
             <div class="sound-info">
                 <h2 id="settings-sound-name">Sound Name</h2>
                 <p id="settings-tab-name">Tab Name</p>
             </div>
-
             <div class="action-buttons">
                 <button id="favorite-button" class="icon-button" data-type="favorite" aria-label="Toggle Favorite">
                     <span class="material-symbols-outlined">favorite</span>
@@ -113,42 +105,9 @@
                     <span class="button-text">Preview</span>
                 </button>
             </div>
-
             <div class="divider"></div>
 
-            <!-- Color Selector -->
-            <div class="settings-section">
-                <h3>Button Color</h3>
-                <div id="color-selector" class="color-selector">
-                    <button class="color-swatch default" data-color="default" aria-label="Default color"></button>
-                    <button class="color-swatch red" data-color="red" aria-label="Red color"></button>
-                    <button class="color-swatch orange" data-color="orange" aria-label="Orange color"></button>
-                    <button class="color-swatch yellow" data-color="yellow" aria-label="Yellow color"></button>
-                    <button class="color-swatch green" data-color="green" aria-label="Green color"></button>
-                    <button class="color-swatch blue" data-color="blue" aria-label="Blue color"></button>
-                    <button class="color-swatch purple" data-color="purple" aria-label="Purple color"></button>
-                    <button class="color-swatch pink" data-color="pink" aria-label="Pink color"></button>
-                </div>
-            </div>
-
-            <!-- Emoji Selector -->
-             <div class="settings-section">
-                 <h3>Button Emoji</h3>
-                 <div class="emoji-selector-container">
-                     <button id="emoji-selector-button" class="action-button">
-                         <span id="current-emoji-display" class="current-emoji">❓</span> <!-- Placeholder -->
-                         <span class="button-text">Select Emoji</span>
-                     </button>
-                     <button id="clear-emoji-button" class="reset-button small-reset hidden" aria-label="Clear Emoji">
-                         <span class="material-symbols-outlined">delete</span>
-                    </button>
-                 </div>
-             </div>
-
-
-            <div class="divider"></div>
-
-            <!-- Volume Control -->
+            <!-- Volume Control - Moved Up -->
             <div class="volume-control settings-section">
                 <h3>Volume Adjustment</h3>
                 <div class="slider-container">
@@ -161,33 +120,73 @@
                     <button id="reset-volume" class="reset-button hidden">Reset</button>
                 </div>
             </div>
+
+            <div class="divider"></div>
+
+            <!-- Color Selector -->
+            <div class="settings-section">
+                <h3>Button Color</h3>
+                <div id="color-selector" class="color-selector">
+                     <button class="color-swatch default" data-color="default" aria-label="Default color"></button>
+                     <button class="color-swatch red" data-color="red" aria-label="Red color"></button>
+                     <button class="color-swatch orange" data-color="orange" aria-label="Orange color"></button>
+                     <button class="color-swatch yellow" data-color="yellow" aria-label="Yellow color"></button>
+                     <button class="color-swatch green" data-color="green" aria-label="Green color"></button>
+                     <button class="color-swatch blue" data-color="blue" aria-label="Blue color"></button>
+                     <button class="color-swatch purple" data-color="purple" aria-label="Purple color"></button>
+                     <button class="color-swatch pink" data-color="pink" aria-label="Pink color"></button>
+                </div>
+            </div>
+
+            <!-- Emoji Selector - Revised -->
+            <div class="settings-section">
+                 <h3>Button Emoji</h3>
+                 <input type="search" id="emoji-search-input" placeholder="Search emojis..." class="emoji-search">
+                 <div id="emoji-picker-container">
+                    <!-- Picmo will mount here or be triggered nearby -->
+                     <div id="emoji-picker-trigger"></div> <!-- Reference element for Picmo popup -->
+                 </div>
+                 <button id="clear-emoji-button-settings" class="reset-button small-reset hidden" aria-label="Clear Emoji">
+                    <span class="material-symbols-outlined">delete</span>
+                 </button>
+            </div>
+
         </div>
     </div>
 
-     <!-- App Settings Modal -->
-     <div id="app-settings-modal-overlay" class="hidden">
-         <div id="app-settings-modal">
-             <h2>App Settings</h2>
-             <div class="settings-section">
-                 <h3>Layout Data</h3>
-                 <div class="modal-actions">
-                    <button id="export-settings-button" class="action-button">Export Layout</button>
-                    <button id="import-settings-button" class="action-button">Import Layout</button>
-                 </div>
-                 <input type="file" id="import-file-input" accept=".json" style="display: none;">
-                 <p class="modal-info">Export your current layout and sound customizations to a file, or import settings from a previously exported file.</p>
+    <!-- App Settings Modal -->
+    <div id="app-settings-modal-overlay" class="hidden">
+        <div id="app-settings-modal">
+            <h2>App Settings</h2>
+            <div class="settings-section">
+                <h3>Layout Data</h3>
+                <div class="modal-actions">
+                   <button id="export-settings-button" class="action-button">Export Layout</button>
+                   <button id="import-settings-button" class="action-button">Import Layout</button>
+                </div>
+                <input type="file" id="import-file-input" accept=".json" style="display: none;">
+                <p class="modal-info">Export/Import layout and sound customizations.</p>
+            </div>
+            <div class="divider"></div>
+            <div class="settings-section">
+                 <h3>Preferences</h3>
+                 <label class="toggle-switch">
+                    <input type="checkbox" id="auto-fullscreen-toggle">
+                    <span class="slider"></span>
+                    Auto Fullscreen on Interaction
+                 </label>
+            </div>
+             <div class="divider"></div>
+             <div class="modal-actions">
+                 <button id="close-app-settings-button" class="action-button secondary">Close</button>
              </div>
-              <div class="divider"></div>
-              <div class="modal-actions">
-                  <button id="close-app-settings-button" class="action-button secondary">Close</button>
-              </div>
-         </div>
-     </div>
+        </div>
+    </div>
 
 
-    <!-- Screen Wake Lock Script -->
+    <!-- Screen Wake Lock Script (Keep existing) -->
     <script>
-        // Screen Wake Lock Implementation (Keep existing improved version)
+        // Screen Wake Lock Implementation (Keep existing improved version from previous step)
         (function() {
             const noSleep = new NoSleep();
             let wakelockEnabled = false;
@@ -210,7 +209,6 @@
                             wakeLockSentinel = null;
                             wakelockEnabled = false;
                             updateWakeLockIndicator(false);
-                             // Attempt to reacquire if the document is visible
                             if (document.visibilityState === 'visible') {
                                 console.log('Re-acquiring wake lock after release');
                                 enableWakeLock();
@@ -220,11 +218,11 @@
                         wakelockEnabled = true;
                         updateWakeLockIndicator(true);
                     } else {
-                         enableNoSleep(); // Fallback if API not supported
+                         enableNoSleep();
                     }
                  } catch (err) {
                      console.warn(`Screen Wake Lock failed: ${err.name}, ${err.message}. Falling back to NoSleep.js`);
-                     enableNoSleep(); // Fallback on error
+                     enableNoSleep();
                  }
              }
 
@@ -246,7 +244,7 @@
                      wakeLockSentinel = null;
                      console.log('Screen Wake Lock explicitly released.');
                  }
-                 if (noSleep && noSleep.isEnabled) { // Check if noSleep exists and is enabled
+                 if (noSleep && noSleep.isEnabled) {
                      noSleep.disable();
                      console.log('NoSleep.js explicitly disabled.');
                  }
@@ -255,38 +253,35 @@
             }
 
              async function enableWakeLock() {
-                 if (wakelockEnabled) return; // Already active
+                 if (wakelockEnabled) return;
                  await requestWakeLock();
             }
 
             function handleVisibilityChange() {
-                if (!wakeLockSentinel) return; // Only handle for modern API
-                if (document.visibilityState === 'visible') {
+                // Re-acquire lock when tab becomes visible again (modern API handles this better with release event)
+                 if (document.visibilityState === 'visible') {
                     console.log('Document became visible, attempting to re-acquire wake lock.');
                     enableWakeLock();
-                }
+                 } else if (document.visibilityState === 'hidden' && noSleep && noSleep.isEnabled){
+                     // Optional: Could disable NoSleep when hidden to save battery,
+                     // but might cause issues if user switches apps briefly.
+                     // console.log('Document hidden, disabling NoSleep.js');
+                     // releaseWakeLock();
+                 }
             }
 
-            function handleUserInteraction() {
-                if (!wakelockEnabled) {
-                     console.log('User interaction detected, enabling wake lock.');
-                     enableWakeLock(); // Attempt to enable wake lock on interaction
-                }
-                 // Optionally request fullscreen on interaction
-                 // requestFullscreen();
-            }
-
-             // Add event listeners for user interaction
-            document.addEventListener('click', handleUserInteraction, { once: true, capture: true });
-            document.addEventListener('touchstart', handleUserInteraction, { once: true, capture: true });
             document.addEventListener('visibilitychange', handleVisibilityChange);
 
-            // Initial attempt to enable wake lock after a short delay
+            // Initial attempt
             setTimeout(enableWakeLock, 1500);
 
             window.screenWakeLock = { enable: enableWakeLock, release: releaseWakeLock, isEnabled: () => wakelockEnabled };
         })();
     </script>
+
+    <!-- Fullscreen Script -->
+    <script src="js/fullscreen.js"></script> <!-- NEW -->
+
     <!-- App Scripts -->
     <script src="js/persistence.js"></script>
     <script src="js/editMode.js"></script>
@@ -294,7 +289,7 @@
     <script src="js/dragDrop.js"></script>
     <script src="js/sound-settings.js"></script>
     <script src="js/app.js"></script>
-    <script src="js/tabs.js"></script> <!-- Keep tabs.js, likely still needed -->
+    <script src="js/tabs.js"></script>
 
 </body>
 </html>
