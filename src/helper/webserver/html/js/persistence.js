@@ -83,6 +83,25 @@ const persistence = (() => {
          saveSettings(state.settings);
      };
 
+     const clearLayoutOrder = (tabId, layoutMode) => {
+         if (state.settings.tabLayouts &&
+             state.settings.tabLayouts[tabId] &&
+             state.settings.tabLayouts[tabId][layoutMode]) {
+             delete state.settings.tabLayouts[tabId][layoutMode].order;
+             // Optional: Clean up empty layout/tab objects if desired
+             if (Object.keys(state.settings.tabLayouts[tabId][layoutMode]).length === 0) {
+                 delete state.settings.tabLayouts[tabId][layoutMode];
+             }
+             if (Object.keys(state.settings.tabLayouts[tabId]).length === 0) {
+                 delete state.settings.tabLayouts[tabId];
+             }
+             saveSettings(state.settings);
+             console.log(`Cleared layout order for tab ${tabId}, layout ${layoutMode}`);
+         } else {
+              console.log(`No layout order found to clear for tab ${tabId}, layout ${layoutMode}`);
+         }
+     };
+
      const removeSoundSetting = (soundPath, key) => {
          if (state.settings.soundSettings && state.settings.soundSettings[soundPath]) {
              delete state.settings.soundSettings[soundPath][key];
@@ -96,6 +115,10 @@ const persistence = (() => {
 
      const clearSoundEmoji = (soundPath) => {
          removeSoundSetting(soundPath, 'emoji');
+     };
+
+     const clearSoundColor = (soundPath) => { // Added function
+         removeSoundSetting(soundPath, 'color');
      };
 
      const setSoundColor = (soundPath, color) => {
@@ -213,9 +236,22 @@ const persistence = (() => {
         setSoundColor,
         setSoundEmoji,
         clearSoundEmoji,
+        clearSoundColor, // Export added function
         setCurrentLayoutMode,
         setLayoutOrder,
         exportSettings,
-        importSettings
+        importSettings,
+        // Reset functions
+        clearLayoutOrder,
+        resetAllSettings: () => { // Renamed for clarity within the module
+            try {
+                localStorage.removeItem(STORAGE_KEY);
+                console.log('All settings cleared from localStorage.');
+                // Important: Update the in-memory state as well
+                state.settings = getDefaultSettings();
+            } catch (error) {
+                console.error('Error clearing settings from localStorage:', error);
+            }
+        }
     };
 })();

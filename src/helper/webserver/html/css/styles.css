@@ -485,6 +485,52 @@ emoji-picker::part(nav), emoji-picker section[aria-label*="Favorites"], emoji-pi
 #app-settings-modal .action-button.secondary { background-color: var(--v-secondary-base); }
 #app-settings-modal .modal-info { font-size: 0.85rem; color: var(--text-secondary); margin-top: 15px; text-align: center; }
 
+/* Vertical button layout */
+#app-settings-modal .modal-actions.vertical {
+    flex-direction: column;
+    gap: 10px; /* Adjust gap for vertical layout */
+    align-items: stretch; /* Make buttons full width */
+}
+
+/* Long Press Button Styles */
+.long-press-button {
+    width: 100%; /* Make buttons full width */
+    background-color: var(--v-secondary-base); /* Default grey */
+    color: var(--text-secondary);
+    border: 1px solid var(--v-secondary-darken2);
+    transition: background-color 0.1s ease, color 0.1s ease;
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+    justify-content: center;
+}
+.long-press-button::before { /* Progress indicator */
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0; /* Starts at 0 width */
+    background-color: rgba(255, 255, 255, 0.1); /* Semi-transparent white */
+    transition: width 0.1s linear; /* Smooth progress */
+    z-index: 0;
+}
+.long-press-button span { /* Ensure text is above progress */
+    position: relative;
+    z-index: 1;
+}
+
+/* Confirmation State */
+.long-press-button.confirming {
+    background-color: var(--error-color); /* Red background */
+    color: white;
+    border-color: var(--error-color);
+}
+.long-press-button.confirming::before {
+    width: 0 !important; /* Hide progress bar in confirmation state */
+}
+
+
 /* Toggle Switch Styles */
 .toggle-switch { position: relative; display: inline-flex; align-items: center; width: auto; cursor: pointer; color: var(--text-primary); font-size: 0.9rem; gap: 10px; }
 .toggle-switch input { opacity: 0; width: 0; height: 0; }

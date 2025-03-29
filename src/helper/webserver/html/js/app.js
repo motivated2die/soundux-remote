@@ -25,6 +25,10 @@ const closeAppSettingsButton = document.getElementById('close-app-settings-butto
 const exportSettingsButton = document.getElementById('export-settings-button');
 const importSettingsButton = document.getElementById('import-settings-button');
 const importFileInput = document.getElementById('import-file-input');
+// Reset Buttons
+const resetCurrentPageVisualsButton = document.getElementById('reset-current-page-visuals');
+const resetCurrentPageLayoutButton = document.getElementById('reset-current-page-layout');
+const resetAllSettingsButton = document.getElementById('reset-all-settings');
 
 // --- Top Bar Progress & Indicator Updates ---
 function updateTopBarProgress(percentage) {
@@ -175,16 +179,317 @@ function setupEventListeners() {
      document.addEventListener('settingsChanged', () => {
          // console.log("Global settings changed event received.");
      });
+
+     // Setup long press listeners for reset buttons
+     setupLongPressResetButtons();
 }
 
+// --- Long Press Reset Button Logic ---
+const longPressState = {
+    timer: null,
+    interval: null,
+    startTime: 0,
+    target: null,
+    duration: 1000, // Default duration
+    isPressing: false,
+    isConfirming: false,
+    hasMoved: false,
+    startPos: { x: 0, y: 0 }
+};
+
+function setupLongPressResetButtons() {
+    const buttons = [
+        resetCurrentPageVisualsButton,
+        resetCurrentPageLayoutButton,
+        resetAllSettingsButton
+    ];
+
+    buttons.forEach(button => {
+        if (!button) {
+            console.warn("A reset button was not found.");
+            return;
+        }
+
+        const duration = parseInt(button.dataset.longPressDuration) || 1000;
+
+        // Touch Events
+        button.addEventListener('touchstart', (e) => handleLongPressStart(e, button, duration), { passive: true });
+        button.addEventListener('touchmove', handleLongPressMove, { passive: true });
+        button.addEventListener('touchend', handleLongPressEnd);
+        button.addEventListener('touchcancel', handleLongPressEnd); // Handle cancellation
+
+        // Mouse Events (Fallback)
+        button.addEventListener('mousedown', (e) => handleLongPressStart(e, button, duration));
+        button.addEventListener('mousemove', handleLongPressMove);
+        button.addEventListener('mouseup', handleLongPressEnd);
+        button.addEventListener('mouseleave', handleLongPressEnd); // Cancel if mouse leaves button
+
+        // Click Event (for confirmation)
+        button.addEventListener('click', () => handleLongPressClick(button));
+    });
+}
+
+function handleLongPressStart(e, button, duration) {
+    if (longPressState.isPressing || longPressState.isConfirming) return; // Prevent multiple presses
+
+    longPressState.isPressing = true;
+    longPressState.target = button;
+    longPressState.duration = duration;
+    longPressState.startTime = Date.now();
+    longPressState.hasMoved = false;
+
+    const touch = e.touches ? e.touches[0] : e;
+    longPressState.startPos = { x: touch.clientX, y: touch.clientY };
+
+    // Reset visual state immediately
+    resetButtonState(button);
+    button.style.setProperty('--progress-width', '0%'); // Ensure progress starts at 0
+
+    // Start progress interval
+    longPressState.interval = setInterval(() => {
+        const elapsed = Date.now() - longPressState.startTime;
+        const progress = Math.min(100, (elapsed / longPressState.duration) * 100);
+        if (longPressState.target === button) { // Check if still pressing the same button
+             const progressBar = button.querySelector('::before'); // Access pseudo-element if possible (might need JS var)
+             if(progressBar) progressBar.style.width = `${progress}%`;
+             // Alternative: Use a CSS variable if direct pseudo-element access is tricky
+             button.style.setProperty('--progress-width', `${progress}%`);
+        }
+    }, 50); // Update progress frequently
+
+    // Start confirmation timer
+    longPressState.timer = setTimeout(() => {
+        if (longPressState.isPressing && !longPressState.hasMoved && longPressState.target === button) {
+            enterConfirmingState(button);
+        }
+        clearLongPressTimers(); // Clear interval once timer finishes or is cancelled
+    }, longPressState.duration);
+}
+
+function handleLongPressMove(e) {
+    if (!longPressState.isPressing || longPressState.hasMoved) return;
+
+    const touch = e.touches ? e.touches[0] : e;
+    const deltaX = Math.abs(touch.clientX - longPressState.startPos.x);
+    const deltaY = Math.abs(touch.clientY - longPressState.startPos.y);
+
+    if (deltaX > 10 || deltaY > 10) { // Movement threshold
+        longPressState.hasMoved = true;
+        console.log("Long press cancelled due to movement.");
+        cancelLongPress();
+    }
+}
+
+function handleLongPressEnd() {
+    if (!longPressState.isPressing) return;
+
+    clearLongPressTimers();
+
+    // If not yet confirming, reset the button state
+    if (!longPressState.isConfirming) {
+        resetButtonState(longPressState.target);
+    }
+    // If confirming state was reached, it stays until clicked or modal closes
+
+    longPressState.isPressing = false;
+    // Keep target for potential click confirmation
+}
+
+function handleLongPressClick(button) {
+    if (longPressState.isConfirming && longPressState.target === button) {
+        console.log(`Confirmed action for: ${button.id}`);
+        executeResetAction(button.id);
+        resetButtonState(button); // Reset after action
+        longPressState.isConfirming = false;
+        longPressState.target = null;
+    } else {
+         // If clicked without being in confirming state, ensure it's reset
+         if (!longPressState.isPressing) { // Avoid resetting if press just started
+             resetButtonState(button);
+         }
+    }
+}
+
+function enterConfirmingState(button) {
+    if (!button) return;
+    console.log(`Entering confirming state for: ${button.id}`);
+    longPressState.isConfirming = true;
+    longPressState.isPressing = false; // No longer actively pressing
+    button.classList.add('confirming');
+    button.textContent = 'Tap again to confirm'; // Change text
+    button.style.setProperty('--progress-width', '0%'); // Reset progress visual
+    if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
+}
+
+function resetButtonState(button) {
+    if (!button) return;
+    button.classList.remove('confirming');
+    button.style.setProperty('--progress-width', '0%');
+    // Restore original text based on ID
+    switch (button.id) {
+        case 'reset-current-page-visuals':
+            button.textContent = 'Long press to reset current page visuals';
+            break;
+        case 'reset-current-page-layout':
+            button.textContent = 'Long press to reset current page layout';
+            break;
+        case 'reset-all-settings':
+            button.textContent = 'Long press to reset ALL settings';
+            break;
+    }
+}
+
+function cancelLongPress() {
+    clearLongPressTimers();
+    if (longPressState.target && !longPressState.isConfirming) {
+        resetButtonState(longPressState.target);
+    }
+    longPressState.isPressing = false;
+    // Don't reset target if confirming, it might still be clicked
+}
+
+function clearLongPressTimers() {
+    clearTimeout(longPressState.timer);
+    clearInterval(longPressState.interval);
+    longPressState.timer = null;
+    longPressState.interval = null;
+}
+
+// --- Reset Action Execution ---
+async function executeResetAction(buttonId) {
+    const currentTabId = state.currentTab;
+    if (!currentTabId && buttonId !== 'reset-all-settings') {
+        console.error("Cannot perform page-specific reset: No current tab ID.");
+        alert("Error: Could not determine the current tab.");
+        return;
+    }
+
+    try {
+        switch (buttonId) {
+            case 'reset-current-page-visuals':
+                console.log(`Resetting visuals for tab: ${currentTabId}`);
+                await resetCurrentPageVisuals(currentTabId);
+                break;
+            case 'reset-current-page-layout':
+                console.log(`Resetting layout for tab: ${currentTabId}`);
+                await resetCurrentPageLayout(currentTabId);
+                break;
+            case 'reset-all-settings':
+                console.log("Resetting ALL settings.");
+                await resetAllSettings();
+                break;
+            default:
+                console.warn(`Unknown reset action: ${buttonId}`);
+        }
+    } catch (error) {
+        console.error(`Error during reset action (${buttonId}):`, error);
+        alert(`An error occurred while resetting: ${error.message}`);
+    }
+}
+
+async function resetCurrentPageVisuals(tabId) {
+    const soundsOnPage = Array.from(soundsContainerEl?.querySelectorAll('.sound-card[data-sound-path]') || []);
+    if (soundsOnPage.length === 0) {
+        console.log("No sounds found on the current page to reset visuals for.");
+        return;
+    }
+
+    console.log(`Found ${soundsOnPage.length} sounds on page ${tabId} to reset visuals.`);
+    let settingsChanged = false;
+    soundsOnPage.forEach(card => {
+        const soundPath = card.dataset.soundPath;
+        if (soundPath) {
+            // Check if settings actually exist before clearing
+            const currentSettings = persistence.getSoundSettings(soundPath);
+            if (currentSettings.color && currentSettings.color !== 'default') {
+                persistence.clearSoundColor(soundPath);
+                settingsChanged = true;
+            }
+            if (currentSettings.emoji) {
+                persistence.clearSoundEmoji(soundPath);
+                settingsChanged = true;
+            }
+        }
+    });
+
+    // Reload sounds only if something actually changed
+    if (settingsChanged) {
+        console.log("Visual settings were changed, reloading sounds.");
+        if (window.app?.reloadSoundsForCurrentTab) {
+            window.app.reloadSoundsForCurrentTab();
+        } else {
+            console.error("Cannot reload sounds after resetting visuals.");
+        }
+    }
+}
+
+async function resetCurrentPageLayout(tabId) {
+    const currentLayout = persistence.getCurrentLayoutMode(tabId);
+    if (!currentLayout) {
+        console.error("Could not determine current layout mode for reset.");
+        return; // Or default to a specific layout?
+    }
+    console.log(`Clearing layout order for tab ${tabId}, layout ${currentLayout}`);
+    const orderExisted = persistence.getLayoutOrder(tabId, currentLayout) !== null; // Check if order existed
+    persistence.clearLayoutOrder(tabId, currentLayout);
+
+    // Reload sounds only if an order was actually cleared
+    if (orderExisted) {
+        console.log("Layout order existed and was cleared, reloading sounds.");
+        if (window.app?.reloadSoundsForCurrentTab) {
+            window.app.reloadSoundsForCurrentTab();
+        } else {
+            console.error("Cannot reload sounds after resetting layout.");
+        }
+    }
+}
+
+async function resetAllSettings() {
+    persistence.resetAllSettings();
+    state.settings = persistence.load(); // Reload settings into global state
+
+    // Update UI elements tied to settings
+    if (window.fullscreenManager && typeof state.settings.autoFullscreenEnabled !== 'undefined') {
+        const fsToggle = document.getElementById('auto-fullscreen-toggle');
+        if (fsToggle) fsToggle.checked = state.settings.autoFullscreenEnabled;
+        fullscreenManager.setEnabled(state.settings.autoFullscreenEnabled);
+    }
+
+    // Reload tabs and sounds completely
+    console.log("Reloading tabs after resetting all settings.");
+    await loadTabs(); // This implicitly reloads sounds for the newly determined active tab
+
+    // Close the settings modal after resetting all
+    console.log("Closing settings modal after reset all.");
+    closeAppSettingsModal();
+}
+
+
 // --- App Settings Modal ---
+// Combined openAppSettingsModal function
 function openAppSettingsModal() {
     if (window.fullscreenManager) {
         const toggle = document.getElementById('auto-fullscreen-toggle');
-        if (toggle) toggle.checked = window.fullscreenManager.isEnabled();
+        // Ensure toggle exists and state.settings is loaded before accessing
+        if (toggle && state.settings && typeof state.settings.autoFullscreenEnabled !== 'undefined') {
+             toggle.checked = state.settings.autoFullscreenEnabled;
+        } else if (toggle) {
+             // Default to unchecked if setting is missing
+             toggle.checked = false;
+        }
     }
+    // Reset any lingering confirmation states on buttons when modal opens
+    [resetCurrentPageVisualsButton, resetCurrentPageLayoutButton, resetAllSettingsButton].forEach(btn => {
+        if(btn) resetButtonState(btn);
+    });
+    longPressState.isConfirming = false; // Ensure confirmation state is globally reset
+    longPressState.target = null;
+    clearLongPressTimers(); // Clear any stray timers
+
     appSettingsModalOverlay?.classList.remove('hidden');
 }
+
+// Removed duplicate openAppSettingsModal function
 
 function closeAppSettingsModal() {
     appSettingsModalOverlay?.classList.add('hidden');
@@ -744,9 +1049,15 @@ async function checkForPlayingSounds() {
 // Make functions globally accessible if needed by other modules
 window.app = {
     reloadSoundsForCurrentTab: reloadSoundsForCurrentTab,
-    updateSoundCardDisplay: updateSoundCardDisplay
+    updateSoundCardDisplay: updateSoundCardDisplay,
+    // Expose reset functions if needed externally (optional)
+    // resetCurrentPageVisuals: resetCurrentPageVisuals,
+    // resetCurrentPageLayout: resetCurrentPageLayout,
+    // resetAllSettings: resetAllSettings
 };
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', init);
-// --- ENTIRE FILE REPLACE ---
+
+// Add a CSS variable for the progress width
+document.documentElement.style.setProperty('--progress-width', '0%');

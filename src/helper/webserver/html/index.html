@@ -205,9 +205,28 @@
                  <label class="toggle-switch">
                     <input type="checkbox" id="auto-fullscreen-toggle">
                     <span class="slider"></span>
-                    Auto Fullscreen on Interaction
+                     Auto Fullscreen on Interaction
                  </label>
             </div>
+            <div class="divider"></div>
+
+            <!-- Reset Layout Section -->
+            <div class="settings-section">
+                <h3>Reset Layout</h3>
+                <p class="modal-info">These actions require a long press and confirmation.</p>
+                <div class="modal-actions vertical"> <!-- Use vertical layout for buttons -->
+                    <button id="reset-current-page-visuals" class="action-button danger long-press-button" data-long-press-duration="1000">
+                        Long press to reset current page visuals
+                    </button>
+                    <button id="reset-current-page-layout" class="action-button danger long-press-button" data-long-press-duration="1000">
+                        Long press to reset current page layout
+                    </button>
+                    <button id="reset-all-settings" class="action-button danger long-press-button" data-long-press-duration="1000">
+                        Long press to reset ALL settings
+                    </button>
+                </div>
+            </div>
+
              <div class="divider"></div>
              <div class="modal-actions">
                  <button id="close-app-settings-button" class="action-button secondary">Close</button>
