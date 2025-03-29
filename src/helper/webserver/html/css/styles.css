@@ -1,4 +1,3 @@
-/* --- ENTIRE FILE REPLACE --- */
 :root {
     /* Colors */
     --v-primary-base: #52b18c;
@@ -15,6 +14,18 @@
     --error-color: #ff5252;
     --warning-color: #fb8c00;
     --success-color: #4caf50;
+
+    /* --- NEW: Highlight Colors --- */
+    --highlight-color-default-border: rgb(180, 180, 180);
+    --highlight-color-default-shadow: rgba(200, 200, 200, 0.6);
+    --sound-color-red-highlight: rgba(255, 100, 100, 0.7);
+    --sound-color-orange-highlight: rgba(255, 180, 100, 0.7);
+    --sound-color-yellow-highlight: rgba(255, 255, 100, 0.7);
+    --sound-color-green-highlight: rgba(100, 255, 100, 0.7);
+    --sound-color-blue-highlight: rgba(100, 150, 255, 0.7);
+    --sound-color-purple-highlight: rgba(200, 100, 255, 0.7);
+    --sound-color-pink-highlight: rgba(255, 150, 200, 0.7);
+    /* --- END NEW --- */
 
     /* NEW: Top bar progress color */
     --top-bar-progress-color: #444; /* Lighter grey */
@@ -36,7 +47,6 @@
     --top-bar-height: 35px;
     --header-height: 80px;
     --tabs-height: 60px;
-    /* --progress-bar-height: 3px; -- REMOVED */
 }
 
 /* --- Base & Reset --- */
@@ -183,9 +193,6 @@ body {
     font-size: 20px;
 }
 
-/* --- Progress Bar --- REMOVED */
-
-
 /* --- Main Sound Grid --- */
 main#sounds-container {
     order: 1;
@@ -230,6 +237,9 @@ main#sounds-container.layout-list { display: flex; flex-direction: column; gap: 
     hyphens: auto;
     overflow: hidden;
     --sound-base-color: var(--v-surface-dark); /* Default base for gradient */
+    /* --- NEW: Variables for highlight animation --- */
+    --highlight-border-color: transparent;
+    --highlight-shadow-color: transparent;
 }
 .sound-card:hover {
     background-color: var(--v-secondary-darken1);
@@ -242,15 +252,28 @@ main#sounds-container.layout-list { display: flex; flex-direction: column; gap: 
 .sortable-ghost { opacity: 0.4; background-color: var(--v-secondary-base) !important; }
 .sortable-chosen, .sortable-drag { opacity: 0.8; box-shadow: 0 5px 15px rgba(0,0,0,.3); transform: scale(1.05); cursor: grabbing !important; }
 
-/* Playing State Highlight */
-.sound-card.playing { animation: highlightFade 1.5s forwards; }
-@keyframes highlightFade {
-    0%, 70% { border-color: var(--v-primary-base); box-shadow: 0 0 8px var(--v-primary-base); }
-    100% { border-color: transparent; box-shadow: none; }
+
+/* --- MODIFIED: Playing State Highlight Animation --- */
+.sound-card.playing {
+    /* Apply default highlight colors (light grey) */
+    --highlight-border-color: var(--highlight-color-default-border);
+    --highlight-shadow-color: var(--highlight-color-default-shadow);
+    /* Apply animation */
+    animation: highlightFade 2.5s forwards ease-out; /* Slower duration, ease-out */
 }
-/* Playing state background gradient (for grid) */
+@keyframes highlightFade {
+    0% { /* Start highlighted */
+        border-color: var(--highlight-border-color);
+        box-shadow: 0 0 6px var(--highlight-shadow-color); /* Less intense shadow */
+    }
+    100% { /* Fade out completely */
+        border-color: transparent;
+        box-shadow: none;
+    }
+}
+
+/* Playing state background gradient (for grid) - Stays the same */
 .sound-card.playing:not(.layout-list .sound-card) {
-    /* Apply gradient based on base color */
     background: linear-gradient(
         to right,
         var(--v-primary-darken1) var(--progress-percentage, 0%),
@@ -258,6 +281,36 @@ main#sounds-container.layout-list { display: flex; flex-direction: column; gap: 
     );
 }
 
+/* --- NEW: Custom Color Highlight Overrides --- */
+.sound-card.sound-color-red.playing {
+    --highlight-border-color: #ff8a80; /* Lighter red border */
+    --highlight-shadow-color: var(--sound-color-red-highlight);
+}
+.sound-card.sound-color-orange.playing {
+    --highlight-border-color: #ffcc80; /* Lighter orange border */
+    --highlight-shadow-color: var(--sound-color-orange-highlight);
+}
+.sound-card.sound-color-yellow.playing {
+    --highlight-border-color: #fff59d; /* Lighter yellow border */
+    --highlight-shadow-color: var(--sound-color-yellow-highlight);
+}
+.sound-card.sound-color-green.playing {
+    --highlight-border-color: #a5d6a7; /* Lighter green border */
+    --highlight-shadow-color: var(--sound-color-green-highlight);
+}
+.sound-card.sound-color-blue.playing {
+    --highlight-border-color: #90caf9; /* Lighter blue border */
+    --highlight-shadow-color: var(--sound-color-blue-highlight);
+}
+.sound-card.sound-color-purple.playing {
+    --highlight-border-color: #ce93d8; /* Lighter purple border */
+    --highlight-shadow-color: var(--sound-color-purple-highlight);
+}
+.sound-card.sound-color-pink.playing {
+    --highlight-border-color: #f48fb1; /* Lighter pink border */
+    --highlight-shadow-color: var(--sound-color-pink-highlight);
+}
+/* --- END NEW HIGHLIGHT OVERRIDES --- */
 
 /* Sound Card Content Wrapper */
 .sound-content-wrapper { position: relative; z-index: 1; display: flex; align-items: center; width: 100%; justify-content: center; }
@@ -269,6 +322,10 @@ main#sounds-container.layout-list .sound-card {
     border-bottom: 1px solid var(--v-secondary-darken1); background-color: transparent;
     --sound-base-color: transparent;
     background: transparent !important; /* Override gradient for list */
+     /* Ensure list items don't use the highlight animation border/shadow */
+     animation: none;
+     border-color: transparent !important;
+     box-shadow: none !important;
 }
 main#sounds-container.layout-list .sound-card:hover { background-color: var(--v-secondary-darken2); --sound-base-color: var(--v-secondary-darken2); }
 main#sounds-container.layout-list .sound-card:last-child { border-bottom: none; }
@@ -276,11 +333,13 @@ main#sounds-container.layout-list .sound-card:last-child { border-bottom: none; 
 .layout-list .sound-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 1rem; }
 .layout-list .sound-emoji-list { font-size: 1.4em; width: 24px; text-align: center; }
 
-/* Grid Layout Emoji */
+/* Grid Layout Emoji - MODIFIED Opacity and Filter */
 .layout-grid-2 .sound-card::before, .layout-grid-3 .sound-card::before {
     content: var(--sound-emoji, ''); position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%); font-size: 4.5em; color: var(--text-primary);
-    opacity: 0.15; z-index: 0; pointer-events: none; line-height: 1;
+    opacity: 1; /* --- CHANGED --- */
+    filter: grayscale(25%) brightness(35%) saturate(1.2); /* --- ADDED --- */
+    z-index: 0; pointer-events: none; line-height: 1;
 }
 
 /* Sound Card Indicators */
@@ -353,12 +412,10 @@ h1 { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); line-heigh
 #settings-card {
     position: absolute; bottom: 0; left: 0; right: 0; background-color: var(--v-secondary-darken1);
     border-radius: 16px 16px 0 0; padding: 12px 20px calc(env(safe-area-inset-bottom) + 20px) 20px;
-    transform: translateY(110%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    max-height: 85vh; overflow-y: auto; box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
-    scrollbar-width: thin; scrollbar-color: var(--v-secondary-base) transparent;
+    transform: translateY(110%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.3s ease-out;
+    max-height: 85vh; box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+    height: auto; overflow: visible; /* Let content define height, overflow visible */
 }
-#settings-card::-webkit-scrollbar { width: 6px; }
-#settings-card::-webkit-scrollbar-thumb { background-color: var(--v-secondary-base); border-radius: 3px; }
 #sound-settings-overlay:not(.hidden) #settings-card { transform: translateY(0); }
 
 .handle-bar { width: 40px; height: 4px; background-color: var(--text-secondary); border-radius: 2px; margin: 0 auto 12px; }
@@ -369,38 +426,31 @@ h1 { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); line-heigh
 .icon-button { width: 48px; height: 48px; border-radius: 50%; background-color: var(--v-secondary-darken1); border: none; display: flex; align-items: center; justify-content: center; color: var(--text-primary); transition: background-color var(--transition-speed) ease; cursor: pointer; }
 .icon-button .material-symbols-outlined { font-size: 24px; }
 
-
-
 .action-button { padding: 0 18px; height: 48px; border-radius: 24px; background-color: var(--v-secondary-base); border: none; display: flex; align-items: center; justify-content: center; color: var(--text-primary); gap: 8px; transition: all var(--transition-speed) ease; min-width: 120px; font-weight: 500; font-size: 0.9rem; cursor: pointer; }
 .action-button.secondary { background-color: var(--v-secondary-darken2); }
 .action-button:active { background-color: var(--v-secondary-darken2); }
 .action-button .material-symbols-outlined { font-size: 22px; }
 .action-button[data-state="stop"] { background-color: var(--error-color); }
 .divider { height: 1px; background-color: rgba(255, 255, 255, 0.1); margin: 16px 0; }
-.settings-section { margin-bottom: 20px; position: relative; } /* Add position relative for emoji clear button */
+.settings-section { margin-bottom: 20px; position: relative; }
 .settings-section h3 { font-size: 1rem; margin-bottom: 12px; color: var(--text-primary); font-weight: 500; }
 
 
 /* Color Selector (Round Buttons) */
 .color-selector {
     display: flex;
-    justify-content: space-between; /* Distribute items evenly */
-    gap: 5px; /* Small gap */
-    padding: 0 2px; /* Tiny horizontal padding if needed */
+    justify-content: space-between;
+    gap: 5px;
+    padding: 0 2px;
 }
 .color-swatch {
-    flex-grow: 1; /* Allow buttons to grow */
-    flex-basis: 0; /* Start with no intrinsic width */
-    aspect-ratio: 1 / 1; /* Make them square (border-radius makes them round) */
-    border-radius: 50%; /* Make them round */
-    border: 2px solid transparent;
-    cursor: pointer;
+    flex-grow: 1; flex-basis: 0; aspect-ratio: 1 / 1; border-radius: 50%;
+    border: 2px solid transparent; cursor: pointer;
     transition: border-color var(--transition-speed) ease, transform var(--transition-speed) ease;
-    max-width: 36px; /* Limit max size */
+    max-width: 36px;
 }
 .color-swatch.selected { border-color: var(--text-primary); transform: scale(1.1); }
 .color-swatch:active { transform: scale(0.95); }
-
 /* Colors */
 .color-swatch.default { background-color: var(--v-surface-dark); }
 .color-swatch.red { background-color: var(--sound-color-red-bg); }
@@ -411,55 +461,47 @@ h1 { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); line-heigh
 .color-swatch.purple { background-color: var(--sound-color-purple-bg); }
 .color-swatch.pink { background-color: var(--sound-color-pink-bg); }
 
-/* Emoji Selector (using emoji-picker-element) */
-.emoji-section .emoji-display-area {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-.emoji-menu {
-    position: relative !important;
-    left: -10px !important;
-}
-
-.nav {
-    overflow: scroll !important;
-    scrollbar-width: none !important;
-}
-
-.favorites {
-    display: none !important;
-}
-
-#emoji-picker-trigger {
-    flex-grow: 1; /* Take available space */
-}
-.current-emoji {
-    font-size: 1.4em;
-    display: inline-block;
-    width: 24px;
-    text-align: center;
-}
-#clear-emoji-button-settings {
-    padding: 0;
-    width: 48px;
-    height: 48px;
-    min-width: 36px;
-    border-radius: 50%;
-    background-color: var(--v-secondary-base);
-}
-#clear-emoji-button-settings .material-symbols-outlined { font-size: 18px; }
-
-#emoji-picker-container {
-    position: relative; /* Container for absolute positioning if needed */
-    border-radius: var(--border-radius);
-    overflow: hidden; /* Clip picker content */
-    border: 1px solid var(--v-secondary-base);
-}
+/* Emoji Selector Section Styling */
+.emoji-section { position: relative; }
+.emoji-display-area { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.emoji-display-area.hidden { display: none; }
+#selected-emoji-button { flex-grow: 1; height: 48px; border-radius: 24px; background-color: var(--v-secondary-base); border: none; display: flex; align-items: center; justify-content: center; color: var(--text-primary); gap: 8px; transition: all var(--transition-speed) ease; font-weight: 500; font-size: 0.9rem; cursor: default; text-transform: uppercase; }
+.current-emoji { font-size: 1.4em; display: inline-block; width: 24px; text-align: center; }
+#clear-emoji-button-settings { padding: 0 18px; height: 48px; min-width: 130px; border-radius: 24px; background-color: var(--v-secondary-base); border: none; display: flex; align-items: center; justify-content: center; color: var(--text-primary); gap: 8px; transition: all var(--transition-speed) ease; font-weight: 500; font-size: 0.9rem; cursor: pointer; text-transform: uppercase; }
+#clear-emoji-button-settings:hover { background-color: var(--v-secondary-darken1); }
+#clear-emoji-button-settings .material-symbols-outlined { font-size: 20px; }
+/* Container for <emoji-picker> */
+#emoji-picker-container { border-radius: 24px; overflow: hidden; border: 1px solid var(--v-secondary-base); }
 #emoji-picker-container.hidden { display: none; }
-
+/* Emoji Picker Element */
+emoji-picker {
+    width: 100%; height: 280px; --border-color: transparent; --outline-color: var(--v-primary-base);
+    --border-radius: 0; --background: var(--v-secondary-darken1);
+    --input-padding: 0.8rem 1.2rem; --input-background-color: var(--v-secondary-base);
+    --input-text-color: var(--text-primary); --input-border-radius: 24px;
+    --input-border-size: 1px; --input-border-color: var(--v-secondary-base);
+    --input-line-height: 1.5; --input-font-size: 0.9rem;
+    --category-icon-color: var(--text-secondary); --category-icon-color-active: var(--v-primary-base);
+    --indicator-height: 0px; --button-active-background: var(--v-secondary-darken1);
+    --num-columns: 8; --emoji-size: 1.4em; --emoji-padding: 4px; scrollbar-width: none;
+}
+emoji-picker::-webkit-scrollbar { display: none; }
+emoji-picker::part(nav), emoji-picker section[aria-label*="Favorites"], emoji-picker section#favorites { display: none !important; }
+/* Floating Emoji Picker */
+#emoji-picker-container.emoji-picker-floating {
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 5px); left: 5%; right: 5%;
+    width: 90%; max-width: 450px; height: auto; max-height: 55vh; z-index: 1200;
+    background-color: var(--v-secondary-darken1); box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+    border-radius: 24px; border: 1px solid var(--v-secondary-base);
+    transition: transform 0.2s ease-out, opacity 0.2s ease-out; transform: translateY(-5px) scale(0.98);
+    opacity: 0; pointer-events: none;
+}
+#emoji-picker-container.emoji-picker-floating.visible { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
+/* Emoji Picker Placeholder */
+.emoji-picker-placeholder { display: none; height: 305px; /* Adjust height if needed */ }
+.emoji-picker-placeholder.placeholder-active { display: block; }
+/* Uppercase Button Text */
+#preview-button .button-text, #clear-emoji-button-settings .button-text { text-transform: uppercase; }
 
 
 /* --- App Settings Modal --- */
@@ -494,63 +536,31 @@ h1 { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); line-heigh
 
 /* Favorite Button Styling */
 .icon-button[data-type="favorite"] {
-    background-color: var(--v-secondary-base); /* Grey circle */
-    /* Ensure width/height are set if not already, e.g., width: 48px; height: 48px; */
+    background-color: var(--v-secondary-base);
 }
 .icon-button[data-type="favorite"] .material-symbols-outlined {
     transition: color 0.2s, transform 0.2s, font-variation-settings 0.2s;
     font-variation-settings: "'FILL' 0";
-    color: var(--text-secondary); /* Default icon color */
+    color: var(--text-secondary);
 }
 .icon-button[data-type="favorite"].active .material-symbols-outlined {
-    color: var(--error-color); /* Red active icon */
+    color: var(--error-color);
     transform: scale(1.1);
     font-variation-settings: "'FILL' 1";
 }
 
 /* Volume Control Layout */
 .volume-control { margin-top: 16px; }
-.volume-control .volume-header { /* New wrapper for title and reset button */
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 4px; /* Spacing below header */
-}
-.volume-control h3 {
-    font-size: 1rem;
-    color: var(--text-primary);
-    font-weight: 500;
-    margin-bottom: 0; /* Remove default margin */
-}
-.volume-control .volume-header .reset-button {
-    margin-left: 10px; /* Spacing next to title */
-}
-.volume-control .volume-subtext { /* New class for the info text */
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    margin-bottom: 12px; /* Spacing below subtext */
-}
-.slider-container {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    /* Removed margin-bottom, controlled by volume-subtext now */
-}
+.volume-control .volume-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.volume-control h3 { font-size: 1rem; color: var(--text-primary); font-weight: 500; margin-bottom: 0; }
+.volume-control .volume-header .reset-button { margin-left: 10px; }
+.volume-control .volume-subtext { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 12px; }
+.slider-container { display: flex; align-items: center; gap: 10px; }
 .slider-container .material-symbols-outlined { color: var(--text-secondary); }
-
-#volume-slider {
-    flex: 1;
-    -webkit-appearance: none;
-    height: 6px;
-    border-radius: 3px;
-    background-color: var(--v-secondary-darken2);
-    outline: none;
-    position: relative;
-}
+#volume-slider { flex: 1; -webkit-appearance: none; height: 6px; border-radius: 3px; background-color: var(--v-secondary-darken2); outline: none; position: relative; }
 #volume-slider::before { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 2px; height: 12px; background-color: var(--text-secondary); z-index: 1; }
 #volume-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--text-primary); cursor: pointer; transition: background 0.15s; }
 #volume-slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--text-primary); cursor: pointer; transition: background 0.15s; border: none; }
-
 .reset-button { background-color: transparent; border: 1px solid var(--text-secondary); color: var(--text-secondary); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; cursor: pointer; transition: all var(--transition-speed) ease; }
 .reset-button:hover { background-color: var(--v-secondary-base); color: var(--text-primary); }
 .reset-button.hidden { display: none; }
