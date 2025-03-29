@@ -368,8 +368,9 @@ h1 { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); line-heigh
 .action-buttons { display: flex; justify-content: center; gap: 16px; }
 .icon-button { width: 48px; height: 48px; border-radius: 50%; background-color: var(--v-secondary-darken1); border: none; display: flex; align-items: center; justify-content: center; color: var(--text-primary); transition: background-color var(--transition-speed) ease; cursor: pointer; }
 .icon-button .material-symbols-outlined { font-size: 24px; }
-.icon-button[data-type="favorite"] .material-symbols-outlined { transition: color 0.2s, transform 0.2s, font-variation-settings 0.2s; font-variation-settings: "'FILL' 0"; color: var(--text-secondary); }
-.icon-button[data-type="favorite"].active .material-symbols-outlined { color: var(--edit-mode-color); transform: scale(1.1); font-variation-settings: "'FILL' 1"; }
+
+
+
 .action-button { padding: 0 18px; height: 48px; border-radius: 24px; background-color: var(--v-secondary-base); border: none; display: flex; align-items: center; justify-content: center; color: var(--text-primary); gap: 8px; transition: all var(--transition-speed) ease; min-width: 120px; font-weight: 500; font-size: 0.9rem; cursor: pointer; }
 .action-button.secondary { background-color: var(--v-secondary-darken2); }
 .action-button:active { background-color: var(--v-secondary-darken2); }
@@ -379,18 +380,6 @@ h1 { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); line-heigh
 .settings-section { margin-bottom: 20px; position: relative; } /* Add position relative for emoji clear button */
 .settings-section h3 { font-size: 1rem; margin-bottom: 12px; color: var(--text-primary); font-weight: 500; }
 
-/* Volume Control */
-.volume-control { margin-top: 16px; }
-.slider-container { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.slider-container .material-symbols-outlined { color: var(--text-secondary); }
-.volume-info { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-secondary); }
-#volume-slider { flex: 1; -webkit-appearance: none; height: 6px; border-radius: 3px; background-color: var(--v-secondary-darken2); outline: none; position: relative; }
-#volume-slider::before { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 2px; height: 12px; background-color: var(--text-secondary); z-index: 1; }
-#volume-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--text-primary); cursor: pointer; transition: background 0.15s; }
-#volume-slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--text-primary); cursor: pointer; transition: background 0.15s; border: none; }
-.reset-button { background-color: transparent; border: 1px solid var(--text-secondary); color: var(--text-secondary); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; cursor: pointer; transition: all var(--transition-speed) ease; }
-.reset-button:hover { background-color: var(--v-secondary-base); color: var(--text-primary); }
-.reset-button.hidden { display: none; }
 
 /* Color Selector (Round Buttons) */
 .color-selector {
@@ -413,7 +402,7 @@ h1 { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); line-heigh
 .color-swatch:active { transform: scale(0.95); }
 
 /* Colors */
-.color-swatch.default { background-color: var(--v-surface-dark); border-color: var(--text-secondary); }
+.color-swatch.default { background-color: var(--v-surface-dark); }
 .color-swatch.red { background-color: var(--sound-color-red-bg); }
 .color-swatch.orange { background-color: var(--sound-color-orange-bg); }
 .color-swatch.yellow { background-color: var(--sound-color-yellow-bg); }
@@ -429,6 +418,21 @@ h1 { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); line-heigh
     gap: 10px;
     margin-bottom: 10px;
 }
+
+.emoji-menu {
+    position: relative !important;
+    left: -10px !important;
+}
+
+.nav {
+    overflow: scroll !important;
+    scrollbar-width: none !important;
+}
+
+.favorites {
+    display: none !important;
+}
+
 #emoji-picker-trigger {
     flex-grow: 1; /* Take available space */
 }
@@ -456,20 +460,7 @@ h1 { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); line-heigh
 }
 #emoji-picker-container.hidden { display: none; }
 
-/* Style the emoji picker element itself */
-emoji-picker {
-    width: 100%;
-    height: 250px; /* Or adjust as needed */
-    --background: var(--v-secondary-darken1);
-    --border-color: var(--v-secondary-base);
-    --input-background-color: var(--v-surface-dark);
-    --input-text-color: var(--text-primary);
-    --category-icon-color: var(--text-secondary);
-    --category-icon-color-active: var(--v-primary-base);
-    --indicator-color: var(--v-primary-base);
-    --emoji-size: 1.6em;
-    --emoji-padding: 5px;
-}
+
 
 /* --- App Settings Modal --- */
 #app-settings-modal-overlay { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; background-color: rgba(0, 0, 0, 0.7); opacity: 0; transition: opacity 0.3s ease, visibility 0.3s; visibility: hidden; backdrop-filter: blur(2px); }
@@ -499,3 +490,274 @@ emoji-picker {
 .no-sounds { color: var(--text-secondary); text-align: center; padding: 20px; font-style: italic; }
 .loading-sounds { color: var(--text-secondary); text-align: center; padding: 40px 20px; font-style: italic; }
 .material-symbols-outlined { vertical-align: middle; }
+
+
+/* Favorite Button Styling */
+.icon-button[data-type="favorite"] {
+    background-color: var(--v-secondary-base); /* Grey circle */
+    /* Ensure width/height are set if not already, e.g., width: 48px; height: 48px; */
+}
+.icon-button[data-type="favorite"] .material-symbols-outlined {
+    transition: color 0.2s, transform 0.2s, font-variation-settings 0.2s;
+    font-variation-settings: "'FILL' 0";
+    color: var(--text-secondary); /* Default icon color */
+}
+.icon-button[data-type="favorite"].active .material-symbols-outlined {
+    color: var(--error-color); /* Red active icon */
+    transform: scale(1.1);
+    font-variation-settings: "'FILL' 1";
+}
+
+/* Volume Control Layout */
+.volume-control { margin-top: 16px; }
+.volume-control .volume-header { /* New wrapper for title and reset button */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px; /* Spacing below header */
+}
+.volume-control h3 {
+    font-size: 1rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    margin-bottom: 0; /* Remove default margin */
+}
+.volume-control .volume-header .reset-button {
+    margin-left: 10px; /* Spacing next to title */
+}
+.volume-control .volume-subtext { /* New class for the info text */
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 12px; /* Spacing below subtext */
+}
+.slider-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    /* Removed margin-bottom, controlled by volume-subtext now */
+}
+.slider-container .material-symbols-outlined { color: var(--text-secondary); }
+
+#volume-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background-color: var(--v-secondary-darken2);
+    outline: none;
+    position: relative;
+}
+#volume-slider::before { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 2px; height: 12px; background-color: var(--text-secondary); z-index: 1; }
+#volume-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--text-primary); cursor: pointer; transition: background 0.15s; }
+#volume-slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--text-primary); cursor: pointer; transition: background 0.15s; border: none; }
+
+.reset-button { background-color: transparent; border: 1px solid var(--text-secondary); color: var(--text-secondary); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; cursor: pointer; transition: all var(--transition-speed) ease; }
+.reset-button:hover { background-color: var(--v-secondary-base); color: var(--text-primary); }
+.reset-button.hidden { display: none; }
+
+/* Emoji Selector Section Styling */
+.emoji-section {
+    position: relative; /* Keep for potential absolute positioning needs */
+}
+.emoji-display-area { /* Wrapper when emoji IS selected */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px; /* Consistent spacing */
+}
+.emoji-display-area.hidden { /* Hide when picker is shown */
+    display: none;
+}
+
+/* Style the button showing the selected emoji */
+#selected-emoji-button {
+    flex-grow: 1; /* Take available space */
+    height: 48px; /* Consistent height */
+    border-radius: 24px; /* Rounded */
+    background-color: var(--v-secondary-base); /* Grey */
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    gap: 8px;
+    transition: all var(--transition-speed) ease;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: default; /* Not clickable itself */
+    text-transform: uppercase; /* Uppercase text */
+}
+.current-emoji { /* The actual emoji character span */
+    font-size: 1.4em;
+    display: inline-block;
+    width: 24px;
+    text-align: center;
+}
+
+/* Style the clear emoji button */
+#clear-emoji-button-settings {
+    padding: 0 18px;
+    height: 48px;
+    min-width: 130px; /* Allow natural width */
+    border-radius: 24px;
+    background-color: var(--v-secondary-base); /* Grey */
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    gap: 8px;
+    transition: all var(--transition-speed) ease;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    text-transform: uppercase; /* Uppercase text */
+}
+#clear-emoji-button-settings:hover {
+    background-color: var(--v-secondary-darken1);
+}
+#clear-emoji-button-settings .material-symbols-outlined { font-size: 20px; }
+
+
+/* Container for the actual <emoji-picker> element */
+#emoji-picker-container {
+    border-radius: var(--border-radius);
+    overflow: hidden; /* Clip picker content */
+    border: 1px solid var(--v-secondary-base); /* Match other inputs */
+    /* Removed position: relative */
+}
+#emoji-picker-container.hidden { display: none; }
+
+/* Style the emoji picker element itself using CSS variables */
+emoji-picker {
+    width: 100%;
+    height: 320px; /* Slightly taller */
+    --border-color: transparent; /* Remove internal border */
+    --outline-color: var(--v-primary-base); /* Focus outline color */
+    --border-radius: 0; /* Remove internal radius, container handles it */
+
+    /* Input Search Bar Styling */
+    --input-padding: 0.6rem 0.8rem; /* Adjust padding */
+    --input-background-color: var(--v-secondary-base); /* Match action buttons */
+    --input-text-color: var(--text-primary);
+    --input-border-radius: var(--border-radius); /* Match action buttons */
+    --input-border-color: transparent; /* Remove input border */
+    --input-placeholder-color: var(--text-secondary);
+    --input-line-height: 1.5; /* Adjust if needed for vertical centering */
+    --input-font-size: 16px;
+
+    /* Background and other colors */
+    --background: var(--v-secondary-darken1);
+    --category-icon-color: var(--text-secondary);
+    --category-icon-color-active: var(--v-primary-base);
+    --indicator-color: var(--v-primary-base);
+
+    /* Emoji grid styling */
+    --emoji-size: 1.7em; /* Slightly larger emoji? */
+    --emoji-padding: 6px;
+
+    /* Remove scrollbar (Note: This might not work perfectly across browsers for internal Shadow DOM scrollbars) */
+    scrollbar-width: none; /* Firefox */
+}
+
+/* Attempt to hide scrollbar in WebKit browsers */
+emoji-picker::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hide Favorites section (Note: Relies on internal structure, might break with updates) */
+/* This uses a best guess selector. Inspect the element's Shadow DOM if this doesn't work */
+emoji-picker::part(nav), /* Hide the entire category nav if possible */
+emoji-picker section#favorites { /* Target the favorites section directly if possible */
+  display: none !important;
+}
+
+/* Uppercase Button Text */
+#preview-button .button-text,
+#clear-emoji-button-settings .button-text /* Added class for delete text */
+{
+    text-transform: uppercase;
+}
+
+#settings-card {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--v-secondary-darken1);
+    border-radius: 16px 16px 0 0;
+    padding: 12px 20px calc(env(safe-area-inset-bottom) + 20px) 20px;
+    transform: translateY(110%);
+    /* Allow smooth transitions for transform and potentially height/max-height */
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.3s ease-out;
+    max-height: 85vh; /* Start with a max height */
+    /* overflow-y: auto; */ /* REMOVED: Card itself shouldn't scroll internally */
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+    /* Ensure content determines height up to max-height */
+    height: auto;
+    overflow: visible; /* Allow content to potentially overflow if absolutely needed, though max-height should handle most cases */
+}
+/* Ensure overlay allows interaction with the grown card */
+#sound-settings-overlay {
+    /* Ensure clicks pass through backdrop to card if needed, handle backdrop separately */
+}
+#sound-settings-overlay:not(.hidden) #settings-card { transform: translateY(0); }
+
+/* Container for the actual <emoji-picker> element */
+#emoji-picker-container {
+    border-radius: 24px; /* MODIFIED: Rounded container */
+    overflow: hidden; /* Clip picker content */
+    border: 1px solid var(--v-secondary-base); /* Keep border on container */
+}
+#emoji-picker-container.hidden { display: none; }
+
+/* Style the emoji picker element itself using CSS variables */
+emoji-picker {
+    width: 100%;
+    height: 280px; /* Keep height or adjust as needed */
+    /* Internal styling via variables */
+    --border-color: transparent; /* Remove internal borders */
+    --outline-color: var(--v-primary-base);
+    --border-radius: 0; /* No internal radius */
+    --background: var(--v-secondary-darken1); /* Match card background */
+
+    /* Input Search Bar Styling */
+    --input-padding: 0.8rem 1.2rem; /* Adjust padding for 48px visual height */
+    --input-background-color: var(--v-secondary-base);
+    --input-text-color: var(--text-primary);
+    --input-border-radius: 24px; /* MODIFIED: Rounded search bar */
+    --input-border-size: 1px; /* MODIFIED: Add border */
+    --input-border-color: var(--v-secondary-base); /* MODIFIED: Light grey border */
+    --input-line-height: 1.5; /* Adjust line height */
+    --input-font-size: 0.9rem;
+    /* The effective height comes from padding + line-height + border */
+
+    /* Category Nav Styling */
+    --category-icon-color: var(--text-secondary);
+    --category-icon-color-active: var(--v-primary-base); /* Keep icon color change */
+    --indicator-height: 0px; /* MODIFIED: Hide underline indicator */
+    /* MODIFIED: Use active button background for highlight */
+    /* Note: Use a slightly lighter grey than the search bar for contrast */
+    --button-active-background: var(--v-secondary-darken1); /* e.g., #3a3a3a or adjust as needed */
+
+    /* Emoji grid styling */
+    --num-columns: 8; /* MODIFIED: Set default number of columns */
+    --emoji-size: 1.4em; /* Keep or adjust */
+    --emoji-padding: 4px; /* Keep or adjust */
+
+    /* Scrollbar Hiding */
+    scrollbar-width: none; /* Firefox */
+}
+
+/* Explicitly hide scrollbars for WebKit */
+emoji-picker::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hide Favorites section (Selector might be fragile) */
+emoji-picker::part(nav), /* Hide entire nav if this works */
+emoji-picker section[aria-label*="Favorites"], /* Try targeting by label */
+emoji-picker section#favorites /* Fallback */
+{
+  display: none !important;
+}
