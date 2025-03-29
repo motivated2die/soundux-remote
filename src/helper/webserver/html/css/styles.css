@@ -465,7 +465,12 @@ emoji-picker::part(nav), emoji-picker section[aria-label*="Favorites"], emoji-pi
 .emoji-picker-placeholder { display: none; height: 305px; /* Adjust height if needed */ }
 .emoji-picker-placeholder.placeholder-active { display: block; }
 /* Uppercase Button Text */
-#preview-button .button-text, #clear-emoji-button-settings .button-text { text-transform: uppercase; }
+#preview-button .button-text,
+#clear-emoji-button-settings .button-text,
+#select-emoji-button /* Added */
+{
+    text-transform: uppercase;
+}
 
 
 /* --- App Settings Modal --- */
@@ -648,7 +653,8 @@ emoji-picker section#favorites { /* Target the favorites section directly if pos
 
 /* Uppercase Button Text */
 #preview-button .button-text,
-#clear-emoji-button-settings .button-text /* Added class for delete text */
+#clear-emoji-button-settings .button-text, /* Added class for delete text */
+#select-emoji-button /* Added */
 {
     text-transform: uppercase;
 }
@@ -765,6 +771,99 @@ emoji-picker section#favorites /* Fallback */
     opacity: 1;
     pointer-events: auto; /* Enable interaction */
 }
+
+
+/* --- Emoji Picker Modal --- */
+#emoji-picker-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1150; /* Above settings card, below floating picker if it existed */
+    display: flex;
+    /* Center vertically, but allow space for keyboard */
+    align-items: flex-start; /* Align to top */
+    padding-top: 5vh; /* MODIFIED: Push down less from the top */
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.7); /* Darker backdrop */
+    opacity: 0;
+    transition: opacity 0.25s ease, visibility 0.25s;
+    visibility: hidden;
+    backdrop-filter: blur(3px);
+}
+#emoji-picker-modal-overlay:not(.hidden) {
+    opacity: 1;
+    visibility: visible;
+}
+
+#emoji-picker-modal {
+    background-color: var(--v-secondary-darken1); /* Match settings card */
+    border-radius: 12px; /* Consistent rounding */
+    padding: 20px;
+    width: 90%;
+    max-width: 400px; /* Limit width */
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+    transform: scale(0.95);
+    transition: transform 0.25s ease;
+    /* Allow internal scrolling if picker is tall */
+    max-height: 80vh; /* Limit height */
+    overflow-y: auto; /* Add scroll if needed */
+}
+#emoji-picker-modal-overlay:not(.hidden) #emoji-picker-modal {
+    transform: scale(1);
+}
+
+/* NEW: Modal Header Styles */
+#emoji-picker-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px; /* Space below header */
+}
+
+#emoji-picker-modal h2 {
+    /* text-align: center; */ /* REMOVED */
+    margin-bottom: 0; /* Handled by header margin */
+    font-size: 1.2rem;
+    font-weight: 500;
+    flex-grow: 1; /* Allow title to take space */
+    text-align: left; /* MODIFIED */
+}
+
+/* NEW: Close button style */
+#emoji-picker-modal .modal-close-button {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 24px; /* Material icon size */
+    cursor: pointer;
+    padding: 5px; /* Easier click target */
+    line-height: 1;
+    transition: color var(--transition-speed) ease;
+}
+#emoji-picker-modal .modal-close-button:hover {
+    color: var(--text-primary);
+}
+
+
+/* Container for the picker inside the modal */
+#emoji-picker-modal #emoji-picker-container {
+    border-radius: 24px; /* MODIFIED: Restore original rounded container */
+    border: 1px solid var(--v-secondary-base);
+    overflow: hidden; /* Clip picker */
+    margin-bottom: 15px; /* Space before actions */
+}
+
+/* Style the picker inside the modal */
+#emoji-picker-modal emoji-picker {
+    height: 300px; /* Adjust height as needed for modal context */
+    /* Inherit variables or redefine if needed */
+    --background: var(--v-secondary-darken1);
+    --input-background-color: var(--v-secondary-base);
+    --input-border-radius: 24px; /* MODIFIED: Restore original rounded search bar */
+    --input-border-color: transparent;
+    /* etc. */
+}
+
+/* REMOVED: .modal-actions styles are no longer needed here */
 
 /* Optional: Slightly dim the main settings card when picker is floating */
 #sound-settings-overlay.picker-is-floating #settings-card {

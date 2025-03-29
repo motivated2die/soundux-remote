@@ -142,27 +142,47 @@
 
             <!-- Emoji Selector -->
             <div class="settings-section emoji-section">
-                 <h3>Button Emoji</h3>
-                 <!-- Area shown when an emoji IS selected -->
-                 <div id="emoji-display-area" class="emoji-display-area hidden">
-                      <button id="selected-emoji-button" aria-label="Current Emoji">
-                           <span id="current-emoji-display" class="current-emoji">❓</span>
-                      </button>
-                      <button id="clear-emoji-button-settings" aria-label="Clear Emoji">
-                           <span class="material-symbols-outlined">delete</span>
-                           <span class="button-text">Delete</span> <!-- Added text span -->
-                      </button>
-                 </div>
-                 <!-- The actual emoji picker component, shown when NO emoji is selected -->
-                 <div id="emoji-picker-container" class="hidden"> <!-- Initially hidden, JS controls visibility -->
-                    <emoji-picker class="dark"></emoji-picker>
+                <h3>Button Emoji</h3>
+                <!-- Area shown when an emoji IS selected -->
+                <div id="emoji-display-area" class="emoji-display-area hidden">
+                    <button id="selected-emoji-button" aria-label="Current Emoji">
+                        <span id="current-emoji-display" class="current-emoji">❓</span>
+                    </button>
+                    <button id="clear-emoji-button-settings" aria-label="Clear Emoji">
+                        <span class="material-symbols-outlined">delete</span>
+                        <span class="button-text">Delete</span> <!-- Added text span -->
+                    </button>
                 </div>
-                <!-- --- NEW CODE START --- -->
-                <!-- Placeholder to maintain space when picker is floating -->
-                <div id="emoji-picker-placeholder" class="emoji-picker-placeholder"></div>
-                <!-- --- NEW CODE END --- -->
-           </div>
+                <!-- Button shown when NO emoji is selected -->
+                <button id="select-emoji-button" class="action-button hidden">
+                    <span class="material-symbols-outlined">add_reaction</span>
+                    Select Background Emoji
+                </button>
+                <!-- Placeholder removed as picker is now in modal -->
+                <!-- <div id="emoji-picker-placeholder" class="emoji-picker-placeholder"></div> -->
+            </div>
 
+        </div>
+    </div>
+
+    <!-- Emoji Picker Modal -->
+    <div id="emoji-picker-modal-overlay" class="hidden">
+        <div id="emoji-picker-modal">
+            <!-- NEW: Modal Header -->
+            <div class="modal-header">
+                <h2>Select Emoji</h2>
+                <button id="close-emoji-picker-button" class="modal-close-button" aria-label="Close emoji picker">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <!-- The actual emoji picker component -->
+            <div id="emoji-picker-container"> <!-- Container kept for potential styling/structure -->
+                <emoji-picker class="dark"></emoji-picker>
+            </div>
+            <!-- REMOVED: Old modal actions -->
+            <!-- <div class="modal-actions">
+                <button id="close-emoji-picker-button" class="action-button secondary">Cancel</button>
+            </div> -->
         </div>
     </div>
 

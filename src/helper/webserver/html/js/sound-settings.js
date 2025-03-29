@@ -1,4 +1,3 @@
-// --- ENTIRE FILE REPLACE ---
 // State management
 let currentSoundId = null;
 let currentSoundData = null; // Stores details fetched for the current sound
@@ -7,13 +6,11 @@ let currentY = 0;
 let isDragging = false;
 let cardHeight = 0;
 let currentPreviewId = null;
-let emojiPickerInstance = null; // Reference to the emoji picker element
-let isEmojiPickerOpen = false;
-let isClickHandlingCleanup = false; // Flag to prevent blur/click race condition
+let emojiPickerInstance = null; // Reference to the emoji picker element INSIDE THE MODAL
+let emojiPickerInputElement = null; // To store the reference to the search input inside the shadow DOM of the picker in the modal
 
-
-// Elements
-const settingsOverlay = document.getElementById('sound-settings-overlay');
+// Elements (Settings Card)
+const settingsOverlay = document.getElementById('sound-settings-overlay'); // Main settings slide-in
 const settingsCard = document.getElementById('settings-card');
 const settingsBackdrop = document.getElementById('settings-backdrop');
 const soundNameElement = document.getElementById('settings-sound-name');
@@ -23,18 +20,19 @@ const previewButton = document.getElementById('preview-button');
 const volumeSlider = document.getElementById('volume-slider');
 const resetVolumeButton = document.getElementById('reset-volume');
 const colorSelector = document.getElementById('color-selector');
-// Emoji Elements
-const emojiDisplayArea = document.getElementById('emoji-display-area'); // Area showing selected emoji + clear button
-const selectedEmojiButton = document.getElementById('selected-emoji-button'); // Button showing the selected emoji
-const currentEmojiDisplay = document.getElementById('current-emoji-display'); // Span inside the selected-emoji-button
-const emojiPickerContainer = document.getElementById('emoji-picker-container'); // Container for <emoji-picker>
-const clearEmojiButtonSettings = document.getElementById('clear-emoji-button-settings'); // The clear button itself
-const emojiPickerPlaceholder = document.getElementById('emoji-picker-placeholder'); // Placeholder element
+// Emoji Elements (Settings Card)
+const emojiDisplayArea = document.getElementById('emoji-display-area'); // Area showing selected emoji + clear button in settings
+const selectedEmojiButton = document.getElementById('selected-emoji-button'); // Button showing the selected emoji in settings (not interactive itself)
+const currentEmojiDisplay = document.getElementById('current-emoji-display'); // Span inside the selected-emoji-button in settings
+const clearEmojiButtonSettings = document.getElementById('clear-emoji-button-settings'); // The clear button in settings
+const selectEmojiButton = document.getElementById('select-emoji-button'); // Button to open the modal
 
+// Elements (Emoji Picker Modal)
+const emojiPickerModalOverlay = document.getElementById('emoji-picker-modal-overlay');
+const emojiPickerModal = document.getElementById('emoji-picker-modal');
+const emojiPickerContainer = document.getElementById('emoji-picker-container'); // Container for <emoji-picker> IN THE MODAL
+const closeEmojiPickerButton = document.getElementById('close-emoji-picker-button');
 
-// --- NEW CODE START ---
-let emojiPickerInputElement = null; // To store the reference to the search input inside the shadow DOM
-const initialCardBottom = settingsCard ? settingsCard.style.bottom : '0px'; // Store initial position
 
 // Initialize the settings menu
 function initSoundSettings() {
@@ -47,17 +45,14 @@ function initSoundSettings() {
     setupDragBehavior();
     setupButtonActions();
     setupColorSelection();
-    setupEmojiSelection(); // Uses emoji-picker-element
+    setupEmojiSelection(); // Now handles modal logic
     setupLongPressDetection();
     setupRightClickBehavior();
 
     settingsBackdrop?.addEventListener('click', closeSettingsMenu);
-
-    // --- REMOVED Picmo Init Call ---
-    // initializeEmojiPicker();
 }
 
-// Function to set the selected emoji
+// --- MODIFIED: Function to set the selected emoji (called from modal) ---
 function setEmoji(emoji) {
     if (!currentSoundId || !currentSoundData) return;
 
@@ -68,20 +63,22 @@ function setEmoji(emoji) {
     }
     persistence.setSoundEmoji(soundPath, emoji);
 
-    // Update UI immediately
+    // Update UI in the SETTINGS CARD immediately
     if (currentEmojiDisplay) currentEmojiDisplay.textContent = emoji;
-    if (clearEmojiButtonSettings) clearEmojiButtonSettings.classList.remove('hidden');
+    if (emojiDisplayArea) emojiDisplayArea.classList.remove('hidden'); // Show display area
+    if (selectEmojiButton) selectEmojiButton.classList.add('hidden'); // Hide select button
+    if (clearEmojiButtonSettings) clearEmojiButtonSettings.classList.remove('hidden'); // Show clear button
 
+    // Update the main sound card display
     if (window.app && typeof window.app.updateSoundCardDisplay === 'function') {
         window.app.updateSoundCardDisplay(currentSoundId);
     }
 
-    // Close the picker
-    if (emojiPickerContainer) emojiPickerContainer.classList.add('hidden');
-    isEmojiPickerOpen = false;
+    // Close the modal
+    closeEmojiPickerModal();
 }
 
-// Function to clear the emoji
+// --- MODIFIED: Function to clear the emoji (called from settings card) ---
 function clearEmoji() {
     if (!currentSoundId || !currentSoundData) return;
     const soundPath = currentSoundData.path;
@@ -91,17 +88,18 @@ function clearEmoji() {
     }
     persistence.clearSoundEmoji(soundPath);
 
-    // Update UI immediately
-    if (currentEmojiDisplay) currentEmojiDisplay.textContent = '❓';
-    if (clearEmojiButtonSettings) clearEmojiButtonSettings.classList.add('hidden');
+    // Update UI in the SETTINGS CARD immediately
+    if (currentEmojiDisplay) currentEmojiDisplay.textContent = '❓'; // Reset display text just in case
+    if (emojiDisplayArea) emojiDisplayArea.classList.add('hidden'); // Hide display area
+    if (selectEmojiButton) selectEmojiButton.classList.remove('hidden'); // Show select button
+    if (clearEmojiButtonSettings) clearEmojiButtonSettings.classList.add('hidden'); // Hide clear button
 
+    // Update the main sound card display
     if (window.app && typeof window.app.updateSoundCardDisplay === 'function') {
         window.app.updateSoundCardDisplay(currentSoundId);
     }
 
-    // Close the picker if it was open
-    if (emojiPickerContainer) emojiPickerContainer.classList.add('hidden');
-    isEmojiPickerOpen = false;
+    // DO NOT open the modal automatically
 }
 
 
@@ -134,7 +132,10 @@ function setupRightClickBehavior() {
                 } else { console.error("Sound settings module not available."); }
            }
         }
-        if (e.target.closest('#settings-card')) e.preventDefault();
+        // Prevent context menu inside the settings card AND the emoji modal
+        if (e.target.closest('#settings-card') || e.target.closest('#emoji-picker-modal')) {
+            e.preventDefault();
+        }
     });
 }
 
@@ -190,7 +191,14 @@ function setupDragBehavior() {
 
 // Handle card touch start for dragging
 function onCardTouchStart(e) {
-    if (e.target === volumeSlider || e.target.closest('.color-selector') || e.target.closest('#emoji-picker-trigger') || e.target.closest('#emoji-picker-container')) return;
+    // Prevent drag if interacting with interactive elements within the card
+    if (e.target === volumeSlider ||
+        e.target.closest('.color-selector') ||
+        e.target.closest('#select-emoji-button') || // Prevent drag on select button
+        e.target.closest('#emoji-display-area')) // Prevent drag on display area (incl. clear button)
+    {
+        return;
+    }
     startY = e.touches[0].clientY;
     cardHeight = settingsCard.offsetHeight;
     isDragging = true;
@@ -225,7 +233,7 @@ function onCardTouchEnd() {
     startY = 0; currentY = 0;
 }
 
-// Setup button actions
+// Setup button actions within the settings card
 function setupButtonActions() {
     if (favoriteButton) {
         favoriteButton.addEventListener('click', () => {
@@ -287,6 +295,7 @@ function setupButtonActions() {
         resetVolumeButton.addEventListener('click', resetVolume);
     } else { console.error("Reset volume button not found."); }
 
+    // Clear button listener remains here as it's in the settings card
     if (clearEmojiButtonSettings) {
         clearEmojiButtonSettings.addEventListener('click', clearEmoji);
     } else { console.error("Clear emoji button (settings) not found."); }
@@ -312,194 +321,109 @@ function setupColorSelection() {
     });
 }
 
+// --- MODIFIED: Setup Emoji Selection (Modal Logic) ---
 function setupEmojiSelection() {
-    // Check required elements
-    if (!emojiDisplayArea || !emojiPickerContainer || !clearEmojiButtonSettings || !currentEmojiDisplay) {
-        console.error("One or more required emoji elements not found.");
+    // Check required elements for both settings card and modal
+    if (!emojiDisplayArea || !clearEmojiButtonSettings || !currentEmojiDisplay || !selectEmojiButton ||
+        !emojiPickerModalOverlay || !emojiPickerModal || !emojiPickerContainer || !closeEmojiPickerButton) {
+        console.error("One or more required emoji elements (settings or modal) not found.");
         return;
     }
 
+    // Get the picker instance from the MODAL
     emojiPickerInstance = emojiPickerContainer.querySelector('emoji-picker');
     if (!emojiPickerInstance) {
-        console.error("emoji-picker element not found within the container.");
+        console.error("emoji-picker element not found within the modal container.");
         return;
     }
 
-    // --- MODIFIED: Handle emoji selection ---
+    // 1. Listener for the "Select Background Emoji" button (in settings card)
+    selectEmojiButton.addEventListener('click', openEmojiPickerModal);
+
+    // 2. Listener for selecting an emoji within the MODAL
     emojiPickerInstance.addEventListener('emoji-click', event => {
-        // 1. Signal that cleanup will be handled here
-        isClickHandlingCleanup = true;
-        // console.log("Setting isClickHandlingCleanup = true"); // Debug
-
         const selectedEmoji = event.detail.unicode;
-        console.log("Emoji clicked:", selectedEmoji);
+        console.log("Emoji selected in modal:", selectedEmoji);
+        setEmoji(selectedEmoji); // This will update state, update settings UI, and close the modal
+    });
 
-        // 2. Apply the selection FIRST
-        setEmoji(selectedEmoji); // Update internal state and persistence
+    // 3. Listener for the "Cancel" button in the MODAL
+    closeEmojiPickerButton.addEventListener('click', closeEmojiPickerModal);
 
-        // 3. Check if it was floating *before* potentially modifying classes
-        const wasFloating = emojiPickerContainer.classList.contains('emoji-picker-floating');
-
-        // 4. Update UI visibility (Hide picker, show display)
-        emojiPickerContainer.classList.add('hidden');
-        emojiDisplayArea.classList.remove('hidden');
-        isEmojiPickerOpen = false;
-
-        // 5. Clean up floating state if it was active
-        if (wasFloating) {
-            console.log("Selection occurred while floating. Cleaning up floating state now.");
-            emojiPickerContainer.classList.remove('visible');
-            emojiPickerContainer.classList.remove('emoji-picker-floating');
-            if (emojiPickerPlaceholder) {
-                emojiPickerPlaceholder.classList.remove('placeholder-active');
-            }
-            settingsOverlay?.classList.remove('picker-is-floating');
+    // 4. Listener for clicking the modal overlay (backdrop) to close
+    emojiPickerModalOverlay.addEventListener('click', (event) => {
+        // Only close if the click is directly on the overlay, not the modal content
+        if (event.target === emojiPickerModalOverlay) {
+            closeEmojiPickerModal();
         }
-
-        // 6. Reset the flag after a very short delay, allowing blur to potentially fire but be ignored
-        setTimeout(() => {
-            // console.log("Resetting isClickHandlingCleanup = false"); // Debug
-            isClickHandlingCleanup = false;
-        }, 50); // 50ms should be enough
     });
 
-    // Handle clearing the emoji
-    clearEmojiButtonSettings.addEventListener('click', () => {
-        clearEmoji();
-        // After clearing, show picker and hide display area
-        emojiPickerContainer.classList.remove('hidden');
-        emojiDisplayArea.classList.add('hidden');
-        isEmojiPickerOpen = true; // Picker is now visible
-        console.log("Emoji cleared, picker shown without focus.");
-        // NO automatic focus
-    });
+    // 5. Listener for the clear button remains in setupButtonActions as it's part of the main settings card.
 
-    // --- Keyboard Handling ---
+    // 6. Find the search input within the picker's shadow DOM (for focusing later)
+    // Use requestAnimationFrame or a small delay if shadow DOM isn't ready immediately
     requestAnimationFrame(() => {
         if (emojiPickerInstance && emojiPickerInstance.shadowRoot) {
             emojiPickerInputElement = emojiPickerInstance.shadowRoot.querySelector('input[type="search"]');
             if (emojiPickerInputElement) {
-                emojiPickerInputElement.addEventListener('focus', handleEmojiInputFocus);
-                emojiPickerInputElement.addEventListener('blur', handleEmojiInputBlur); // Keep blur listener
-                console.log("Emoji search input found and listeners attached.");
+                console.log("Emoji search input found in modal picker.");
             } else {
-                console.warn("Could not find search input within emoji-picker shadow DOM.");
+                console.warn("Could not find search input within modal emoji-picker shadow DOM.");
             }
         } else {
-             console.warn("Emoji picker instance or its shadow DOM not ready for input search binding.");
+             console.warn("Modal emoji picker instance or its shadow DOM not ready for input search binding.");
         }
     });
 }
 
+// --- NEW: Function to open the emoji picker modal ---
+function openEmojiPickerModal() {
+    if (!emojiPickerModalOverlay) return;
+    console.log("Opening emoji picker modal.");
+    emojiPickerModalOverlay.classList.remove('hidden');
+    // Optional: Add animation class if needed
+    // requestAnimationFrame(() => emojiPickerModal.classList.add('visible'));
 
+    // Focus the search input after the modal is potentially visible
+    focusEmojiSearchInput();
+}
 
-// --- NEW CODE START ---
+// --- NEW: Function to close the emoji picker modal ---
+function closeEmojiPickerModal() {
+    if (!emojiPickerModalOverlay) return;
+    console.log("Closing emoji picker modal.");
+    // Optional: Add animation class for fade out before hiding
+    emojiPickerModalOverlay.classList.add('hidden');
+    // Optional: Remove animation class after transition
+    // emojiPickerModal.classList.remove('visible');
+}
+
+// --- NEW: Function to focus the search input inside the modal picker ---
 function focusEmojiSearchInput() {
-    // Use a small delay to ensure the element is visible and focusable
+    // Use a small delay or RAF to ensure the element is visible and focusable after modal opens
     requestAnimationFrame(() => {
         if (emojiPickerInputElement) {
             emojiPickerInputElement.focus();
+            console.log("Attempted to focus emoji search input.");
+        } else {
+            console.warn("Emoji search input element not available for focus.");
+            // Retry after a short delay if it wasn't found initially
+            setTimeout(() => {
+                 if (emojiPickerInstance && emojiPickerInstance.shadowRoot && !emojiPickerInputElement) {
+                    emojiPickerInputElement = emojiPickerInstance.shadowRoot.querySelector('input[type="search"]');
+                    if(emojiPickerInputElement) {
+                        emojiPickerInputElement.focus();
+                        console.log("Attempted to focus emoji search input after delay.");
+                    } else {
+                         console.error("Still couldn't find emoji search input after delay.");
+                    }
+                 }
+            }, 200);
         }
     });
 }
 
-// Function to handle keyboard appearance (Focus) - POP-OUT LOGIC + PLACEHOLDER
-function handleEmojiInputFocus() {
-    const isLikelyMobile = navigator.maxTouchPoints > 0 && window.innerWidth < 768;
-
-    if (isLikelyMobile && emojiPickerContainer && emojiPickerPlaceholder) {
-        console.log("Emoji search focus on likely mobile device, making picker float and showing placeholder.");
-        // Activate placeholder first to prevent layout jump
-        emojiPickerPlaceholder.classList.add('placeholder-active');
-
-        // Add floating classes to the picker
-        emojiPickerContainer.classList.add('emoji-picker-floating');
-        requestAnimationFrame(() => { // Use RAF for smooth animation start
-            emojiPickerContainer.classList.add('visible');
-        });
-
-        // Optional: Dim overlay
-        settingsOverlay?.classList.add('picker-is-floating');
-    } else {
-         console.log("Emoji search focus on non-mobile or wide screen, no floating.");
-         handleEmojiInputBlur(); // Ensure cleanup if state is wrong
-    }
-}
-
-// Function to handle keyboard disappearance (Blur) - RESET POP-OUT
-function handleEmojiInputBlur() {
-    // Check if the picker is currently floating
-    if (emojiPickerContainer && emojiPickerContainer.classList.contains('emoji-picker-floating')) {
-        console.log("Emoji search blur detected, returning picker to normal position and hiding placeholder.");
-
-        // Remove floating classes from picker
-        emojiPickerContainer.classList.remove('visible');
-        emojiPickerContainer.classList.remove('emoji-picker-floating');
-
-        // Hide the placeholder
-        if (emojiPickerPlaceholder) {
-            emojiPickerPlaceholder.classList.remove('placeholder-active');
-        }
-
-        // Optional: Undim overlay
-        settingsOverlay?.classList.remove('picker-is-floating');
-    }
-    // No need to handle non-floating case specifically, state is already correct
-}
-
-// Function to update volume via API
-function handleEmojiInputBlur() {
-    // --- MODIFIED: Check the flag first ---
-    if (isClickHandlingCleanup) {
-        // console.log("Blur event ignored: Click handler is managing cleanup."); // Debug
-        return; // Let the click handler finish managing the state
-    }
-    // --- END MODIFICATION ---
-
-    // Check if the picker is currently floating (and click handler is NOT active)
-    if (emojiPickerContainer && emojiPickerContainer.classList.contains('emoji-picker-floating')) {
-        console.log("Emoji search blur detected (no click), returning picker to normal position and hiding placeholder.");
-
-        // Remove floating classes from picker
-        emojiPickerContainer.classList.remove('visible');
-        emojiPickerContainer.classList.remove('emoji-picker-floating');
-
-        // Hide the placeholder
-        if (emojiPickerPlaceholder) {
-            emojiPickerPlaceholder.classList.remove('placeholder-active');
-        }
-
-        // Optional: Undim overlay
-        settingsOverlay?.classList.remove('picker-is-floating');
-    }
-}
-
-
-// Reset volume via API
-function resetVolume() {
-    if (!currentSoundId || !currentSoundData) return;
-    const soundPath = currentSoundData.path;
-    if (!soundPath) { console.error("Cannot reset volume: sound path missing."); return; }
-
-    fetch(`/api/sounds/${currentSoundId}/volume/reset`, { method: 'POST' })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            if (volumeSlider) volumeSlider.value = 0;
-            if (resetVolumeButton) resetVolumeButton.classList.add('hidden');
-            persistence.removeSoundSetting(soundPath, 'hasCustomVolume');
-            persistence.removeSoundSetting(soundPath, 'localVolume');
-            persistence.removeSoundSetting(soundPath, 'remoteVolume');
-            if(window.app) app.updateSoundCardDisplay(currentSoundId);
-            currentSoundData.hasCustomVolume = false;
-            currentSoundData.sliderPosition = 0;
-        }
-    })
-    .catch(error => console.error('Error resetting volume:', error));
-}
-
-
-
+// --- REMOVED Floating Logic (handleEmojiInputFocus, handleEmojiInputBlur) ---
 
 // Function to update volume via API
 function updateVolumeWithSlider(sliderPos) {
@@ -554,7 +478,7 @@ function openSoundSettings(soundId) {
     if (!settingsOverlay) return;
     currentSoundId = soundId;
 
-    resetMenuState(); // Reset visuals first, ensures picker is hidden initially
+    resetMenuState(); // Reset visuals first
 
     fetch(`/api/sounds/${soundId}`)
     .then(response => response.json())
@@ -583,27 +507,24 @@ function openSoundSettings(soundId) {
         if (volumeSlider) volumeSlider.value = sliderPosition;
         if (resetVolumeButton) resetVolumeButton.classList.toggle('hidden', sliderPosition === 0);
 
-        // --- Updated Emoji Visibility Logic ---
+        // --- MODIFIED: Emoji Visibility Logic (Settings Card) ---
         const currentEmoji = savedSoundSettings.emoji;
         if (currentEmoji) {
-            // Emoji IS set: Show display area, ensure picker is hidden
+            // Emoji IS set: Show display area, hide select button
             if (currentEmojiDisplay) currentEmojiDisplay.textContent = currentEmoji;
             if (emojiDisplayArea) emojiDisplayArea.classList.remove('hidden');
-            if (emojiPickerContainer) emojiPickerContainer.classList.add('hidden'); // Ensure hidden
-            isEmojiPickerOpen = false;
+            if (selectEmojiButton) selectEmojiButton.classList.add('hidden');
+            if (clearEmojiButtonSettings) clearEmojiButtonSettings.classList.remove('hidden');
         } else {
-            // NO emoji set: Ensure display area is hidden, show picker
-            if (currentEmojiDisplay) currentEmojiDisplay.textContent = '❓';
-            if (emojiDisplayArea) emojiDisplayArea.classList.add('hidden'); // Ensure hidden
-            if (emojiPickerContainer) emojiPickerContainer.classList.remove('hidden'); // Now show picker
-            isEmojiPickerOpen = true;
-            // Focus after animation frame to ensure it's visible
-            requestAnimationFrame(focusEmojiSearchInput);
+            // NO emoji set: Hide display area, show select button
+            if (currentEmojiDisplay) currentEmojiDisplay.textContent = '❓'; // Reset just in case
+            if (emojiDisplayArea) emojiDisplayArea.classList.add('hidden');
+            if (selectEmojiButton) selectEmojiButton.classList.remove('hidden');
+            if (clearEmojiButtonSettings) clearEmojiButtonSettings.classList.add('hidden');
         }
-        if (clearEmojiButtonSettings) clearEmojiButtonSettings.classList.toggle('hidden', !currentEmoji);
-        // --- End Updated Emoji Visibility Logic ---
+        // --- End Modified Emoji Visibility Logic ---
 
-        // Animate in
+        // Animate in the settings card
         settingsOverlay.classList.remove('hidden');
         requestAnimationFrame(() => {
             if (settingsBackdrop) settingsBackdrop.style.opacity = '1';
@@ -614,8 +535,8 @@ function openSoundSettings(soundId) {
     .catch(error => {
         console.error('Failed to fetch sound details:', error);
         currentSoundId = null; currentSoundData = null;
-        handleEmojiInputBlur(); // Ensure picker is not floating on error
-        closeSettingsMenu();
+        closeSettingsMenu(); // Close the main settings menu on error
+        closeEmojiPickerModal(); // Ensure modal is also closed if it was somehow open
         console.error("Failed to load sound details.");
     });
 }
@@ -644,27 +565,18 @@ function resetMenuState() {
         if (defaultSwatch) defaultSwatch.classList.add('selected');
     }
 
-    // --- Emoji Reset Logic ---
-    // Default to hiding BOTH display and picker. openSoundSettings will show the correct one later.
+    // --- MODIFIED: Emoji Reset Logic ---
+    // Default to showing the "Select Emoji" button and hiding the display area
     if (currentEmojiDisplay) currentEmojiDisplay.textContent = '❓'; // Reset display text
     if (emojiDisplayArea) emojiDisplayArea.classList.add('hidden');
-    if (emojiPickerContainer) emojiPickerContainer.classList.add('hidden'); // Keep picker hidden initially
+    if (selectEmojiButton) selectEmojiButton.classList.remove('hidden'); // Show select button by default
     if (clearEmojiButtonSettings) clearEmojiButtonSettings.classList.add('hidden');
-    isEmojiPickerOpen = false; // Assume picker is closed initially
 
     // Reset Text Fields
     if (soundNameElement) soundNameElement.textContent = 'Loading...';
     if (tabNameElement) tabNameElement.textContent = '';
 
-    // Cleanup Floating Picker State (Important!)
-    if (emojiPickerContainer && emojiPickerContainer.classList.contains('emoji-picker-floating')) {
-        handleEmojiInputBlur(); // Use existing cleanup logic
-    }
-    // Ensure placeholder is hidden
-    if (emojiPickerPlaceholder) {
-        emojiPickerPlaceholder.classList.remove('placeholder-active');
-    }
-    settingsOverlay?.classList.remove('picker-is-floating');
+    // --- REMOVED Floating Picker State Cleanup ---
 }
 
 
@@ -675,35 +587,20 @@ function closeSettingsMenu() {
     if (settingsBackdrop) settingsBackdrop.style.opacity = '0';
 
     stopPreviewSound(currentPreviewId); currentPreviewId = null;
-    if (isEmojiPickerOpen) { // Close emoji picker if open
-        emojiPickerContainer.classList.add('hidden');
-        isEmojiPickerOpen = false;
-    }
 
-    // --- NEW CODE START ---
-    // Ensure floating state is removed immediately when closing starts
-    handleEmojiInputBlur();
-    // --- NEW CODE END ---
+    // Ensure the emoji modal is also closed when the main settings menu closes
+    closeEmojiPickerModal();
 
     setTimeout(() => {
         settingsOverlay.classList.add('hidden');
         currentSoundId = null; currentSoundData = null;
+        // Reset styles after transition
         if (settingsCard) settingsCard.style.transform = '';
         if (settingsBackdrop) settingsBackdrop.style.opacity = '';
-        // Reset picker visibility state completely after transition out
-        if (emojiPickerContainer) {
-            emojiPickerContainer.classList.add('hidden'); // Ensure it's hidden after close animation
-            emojiPickerContainer.classList.remove('visible'); // Clean up animation class
-            emojiPickerContainer.classList.remove('emoji-picker-floating'); // Clean up state class
-        }
-        if (emojiDisplayArea) emojiDisplayArea.classList.add('hidden'); // Hide display area too
-        settingsOverlay?.classList.remove('picker-is-floating'); // Clean up overlay class
-        // Ensure placeholder is hidden after close animation
-        if (emojiPickerPlaceholder) {
-             emojiPickerPlaceholder.classList.remove('placeholder-active');
-        }
+        // Ensure modal is definitely hidden after animation
+        if (emojiPickerModalOverlay) emojiPickerModalOverlay.classList.add('hidden');
 
-    }, 300); 
+    }, 300); // Match transition duration
 }
 
 // Helper function to stop preview sound
@@ -719,4 +616,3 @@ document.addEventListener('DOMContentLoaded', initSoundSettings);
 
 // Expose openSoundSettings globally
 window.soundSettings = { open: openSoundSettings };
-// --- ENTIRE FILE REPLACE ---
