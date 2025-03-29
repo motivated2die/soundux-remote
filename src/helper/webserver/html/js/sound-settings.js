@@ -498,18 +498,63 @@ function resetVolume() {
     .catch(error => console.error('Error resetting volume:', error));
 }
 
-// Open settings menu and load data
+
+
+
+// Function to update volume via API
+function updateVolumeWithSlider(sliderPos) {
+    if (!currentSoundId || !currentSoundData) return;
+    const soundPath = currentSoundData.path;
+    if (!soundPath) { console.error("Cannot update volume: sound path missing."); return; }
+
+    fetch(`/api/sounds/${currentSoundId}/volume`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sliderPosition: sliderPos })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            persistence.setSoundSetting(soundPath, 'hasCustomVolume', sliderPos !== 0);
+            if(window.app) app.updateSoundCardDisplay(currentSoundId);
+            currentSoundData.hasCustomVolume = (sliderPos !== 0);
+            currentSoundData.sliderPosition = sliderPos;
+            if (resetVolumeButton) resetVolumeButton.classList.toggle('hidden', sliderPos === 0);
+        }
+    })
+    .catch(error => console.error('Error updating volume:', error));
+}
+
+// Reset volume via API
+function resetVolume() {
+    if (!currentSoundId || !currentSoundData) return;
+    const soundPath = currentSoundData.path;
+    if (!soundPath) { console.error("Cannot reset volume: sound path missing."); return; }
+
+    fetch(`/api/sounds/${currentSoundId}/volume/reset`, { method: 'POST' })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (volumeSlider) volumeSlider.value = 0;
+            if (resetVolumeButton) resetVolumeButton.classList.add('hidden');
+            persistence.removeSoundSetting(soundPath, 'hasCustomVolume');
+            persistence.removeSoundSetting(soundPath, 'localVolume');
+            persistence.removeSoundSetting(soundPath, 'remoteVolume');
+            if(window.app) app.updateSoundCardDisplay(currentSoundId);
+            currentSoundData.hasCustomVolume = false;
+            currentSoundData.sliderPosition = 0;
+        }
+    })
+    .catch(error => console.error('Error resetting volume:', error));
+}
+
+
 // Open settings menu and load data
 function openSoundSettings(soundId) {
     if (!settingsOverlay) return;
     currentSoundId = soundId;
 
-    resetMenuState(); // Reset visuals first
-
-    // Ensure placeholder is hidden when menu opens initially
-    if (emojiPickerPlaceholder) {
-        emojiPickerPlaceholder.classList.remove('placeholder-active');
-    }
+    resetMenuState(); // Reset visuals first, ensures picker is hidden initially
 
     fetch(`/api/sounds/${soundId}`)
     .then(response => response.json())
@@ -520,6 +565,7 @@ function openSoundSettings(soundId) {
         const soundPath = sound.path;
         const savedSoundSettings = persistence.getSoundSettings(soundPath);
 
+        // Populate basic info
         if (soundNameElement) soundNameElement.textContent = sound.name || 'Unknown Sound';
         if (tabNameElement) tabNameElement.textContent = sound.tabName || 'Unknown Tab';
         if (favoriteButton) favoriteButton.classList.toggle('active', savedSoundSettings.favorite ?? sound.isFavorite);
@@ -532,32 +578,30 @@ function openSoundSettings(soundId) {
             if (activeSwatch) activeSwatch.classList.add('selected');
         }
 
-        // --- NEW Emoji State Logic ---
+        // Set volume slider state
+        const sliderPosition = sound.sliderPosition ?? 0;
+        if (volumeSlider) volumeSlider.value = sliderPosition;
+        if (resetVolumeButton) resetVolumeButton.classList.toggle('hidden', sliderPosition === 0);
+
+        // --- Updated Emoji Visibility Logic ---
         const currentEmoji = savedSoundSettings.emoji;
         if (currentEmoji) {
-            // Emoji IS set: Show display area, hide picker
+            // Emoji IS set: Show display area, ensure picker is hidden
             if (currentEmojiDisplay) currentEmojiDisplay.textContent = currentEmoji;
             if (emojiDisplayArea) emojiDisplayArea.classList.remove('hidden');
-            if (emojiPickerContainer) emojiPickerContainer.classList.add('hidden');
+            if (emojiPickerContainer) emojiPickerContainer.classList.add('hidden'); // Ensure hidden
             isEmojiPickerOpen = false;
         } else {
-            // NO emoji set: Hide display area, show picker
+            // NO emoji set: Ensure display area is hidden, show picker
             if (currentEmojiDisplay) currentEmojiDisplay.textContent = '❓';
-            if (emojiDisplayArea) emojiDisplayArea.classList.add('hidden');
-            if (emojiPickerContainer) emojiPickerContainer.classList.remove('hidden');
+            if (emojiDisplayArea) emojiDisplayArea.classList.add('hidden'); // Ensure hidden
+            if (emojiPickerContainer) emojiPickerContainer.classList.remove('hidden'); // Now show picker
             isEmojiPickerOpen = true;
-            // Attempt to focus search input when picker is shown by default
-            focusEmojiSearchInput();
+            // Focus after animation frame to ensure it's visible
+            requestAnimationFrame(focusEmojiSearchInput);
         }
-         // Show/hide the clear button (part of emojiDisplayArea now)
-         if (clearEmojiButtonSettings) clearEmojiButtonSettings.classList.toggle('hidden', !currentEmoji);
-        // --- END NEW Emoji State Logic ---
-
-
-        // Set volume slider state
-         const sliderPosition = sound.sliderPosition ?? 0;
-         if (volumeSlider) volumeSlider.value = sliderPosition;
-         if (resetVolumeButton) resetVolumeButton.classList.toggle('hidden', sliderPosition === 0);
+        if (clearEmojiButtonSettings) clearEmojiButtonSettings.classList.toggle('hidden', !currentEmoji);
+        // --- End Updated Emoji Visibility Logic ---
 
         // Animate in
         settingsOverlay.classList.remove('hidden');
@@ -570,24 +614,22 @@ function openSoundSettings(soundId) {
     .catch(error => {
         console.error('Failed to fetch sound details:', error);
         currentSoundId = null; currentSoundData = null;
-        // --- NEW CODE START ---
         handleEmojiInputBlur(); // Ensure picker is not floating on error
-        // --- NEW CODE END ---
         closeSettingsMenu();
-        // Consider a less intrusive error display than alert
-        // e.g., display error in a dedicated element
         console.error("Failed to load sound details.");
     });
 }
+
 
 // Reset the menu state to default
 function resetMenuState() {
     if (!settingsOverlay) return;
 
+    // Reset Buttons and Slider
     if (previewButton) {
         previewButton.setAttribute('data-state', 'preview');
         previewButton.querySelector('.material-symbols-outlined').textContent = 'volume_up';
-        previewButton.querySelector('.button-text').textContent = 'Preview'; // Keep original case for now, CSS handles display
+        previewButton.querySelector('.button-text').textContent = 'Preview';
     }
     stopPreviewSound(currentPreviewId); currentPreviewId = null;
 
@@ -595,37 +637,36 @@ function resetMenuState() {
     if (resetVolumeButton) resetVolumeButton.classList.add('hidden');
     if (favoriteButton) favoriteButton.classList.remove('active');
 
+    // Reset Color Selector
     if (colorSelector) {
         colorSelector.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
         const defaultSwatch = colorSelector.querySelector('.color-swatch[data-color="default"]');
         if (defaultSwatch) defaultSwatch.classList.add('selected');
     }
 
-    // Reset Emoji Section - default to picker shown
-    if (currentEmojiDisplay) currentEmojiDisplay.textContent = '❓';
+    // --- Emoji Reset Logic ---
+    // Default to hiding BOTH display and picker. openSoundSettings will show the correct one later.
+    if (currentEmojiDisplay) currentEmojiDisplay.textContent = '❓'; // Reset display text
     if (emojiDisplayArea) emojiDisplayArea.classList.add('hidden');
-    if (emojiPickerContainer) emojiPickerContainer.classList.remove('hidden'); // Show picker by default on reset
+    if (emojiPickerContainer) emojiPickerContainer.classList.add('hidden'); // Keep picker hidden initially
     if (clearEmojiButtonSettings) clearEmojiButtonSettings.classList.add('hidden');
-    isEmojiPickerOpen = true; // Picker is shown
+    isEmojiPickerOpen = false; // Assume picker is closed initially
 
+    // Reset Text Fields
     if (soundNameElement) soundNameElement.textContent = 'Loading...';
     if (tabNameElement) tabNameElement.textContent = '';
 
-    // Reset card position if moved by keyboard handling
-    handleEmojiInputBlur();
-
-    // Explicitly ensure floating state AND placeholder are removed on reset
-    if (emojiPickerContainer) {
-        emojiPickerContainer.classList.remove('visible');
-        emojiPickerContainer.classList.remove('emoji-picker-floating');
+    // Cleanup Floating Picker State (Important!)
+    if (emojiPickerContainer && emojiPickerContainer.classList.contains('emoji-picker-floating')) {
+        handleEmojiInputBlur(); // Use existing cleanup logic
     }
-    if (emojiPickerPlaceholder) { // Add check for placeholder
+    // Ensure placeholder is hidden
+    if (emojiPickerPlaceholder) {
         emojiPickerPlaceholder.classList.remove('placeholder-active');
     }
     settingsOverlay?.classList.remove('picker-is-floating');
-
-    
 }
+
 
 // Close settings menu
 function closeSettingsMenu() {

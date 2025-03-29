@@ -1,3 +1,4 @@
+/* --- ENTIRE FILE REPLACE --- */
 :root {
     /* Colors */
     --v-primary-base: #52b18c;
@@ -15,7 +16,7 @@
     --warning-color: #fb8c00;
     --success-color: #4caf50;
 
-    /* --- NEW: Highlight Colors --- */
+    /* Highlight Colors */
     --highlight-color-default-border: rgb(180, 180, 180);
     --highlight-color-default-shadow: rgba(200, 200, 200, 0.6);
     --sound-color-red-highlight: rgba(255, 100, 100, 0.7);
@@ -25,12 +26,10 @@
     --sound-color-blue-highlight: rgba(100, 150, 255, 0.7);
     --sound-color-purple-highlight: rgba(200, 100, 255, 0.7);
     --sound-color-pink-highlight: rgba(255, 150, 200, 0.7);
-    /* --- END NEW --- */
 
-    /* NEW: Top bar progress color */
+    /* Top bar progress color */
     --top-bar-progress-color: #444; /* Lighter grey */
     --progress-percentage: 0%; /* JS will update this */
-
 
     /* Sound Card Colors */
     --sound-color-red-bg: #4a2a2a;
@@ -44,7 +43,7 @@
     /* Layout */
     --border-radius: 6px;
     --transition-speed: 0.2s;
-    --top-bar-height: 35px;
+    --top-bar-height: 35px; /* Base height */
     --header-height: 80px;
     --tabs-height: 60px;
 }
@@ -72,9 +71,8 @@ html, body {
     touch-action: manipulation;
 }
 
-/* Safe area insets */
+/* Safe area insets - Only apply bottom/left/right to body */
 body {
-    padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
@@ -85,42 +83,46 @@ body {
     display: flex;
     flex-direction: column;
     height: 100%;
-    /* Adjust padding for fixed top bar only */
-    padding-top: var(--top-bar-height);
+    /* --- CHANGED: Container padding matches dynamic bar height --- */
+    padding-top: max(var(--top-bar-height), env(safe-area-inset-top));
 }
 
-/* --- Top Bar --- */
+/* --- Top Bar - MODIFIED --- */
 .top-bar {
     position: fixed;
-    top: env(safe-area-inset-top, 0px);
+    top: 0;
     left: env(safe-area-inset-left, 0px);
     right: env(safe-area-inset-right, 0px);
     z-index: 110;
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    height: var(--top-bar-height);
-    padding: 0 10px;
-    /* Use CSS variable for gradient background */
+    align-items: center; /* Vertically center content */
+    padding: 0 10px; /* Standard horizontal padding only */
+    /* --- CHANGED: Height is dynamic, minimum of base height, max of inset --- */
+    height: max(var(--top-bar-height), env(safe-area-inset-top));
+    /* Gradient background */
     background: linear-gradient(
         to right,
         var(--top-bar-progress-color) var(--progress-percentage),
         var(--v-secondary-darken1) var(--progress-percentage)
     );
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    transition: background-color var(--transition-speed) ease; /* Keep for edit mode */
+    transition: background-color var(--transition-speed) ease;
+    box-sizing: border-box;
 }
+/* --- END TOP BAR MODIFICATIONS --- */
 
-/* Top bar in Edit Mode (override gradient) */
+
+/* Top bar in Edit Mode */
 .top-bar.edit-mode-active {
-    background: var(--edit-mode-color); /* Solid green, overrides gradient */
+    background: var(--edit-mode-color);
 }
 
-/* Play Indicator Icon */
+/* Play Indicator Icon - Positioning remains centered */
 .play-indicator {
     position: absolute;
     left: 10px;
-    top: 50%;
+    top: 50%; /* Center within the bar's height */
     transform: translateY(-50%);
     font-size: 20px;
     color: rgba(255, 255, 255, 0.9);
@@ -130,30 +132,26 @@ body {
     display: none;
 }
 
-
-/* Edit Mode Info Styles */
+/* Edit Mode Info Styles - Positioning remains centered */
 .edit-mode-info {
-    display: none; /* Hidden by default */
+    display: none;
     align-items: center;
     gap: 5px;
     font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.8);
     position: absolute;
     left: 10px;
-    top: 50%;
+    top: 50%; /* Center within the bar's height */
     transform: translateY(-50%);
-    /* Push it behind the play indicator if both are present */
     z-index: -1;
 }
 .edit-mode-info .material-symbols-outlined {
     font-size: 16px;
 }
-/* Show only in edit mode */
 .top-bar.edit-mode-active .edit-mode-info {
     display: flex;
-    z-index: 1; /* Bring it above default background */
+    z-index: 1;
 }
-/* Hide play indicator when edit mode info is shown */
 .top-bar.edit-mode-active .play-indicator {
     display: none;
 }
@@ -164,13 +162,14 @@ body {
     margin-right: auto;
 }
 
+/* Top Bar Action Buttons - Let flexbox handle vertical centering */
 .top-bar .action-buttons {
     display: flex;
-    align-items: center;
+    align-items: center; /* Ensure buttons align center */
     gap: 7px;
     margin-left: auto;
     flex-shrink: 0;
-    height: 100%;
+    height: 100%; /* Fill the vertical space */
 }
 .icon-button.top-bar-button {
     width: 32px;
@@ -199,12 +198,13 @@ main#sounds-container {
     flex-grow: 1;
     display: grid;
     gap: 10px;
-    padding: 10px;
+    padding: 10px; /* Internal grid padding */
     overflow-y: auto;
     background-color: var(--v-background-dark);
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    /* Padding bottom remains the same */
     padding-bottom: calc(var(--header-height) + var(--tabs-height) + env(safe-area-inset-bottom, 0px) + 10px);
 }
 
@@ -223,7 +223,7 @@ main#sounds-container.layout-list { display: flex; flex-direction: column; gap: 
     padding: 10px;
     text-align: center;
     cursor: pointer;
-    transition: background-color var(--transition-speed) ease, transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease, background var(--transition-speed) ease; /* Add background transition */
+    transition: background-color var(--transition-speed) ease, transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease, background var(--transition-speed) ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -236,8 +236,7 @@ main#sounds-container.layout-list { display: flex; flex-direction: column; gap: 
     word-break: break-word;
     hyphens: auto;
     overflow: hidden;
-    --sound-base-color: var(--v-surface-dark); /* Default base for gradient */
-    /* --- NEW: Variables for highlight animation --- */
+    --sound-base-color: var(--v-surface-dark);
     --highlight-border-color: transparent;
     --highlight-shadow-color: transparent;
 }
@@ -252,27 +251,18 @@ main#sounds-container.layout-list { display: flex; flex-direction: column; gap: 
 .sortable-ghost { opacity: 0.4; background-color: var(--v-secondary-base) !important; }
 .sortable-chosen, .sortable-drag { opacity: 0.8; box-shadow: 0 5px 15px rgba(0,0,0,.3); transform: scale(1.05); cursor: grabbing !important; }
 
-
-/* --- MODIFIED: Playing State Highlight Animation --- */
+/* Playing State Highlight Animation */
 .sound-card.playing {
-    /* Apply default highlight colors (light grey) */
     --highlight-border-color: var(--highlight-color-default-border);
     --highlight-shadow-color: var(--highlight-color-default-shadow);
-    /* Apply animation */
-    animation: highlightFade 2.5s forwards ease-out; /* Slower duration, ease-out */
+    animation: highlightFade 2.5s forwards ease-out;
 }
 @keyframes highlightFade {
-    0% { /* Start highlighted */
-        border-color: var(--highlight-border-color);
-        box-shadow: 0 0 6px var(--highlight-shadow-color); /* Less intense shadow */
-    }
-    100% { /* Fade out completely */
-        border-color: transparent;
-        box-shadow: none;
-    }
+    0% { border-color: var(--highlight-border-color); box-shadow: 0 0 6px var(--highlight-shadow-color); }
+    100% { border-color: transparent; box-shadow: none; }
 }
 
-/* Playing state background gradient (for grid) - Stays the same */
+/* Playing state background gradient (for grid) */
 .sound-card.playing:not(.layout-list .sound-card) {
     background: linear-gradient(
         to right,
@@ -281,36 +271,14 @@ main#sounds-container.layout-list { display: flex; flex-direction: column; gap: 
     );
 }
 
-/* --- NEW: Custom Color Highlight Overrides --- */
-.sound-card.sound-color-red.playing {
-    --highlight-border-color: #ff8a80; /* Lighter red border */
-    --highlight-shadow-color: var(--sound-color-red-highlight);
-}
-.sound-card.sound-color-orange.playing {
-    --highlight-border-color: #ffcc80; /* Lighter orange border */
-    --highlight-shadow-color: var(--sound-color-orange-highlight);
-}
-.sound-card.sound-color-yellow.playing {
-    --highlight-border-color: #fff59d; /* Lighter yellow border */
-    --highlight-shadow-color: var(--sound-color-yellow-highlight);
-}
-.sound-card.sound-color-green.playing {
-    --highlight-border-color: #a5d6a7; /* Lighter green border */
-    --highlight-shadow-color: var(--sound-color-green-highlight);
-}
-.sound-card.sound-color-blue.playing {
-    --highlight-border-color: #90caf9; /* Lighter blue border */
-    --highlight-shadow-color: var(--sound-color-blue-highlight);
-}
-.sound-card.sound-color-purple.playing {
-    --highlight-border-color: #ce93d8; /* Lighter purple border */
-    --highlight-shadow-color: var(--sound-color-purple-highlight);
-}
-.sound-card.sound-color-pink.playing {
-    --highlight-border-color: #f48fb1; /* Lighter pink border */
-    --highlight-shadow-color: var(--sound-color-pink-highlight);
-}
-/* --- END NEW HIGHLIGHT OVERRIDES --- */
+/* Custom Color Highlight Overrides */
+.sound-card.sound-color-red.playing { --highlight-border-color: #ff8a80; --highlight-shadow-color: var(--sound-color-red-highlight); }
+.sound-card.sound-color-orange.playing { --highlight-border-color: #ffcc80; --highlight-shadow-color: var(--sound-color-orange-highlight); }
+.sound-card.sound-color-yellow.playing { --highlight-border-color: #fff59d; --highlight-shadow-color: var(--sound-color-yellow-highlight); }
+.sound-card.sound-color-green.playing { --highlight-border-color: #a5d6a7; --highlight-shadow-color: var(--sound-color-green-highlight); }
+.sound-card.sound-color-blue.playing { --highlight-border-color: #90caf9; --highlight-shadow-color: var(--sound-color-blue-highlight); }
+.sound-card.sound-color-purple.playing { --highlight-border-color: #ce93d8; --highlight-shadow-color: var(--sound-color-purple-highlight); }
+.sound-card.sound-color-pink.playing { --highlight-border-color: #f48fb1; --highlight-shadow-color: var(--sound-color-pink-highlight); }
 
 /* Sound Card Content Wrapper */
 .sound-content-wrapper { position: relative; z-index: 1; display: flex; align-items: center; width: 100%; justify-content: center; }
@@ -321,11 +289,8 @@ main#sounds-container.layout-list .sound-card {
     text-align: left; border-radius: 0; border: none;
     border-bottom: 1px solid var(--v-secondary-darken1); background-color: transparent;
     --sound-base-color: transparent;
-    background: transparent !important; /* Override gradient for list */
-     /* Ensure list items don't use the highlight animation border/shadow */
-     animation: none;
-     border-color: transparent !important;
-     box-shadow: none !important;
+    background: transparent !important;
+    animation: none; border-color: transparent !important; box-shadow: none !important;
 }
 main#sounds-container.layout-list .sound-card:hover { background-color: var(--v-secondary-darken2); --sound-base-color: var(--v-secondary-darken2); }
 main#sounds-container.layout-list .sound-card:last-child { border-bottom: none; }
@@ -333,12 +298,11 @@ main#sounds-container.layout-list .sound-card:last-child { border-bottom: none; 
 .layout-list .sound-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 1rem; }
 .layout-list .sound-emoji-list { font-size: 1.4em; width: 24px; text-align: center; }
 
-/* Grid Layout Emoji - MODIFIED Opacity and Filter */
+/* Grid Layout Emoji */
 .layout-grid-2 .sound-card::before, .layout-grid-3 .sound-card::before {
     content: var(--sound-emoji, ''); position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%); font-size: 4.5em; color: var(--text-primary);
-    opacity: 1; /* --- CHANGED --- */
-    filter: grayscale(25%) brightness(35%) saturate(1.2); /* --- ADDED --- */
+    opacity: 1; filter: grayscale(70%) brightness(70%) saturate(1.2);
     z-index: 0; pointer-events: none; line-height: 1;
 }
 
@@ -398,7 +362,7 @@ h1 { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); line-heigh
 .wakelock-indicator .material-symbols-outlined { font-size: 14px; vertical-align: middle; }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--border-radius); cursor: pointer; transition: background-color var(--transition-speed) ease; background-color: transparent; color: var(--text-primary); min-height: 44px; }
-.btn-danger { background-color: var(--error-color); color: white; width: 120px; height: 60px; padding: 8px; border-radius: 30px; gap: 8px; }
+.btn-danger { background-color: var(--error-color); color: white; width: 160px; height: 60px; padding: 8px; border-radius: 30px; gap: 8px; }
 .btn-danger:hover { background-color: #ff6b6b; }
 .btn-danger .material-symbols-outlined { font-size: 32px; }
 .stop-text { font-weight: 700; font-size: 1rem; }
