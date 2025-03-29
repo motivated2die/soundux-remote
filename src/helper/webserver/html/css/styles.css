@@ -958,3 +958,18 @@ emoji-picker section#favorites /* Fallback */
     opacity: 1;
     pointer-events: auto; /* Enable interaction */
 }
+
+
+
+/* Style for the element that the dragged item will swap with */
+.sortable-swap-highlight {
+    outline: 2px dashed var(--v-primary-base); /* Example: Dashed primary color outline */
+    background-color: rgba(82, 177, 140, 0.1); /* Example: Faint primary color background */
+    transition: outline 0.1s ease, background-color 0.1s ease; /* Smooth transition for the highlight */
+}
+
+/* Optional: Slightly different style for list items during swap */
+main#sounds-container.layout-list .sortable-swap-highlight {
+    background-color: rgba(82, 177, 140, 0.2); /* Slightly darker background for list */
+    outline-offset: -1px; /* Adjust outline position if needed */
+}
