@@ -761,3 +761,81 @@ emoji-picker section#favorites /* Fallback */
 {
   display: none !important;
 }
+
+/* Styles for the floating state */
+#emoji-picker-container.emoji-picker-floating {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 10px); /* Position near top, respecting safe area */
+    left: 5%;                           /* Small margin from edges */
+    right: 5%;
+    width: 90%;                         /* Use most of the width */
+    max-width: 450px;                   /* Limit max width on wider mobile screens */
+    height: auto;                       /* Allow height to adjust based on picker's content */
+    max-height: 60vh;                   /* Limit height */
+    z-index: 1200;                      /* Ensure it's above the backdrop and settings card */
+    background-color: var(--v-secondary-darken1); /* Need a background */
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4); /* Add shadow for separation */
+    /* Keep the rounded corners and border */
+    border-radius: 24px;
+    border: 1px solid var(--v-secondary-base);
+    /* Add transition for smooth appearance/disappearance */
+    transition: transform 0.25s ease-out, opacity 0.25s ease-out;
+    transform: translateY(-10px) scale(0.98); /* Start slightly up and smaller */
+    opacity: 0;
+    pointer-events: none; /* Initially ignore pointer events */
+}
+
+/* When the floating class is actively applied */
+#emoji-picker-container.emoji-picker-floating.visible {
+    transform: translateY(0) scale(1); /* Animate into final position */
+    opacity: 1;
+    pointer-events: auto; /* Enable interaction */
+}
+
+/* Optional: Slightly dim the main settings card when picker is floating */
+#sound-settings-overlay.picker-is-floating #settings-card {
+    /* filter: brightness(0.8); */ /* Example: Dim the card */
+    /* transition: filter 0.25s ease-out; */
+}
+
+/* Placeholder Styling */
+.emoji-picker-placeholder {
+    display: none; /* Hidden by default */
+    height: 305px; /* ESTIMATED height: picker (280px) + container border (2px) + some margin/padding? Adjust this! */
+    /* Match container border visually if needed when debugging */
+    /* border: 1px dashed red; */
+}
+
+.emoji-picker-placeholder.placeholder-active {
+    display: block; /* Show the placeholder */
+}
+
+/* Styles for the floating state */
+#emoji-picker-container.emoji-picker-floating {
+    position: fixed;
+    /* MODIFIED: Adjusted 'top' slightly higher */
+    top: calc(env(safe-area-inset-top, 0px) + 5px); /* Position higher, closer to top edge */
+    left: 5%;
+    right: 5%;
+    width: 90%;
+    max-width: 450px;
+    height: auto;
+    max-height: 55vh; /* MODIFIED: Reduced max-height slightly if needed */
+    z-index: 1200;
+    background-color: var(--v-secondary-darken1);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+    border-radius: 24px;
+    border: 1px solid var(--v-secondary-base);
+    /* MODIFIED: Adjusted transition duration for quicker pop */
+    transition: transform 0.2s ease-out, opacity 0.2s ease-out; /* Quicker transition */
+    transform: translateY(-5px) scale(0.98); /* Start slightly closer */
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* When the floating class is actively applied */
+#emoji-picker-container.emoji-picker-floating.visible {
+    transform: translateY(0) scale(1); /* Animate into final position */
+    opacity: 1;
+    pointer-events: auto; /* Enable interaction */
+}
