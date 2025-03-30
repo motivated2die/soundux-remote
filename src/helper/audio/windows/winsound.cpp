@@ -146,23 +146,36 @@ namespace Soundux
         }
         bool RecordingDevice::mute(bool state) const
         {
-            if (!device)
-            {
-                Fancy::fancy.logTime().failure() << "Failed to set mute state, device was invalid" << std::endl;
+            // --- ADD Logging ---
+            Fancy::fancy.logTime().message() << "[WinSound] Setting mute state for recording device '" << name << "' (" << guid << ") to: " << (state ? "MUTE (true)" : "UNMUTE (false)") << std::endl;
+            // --- END Logging ---
+
+            if (!device) {
+                Fancy::fancy.logTime().failure() << "[WinSound] Failed to set mute state, device pointer is invalid for '" << name << "'." << std::endl;
                 return false;
             }
 
             IAudioEndpointVolume *endpointVolume = nullptr;
-            if (FAILED(device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_INPROC_SERVER, nullptr,
-                                        reinterpret_cast<void **>(&endpointVolume))))
-            {
-                Fancy::fancy.logTime().warning() << "Failed to set mute state for " << name << std::endl;
+            HRESULT hr = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_INPROC_SERVER, nullptr, reinterpret_cast<void **>(&endpointVolume));
+
+            if (FAILED(hr)) {
+                Fancy::fancy.logTime().warning() << "[WinSound] Failed to activate IAudioEndpointVolume for '" << name << "'. HRESULT: " << hr << std::endl;
                 return false;
             }
 
-            endpointVolume->SetMute(state, nullptr);
+            // Ensure pointer is released automatically
+            std::shared_ptr<IAudioEndpointVolume> endpointVolumePtr(endpointVolume, [](IAudioEndpointVolume *ptr){ if(ptr) ptr->Release(); });
+
+            hr = endpointVolumePtr->SetMute(state, nullptr);
+            if (FAILED(hr)) {
+                Fancy::fancy.logTime().warning() << "[WinSound] Failed to call SetMute for '" << name << "'. HRESULT: " << hr << std::endl;
+                return false;
+            }
+
+            Fancy::fancy.logTime().success() << "[WinSound] Successfully set mute state for '" << name << "' to " << state << "." << std::endl;
             return true;
         }
+
         bool RecordingDevice::listenToDevice(bool state) const
         {
             if (!device)

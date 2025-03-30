@@ -13,7 +13,6 @@ const fullscreenManager = (() => {
              isEnabled = true;
         }
         console.log(`Auto Fullscreen Initial State: ${isEnabled}`);
-        updateToggleUI();
     };
 
     const saveSetting = () => {
@@ -22,7 +21,6 @@ const fullscreenManager = (() => {
             const settings = persistence.load();
             settings[SETTING_KEY] = isEnabled;
             persistence.save(settings);
-            console.log(`Auto Fullscreen Setting Saved: ${isEnabled}`);
         } else {
              console.warn("Persistence module not found, cannot save autoFullscreen setting.");
         }
@@ -42,67 +40,72 @@ const fullscreenManager = (() => {
     };
 
     const requestFullscreen = () => {
-        // Only request if enabled and not already fullscreen
         if (!isEnabled || document.fullscreenElement) return;
-
-        console.log('Requesting fullscreen...');
+        // console.log('Requesting fullscreen...'); // Less verbose
         const elem = document.documentElement;
         try {
-            if (elem.requestFullscreen) {
-                // Standard
-                elem.requestFullscreen({ navigationUI: "hide" }).catch(err => console.warn(`Fullscreen request failed: ${err.message}`));
-            } else if (elem.webkitRequestFullscreen) {
-                // Safari/Chrome (older?)
-                elem.webkitRequestFullscreen();
-            } else if (elem.msRequestFullscreen) {
-                // IE11
-                elem.msRequestFullscreen();
-            }
-            // Note: Firefox uses elem.requestFullscreen() now. mozRequestFullScreen is deprecated.
+            if (elem.requestFullscreen) { elem.requestFullscreen({ navigationUI: "hide" }).catch(err => console.warn(`FS Req Error: ${err.message}`)); }
+            else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); }
+            else if (elem.msRequestFullscreen) { elem.msRequestFullscreen(); }
+
         } catch(err) {
             console.warn("Error requesting fullscreen:", err);
         }
     };
 
     const handleInteraction = (event) => {
-        // Avoid triggering on buttons within modals etc.
-        if (event.target.closest('#app-settings-modal') || event.target.closest('#sound-settings-card')) {
-            return;
-        }
-        requestFullscreen(); // Try entering fullscreen on interaction if enabled
+        if (event.target.closest('#app-settings-modal') || event.target.closest('#sound-settings-card')) { return; }
+        requestFullscreen();
     };
+
 
     const handleVisibilityChange = () => {
-        // Try to re-enter fullscreen when tab becomes visible again
-        if (document.visibilityState === 'visible') {
-            // Use a small delay to avoid issues when quickly switching tabs
-            setTimeout(requestFullscreen, 300);
-        }
+        if (document.visibilityState === 'visible') { setTimeout(requestFullscreen, 300); }
     };
 
-    const init = () => {
-        loadSetting();
-        const toggleButton = document.getElementById('auto-fullscreen-toggle');
-        if (toggleButton) {
-            toggleButton.addEventListener('change', toggleSetting);
-        } else { /* ... */ }
-        document.addEventListener('pointerdown', handleInteraction, { capture: true, passive: true });
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        console.log("Fullscreen Manager Initialized"); // Keep log
+    const setEnabled = (enabledStatus) => {
+        isEnabled = !!enabledStatus; // Ensure boolean
+        saveSetting();
+        updateToggleUI();
     };
 
+
+    // --- Define the public interface ---
     const publicInterface = {
-        init,
-        setEnabled,
+        // init should only be called once DOM is ready
+        init: () => {
+            loadSetting(); // Load setting state first
+            updateToggleUI(); // Update UI based on loaded state
+
+            const toggleButton = document.getElementById('auto-fullscreen-toggle');
+            if (toggleButton) {
+                toggleButton.addEventListener('change', toggleSetting);
+            } else { console.error("Auto Fullscreen toggle button not found."); }
+
+            document.addEventListener('pointerdown', handleInteraction, { capture: true, passive: true });
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+            console.log("Fullscreen Manager Initialized (Listeners Attached)");
+        },
+        setEnabled, // Expose setEnabled
         isEnabled: () => isEnabled
     };
 
+
     // ---> Assign to window object <---
     window.fullscreenManager = publicInterface; // Make it globally accessible
+    console.log("window.fullscreenManager assigned."); // Log assignment
+
 
     return publicInterface; // Return it as well (good practice)
 
 })();
 
 // Initialize after the DOM is fully loaded
-document.addEventListener('DOMContentLoaded', fullscreenManager.init);
+document.addEventListener('DOMContentLoaded', () => {
+    // Check if manager exists before calling init (it should)
+    if (window.fullscreenManager) {
+        window.fullscreenManager.init();
+    } else {
+        console.error("DOMContentLoaded fired, but window.fullscreenManager was not found!");
+    }
+});

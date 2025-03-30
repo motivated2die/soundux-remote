@@ -910,12 +910,25 @@ namespace Soundux::Objects
     // serveStaticFiles - Keep previous implementation
     void WebServer::serveStaticFiles() // Keep previous implementation
     {
+        // --- Add Logging ---
+        Fancy::fancy.logTime().message() << "[Serve] Attempting to set mount point '/' to webRoot: '" << webRoot << "'" << std::endl;
+        if (!std::filesystem::exists(webRoot)) {
+             Fancy::fancy.logTime().failure() << "[Serve] ERROR: webRoot path does not exist when setting mount point!";
+             return;
+        }
+         if (!std::filesystem::is_directory(webRoot)) {
+              Fancy::fancy.logTime().failure() << "[Serve] ERROR: webRoot path is not a directory when setting mount point!";
+              return;
+         }
+
         bool success = server->set_mount_point("/", webRoot.c_str());
          if (!success) { Fancy::fancy.logTime().failure() << "Failed to set mount point '/' to directory: " << webRoot << std::endl; }
          else {
              Fancy::fancy.logTime().message() << "Serving static files from '" << webRoot << "' at '/'." << std::endl;
              server->Get("/", [this](const httplib::Request& req, httplib::Response& res) {
-                 std::filesystem::path indexPath = std::filesystem::path(webRoot) / "index.html";
+             std::filesystem::path indexPath = std::filesystem::path(webRoot) / "index.html";
+             Fancy::fancy.logTime().message() << "[Serve] GET / requested. Checking for index at: '" << indexPath.string() << "'";
+
                   if (std::filesystem::exists(indexPath)) {
                       std::ifstream ifs(indexPath.string(), std::ios::in | std::ios::binary);
                       if (ifs) {
@@ -927,8 +940,10 @@ namespace Soundux::Objects
                       } else { res.status = 500; res.set_content("Could not read index.html", "text/plain"); }
                   } else { res.status = 404; res.set_content("index.html not found", "text/plain"); } });
 
-             server->Get("/login.html", [this](const httplib::Request& req, httplib::Response& res) {
-                 std::filesystem::path loginPathFs = std::filesystem::path(webRoot) / "login.html";
+            server->Get("/login.html", [this](const httplib::Request& req, httplib::Response& res) {
+                std::filesystem::path loginPathFs = std::filesystem::path(webRoot) / "login.html";
+                Fancy::fancy.logTime().message() << "[Serve] GET /login.html requested. Checking for login at: '" << loginPathFs.string() << "'";
+      
                  if (std::filesystem::exists(loginPathFs)) {
                       std::ifstream ifs(loginPathFs.string(), std::ios::in | std::ios::binary);
                       if (ifs) {
@@ -940,6 +955,8 @@ namespace Soundux::Objects
                       } else { res.status = 500; res.set_content("Could not read login.html", "text/plain"); }
                   } else { res.status = 404; res.set_content("login.html not found", "text/plain"); } });
          }
+
+         
     }
 } // namespace Soundux::Objects
 // --- END OF FILE webserver.cpp ---

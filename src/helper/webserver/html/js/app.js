@@ -10,7 +10,8 @@ const state = {
     lastLongPressTime: 0,
 
     isAnythingPlayingUnpaused: false, // Tracks overall playback state for UI
-    isTalkThroughButtonPressed: false // Tracks button press state locally
+    isTalkThroughButtonPressed: false, // Tracks button press state locally
+    playbackGloballyPausedByToggle: false // Tracks C++ state via callback
 
 };
 
@@ -38,14 +39,37 @@ const resetCurrentPageVisualsButton = document.getElementById('reset-current-pag
 const resetCurrentPageLayoutButton = document.getElementById('reset-current-page-layout');
 const resetAllSettingsButton = document.getElementById('reset-all-settings');
 
-// --- Top Bar Progress & Indicator Updates ---
-function updateTopBarProgress(percentage) {
-    if (topBarEl) {
-        const clampedPercentage = Math.max(0, Math.min(100, percentage));
+
+// --- NEW: updateTopBarProgressState function ---
+function updateTopBarProgressState(currentMaxPercentage = 0) {
+    if (!topBarEl) return;
+
+    // Determine if progress should be VISIBLE
+    // Visible if: actively playing OR paused by toggle button (but not during talk-through)
+    const shouldShowProgress = (state.isAnythingPlayingUnpaused || state.playbackGloballyPausedByToggle) && !state.isTalkThroughButtonPressed;
+
+    topBarEl.classList.toggle('progress-active', shouldShowProgress);
+
+    if (shouldShowProgress) {
+        // Calculate the maximum percentage from currently tracked sounds if needed
+        // (The polling loop might already provide this)
+        let maxPercentage = currentMaxPercentage; // Use passed value if available
+        if (maxPercentage === 0 && soundProgress.activeSounds.size > 0) {
+             soundProgress.activeSounds.forEach(sound => {
+                 if (sound.lengthInMs > 0) {
+                      const perc = Math.min(100, Math.max(0, (sound.readInMs / sound.lengthInMs) * 100));
+                      maxPercentage = Math.max(maxPercentage, perc);
+                 }
+             });
+        }
+
+        const clampedPercentage = Math.max(0, Math.min(100, maxPercentage));
         topBarEl.style.setProperty('--progress-percentage', `${clampedPercentage}%`);
+    } else {
+        // Reset progress when not active
+        topBarEl.style.setProperty('--progress-percentage', `0%`);
     }
 }
-
 
 // Initialize the application
 function init() {
@@ -54,16 +78,12 @@ function init() {
     // ---> LOAD PERSISTENCE FIRST <---
     state.settings = persistence.load();
     console.log("Initial settings loaded:", state.settings);
-
-    // --- Setup listeners next (which includes appReady listener) ---
     setupEventListeners();
-
-    // --- Set initial UI states based on loaded settings ---
     state.isAnythingPlayingUnpaused = false;
     state.isTalkThroughButtonPressed = false;
-    updatePlayPauseButtonIcon();
-
-    // --- Start the connection/loading process LAST (will dispatch appReady) ---
+    state.playbackGloballyPausedByToggle = false; // Init new state
+    updatePlayPauseButtonIcon(); // Set initial icon state & visibility
+    updateTopBarProgressState(0); // Set initial progress state (inactive)
     checkServerStatus();
 }
 
@@ -128,7 +148,7 @@ async function checkServerStatus() {
         await apiFetch('/api/status');
         if (serverStatusEl) serverStatusEl.textContent = 'Connected';
         if (statusIndicatorEl) statusIndicatorEl.className = 'status-dot connected';
-        updateTopBarProgress(0);
+        updateTopBarProgressState(0);
 
 
         await loadTabs(); // Load tabs and activate the first/last active one
@@ -147,7 +167,7 @@ async function checkServerStatus() {
         console.error("Failed initial server status check or subsequent load sequence:", error.message); // Log specific error message
         if (tabsContainerEl) tabsContainerEl.innerHTML = '<p class="error-text">Failed to connect.</p>';
         if (soundsContainerEl) soundsContainerEl.innerHTML = '<p class="error-text">Failed to connect.</p>';
-        updateTopBarProgress(0);
+        updateTopBarProgressState(0);
         state.isAnythingPlayingUnpaused = false; // Ensure state reflects no playback on error
         updatePlayPauseButtonIcon();
         console.log("checkServerStatus failed, dispatching appReady (with error state)"); // Add log
@@ -235,15 +255,21 @@ function setupEventListeners() {
 
      window.playbackStateChanged = (newState) => {
         console.log("Playback state changed notification received:", newState);
-        state.isAnythingPlayingUnpaused = (newState === 'playing');
+        const isNowPlaying = (newState === 'playing');
+        state.isAnythingPlayingUnpaused = isNowPlaying;
+        // If newState is 'paused', it means the toggle button was used to pause.
+        state.playbackGloballyPausedByToggle = (newState === 'paused');
         updatePlayPauseButtonIcon();
+        updateTopBarProgressState(); // Update progress bar visibility/state
    };
    window.talkThroughStateChanged = (isActive) => {
-        console.log("Talk-through state changed notification received:", isActive);
-        state.isTalkThroughButtonPressed = isActive; // Keep local JS state in sync
-        talkThroughButton?.classList.toggle('active', isActive);
-        updatePlayPauseButtonIcon(); // Refresh play/pause icon state too
+       console.log("Talk-through state changed notification received:", isActive);
+       state.isTalkThroughButtonPressed = isActive;
+       talkThroughButton?.classList.toggle('active', isActive);
+       updatePlayPauseButtonIcon();
+       updateTopBarProgressState(); // Update progress bar visibility/state
    };
+
 
     // --- NEW CODE START: Defer fullscreen toggle check until appReady ---
     document.addEventListener('appReady', () => {
@@ -350,15 +376,21 @@ function updatePlayPauseButtonIcon() {
     if (!playPauseToggleButton) return;
     const icon = playPauseToggleButton.querySelector('.material-symbols-outlined');
     if (icon) {
-        // Use the global state variable
-        const iconName = state.isAnythingPlayingUnpaused ? 'pause' : 'play_arrow';
-        const label = state.isAnythingPlayingUnpaused ? 'Pause All Sounds' : 'Resume Paused Sounds';
+        const isCurrentlyPlaying = state.isAnythingPlayingUnpaused;
+        // Visibility: Show if anything is actively playing OR if sounds are tracked but potentially paused
+        const shouldBeVisible = isCurrentlyPlaying || (soundProgress.activeSounds.size > 0);
+        playPauseToggleButton.classList.toggle('hidden', !shouldBeVisible);
+
+        // Icon: Show 'pause' if playing, 'play' otherwise (even if sounds are paused)
+        const iconName = isCurrentlyPlaying ? 'pause' : 'play_arrow';
+        const label = isCurrentlyPlaying ? 'Pause All Sounds' : 'Resume Paused Sounds';
         if (icon.textContent !== iconName) {
              icon.textContent = iconName;
         }
         playPauseToggleButton.setAttribute('aria-label', label);
     }
 }
+
 
 
 // --- Long Press Reset Button Logic (Keep existing code from previous step) ---
@@ -818,7 +850,7 @@ async function loadSounds(tabId) {
         soundsContainerEl.innerHTML = '<p class="no-sounds">Select a tab.</p>';
         return;
     }
-     soundsContainerEl.innerHTML = '<p class="loading-sounds">Loading...</p>';
+     soundsContainerEl.innerHTML = '<p class="loading-sounds"></p>';
      console.log(`Loading sounds for tab: ${tabId}`);
 
     try {
@@ -1175,22 +1207,22 @@ function stopProgressPolling(reason = "No active sounds") {
 }
 
 async function fetchSoundProgress() {
-    // 1. Check if polling should continue
-    if (!soundProgress.polling) return; // Stopped externally
+    // 1. Check polling conditions
+    if (!soundProgress.polling) return;
+    // Check size *before* fetching, slightly more efficient
     if (soundProgress.activeSounds.size === 0) {
-        stopProgressPolling("No active sounds remaining");
+        stopProgressPolling("No active sounds remaining before fetch");
         return;
     }
 
     try {
         const playingSoundsData = await apiFetch('/api/sounds/progress');
-        soundProgress.errorCount = 0; // Reset error count on successful fetch
+        soundProgress.errorCount = 0; // Reset error count on success
 
         const currentPlayingIdsFromServer = new Set(playingSoundsData.map(s => s.id));
         let maxProgressPercentage = 0;
-
+        // Determine overall playing state *from the latest API data*
         let anyPlayingNow = playingSoundsData.some(sound => !sound.paused);
-
 
         // 2. Update tracked sounds based on API response
         playingSoundsData.forEach(soundUpdate => {
@@ -1204,13 +1236,12 @@ async function fetchSoundProgress() {
 
             // Add if new, or update if existing
             if (!existingSound) {
-                 console.warn(`Progress update for untracked playingId ${soundUpdate.id} (Sound ${soundUpdate.soundId}). Adding to tracking.`);
-                 existingSound = { id: soundUpdate.id, soundId: soundUpdate.soundId, name: '?', lengthInMs: 0, readInMs: 0, paused: true, repeat: false };
-                 soundProgress.activeSounds.set(soundUpdate.id, existingSound);
-                 // Add to main playing map if missing
-                 if (!state.currentlyPlaying.has(existingSound.soundId)) {
-                      state.currentlyPlaying.set(existingSound.soundId, existingSound.id);
-                 }
+                console.warn(`Progress update for untracked playingId ${soundUpdate.id} (Sound ${soundUpdate.soundId}). Adding to tracking.`);
+                existingSound = { id: soundUpdate.id, soundId: soundUpdate.soundId, name: '?', lengthInMs: 0, readInMs: 0, paused: true, repeat: false };
+                soundProgress.activeSounds.set(soundUpdate.id, existingSound);
+                if (!state.currentlyPlaying.has(existingSound.soundId)) {
+                    state.currentlyPlaying.set(existingSound.soundId, existingSound.id);
+                }
             }
 
             // Update properties, providing defaults
@@ -1218,23 +1249,19 @@ async function fetchSoundProgress() {
             existingSound.paused = soundUpdate.paused ?? existingSound.paused;
             existingSound.repeat = soundUpdate.repeat ?? existingSound.repeat;
             existingSound.name = soundUpdate.name ?? existingSound.name;
-            // Only update length if the new value is valid
             if (typeof soundUpdate.lengthInMs === 'number' && soundUpdate.lengthInMs > 0) {
                 existingSound.lengthInMs = soundUpdate.lengthInMs;
             }
 
-            // Calculate progress and update UI
+            // Calculate progress and update max percentage
             const isPaused = existingSound.paused;
             const lengthMs = existingSound.lengthInMs;
             const readMs = existingSound.readInMs;
             let percentage = 0;
 
-
-
             if (!isPaused && lengthMs > 0) {
-                isAnySoundPlayingUnpaused = true; // At least one sound is actively playing
                 percentage = Math.min(100, Math.max(0, (readMs / lengthMs) * 100));
-                maxProgressPercentage = Math.max(maxProgressPercentage, percentage);
+                maxProgressPercentage = Math.max(maxProgressPercentage, percentage); // Track max percentage
 
                 // Update Individual Card Background (Only Grid View)
                 if (soundsContainerEl && !soundsContainerEl.classList.contains('layout-list')) {
@@ -1242,25 +1269,26 @@ async function fetchSoundProgress() {
                     if (soundCard) {
                         const baseColor = soundCard.style.getPropertyValue('--sound-base-color') || 'var(--v-surface-dark)';
                         soundCard.style.background = `linear-gradient(to right, var(--v-primary-darken1) ${percentage}%, ${baseColor} ${percentage}%)`;
-                         // Ensure 'playing' class is present if actively progressing
-                         if (!soundCard.classList.contains('playing')) {
-                              soundCard.classList.add('playing');
-                         }
+                        if (!soundCard.classList.contains('playing')) {
+                            soundCard.classList.add('playing');
+                        }
                     }
                 }
             } else {
-                 // If paused or length is zero, ensure background is reset
+                 // If paused or length is zero, ensure background is reset for grid items
                  if (soundsContainerEl && !soundsContainerEl.classList.contains('layout-list')) {
                      const soundCard = soundsContainerEl.querySelector(`.sound-card[data-sound-id="${existingSound.soundId}"]`);
-                     if (soundCard && soundCard.classList.contains('playing')) { // Only reset if it thinks it's playing
+                     // Only reset if it was visually playing before
+                     if (soundCard && soundCard.classList.contains('playing')) {
+                          // Don't remove 'playing' class if paused, just reset background
                           soundCard.style.background = '';
-                          updateSoundCardDisplay(existingSound.soundId, soundCard); // Reapply base style
+                          // updateSoundCardDisplay(existingSound.soundId, soundCard); // Avoid recursive updates if possible
                      }
                  }
             }
         });
 
-        // 3. Handle sounds that finished (in tracked map but not in API response)
+        // 3. Handle sounds that finished
         const finishedSoundPlayingIds = [];
         soundProgress.activeSounds.forEach((soundData, playingId) => {
             if (!currentPlayingIdsFromServer.has(playingId)) {
@@ -1272,28 +1300,33 @@ async function fetchSoundProgress() {
             const soundData = soundProgress.activeSounds.get(playingId);
             if (soundData) {
                 console.log(`Sound instance ${playingId} (Sound ${soundData.soundId}) finished.`);
-                state.currentlyPlaying.delete(soundData.soundId); // Remove from main map
-                soundProgress.activeSounds.delete(playingId); // Remove from tracking map
+                state.currentlyPlaying.delete(soundData.soundId);
+                soundProgress.activeSounds.delete(playingId);
                 handleSoundFinishVisuals(soundData); // Reset individual card visuals
             }
         });
 
-        // 4. Update Global UI based on overall state
-        updateTopBarProgress(maxProgressPercentage);
-        // Update global state *after* processing all sounds from API
+        // 4. Update Global State & UI
+        // Update overall playing state based on the fetched data
         if (state.isAnythingPlayingUnpaused !== anyPlayingNow) {
-             console.log(`Overall playing state changed: ${state.isAnythingPlayingUnpaused} -> ${anyPlayingNow}`);
-             state.isAnythingPlayingUnpaused = anyPlayingNow;
+            console.log(`Overall playing state changed based on API: ${state.isAnythingPlayingUnpaused} -> ${anyPlayingNow}`);
+            state.isAnythingPlayingUnpaused = anyPlayingNow;
+            // If playback stopped naturally (not via toggle button), ensure our toggle state reflects that
+            if (!anyPlayingNow && state.playbackGloballyPausedByToggle) {
+                 console.log("Playback stopped naturally, resetting playbackGloballyPausedByToggle state.");
+                 state.playbackGloballyPausedByToggle = false;
+            }
         }
+        updatePlayPauseButtonIcon(); // Update button icon/visibility based on the new state
+        updateTopBarProgressState(maxProgressPercentage); // <<<< CALL NEW FUNCTION HERE
 
         // 5. Final Check: Stop polling if nothing is left *after* cleanup
         if (soundProgress.activeSounds.size === 0) {
-            // Ensure global state is reset when stopping due to no sounds
-            if (state.isAnythingPlayingUnpaused) {
-                state.isAnythingPlayingUnpaused = false;
-                updatePlayPauseButtonIcon(); // Update icon one last time
-            }
-            stopProgressPolling("No active sounds after update");
+             state.isAnythingPlayingUnpaused = false; // Ensure state is false
+             state.playbackGloballyPausedByToggle = false; // Ensure toggle state is false
+             updatePlayPauseButtonIcon(); // Update UI one last time
+             updateTopBarProgressState(0); // Reset progress bar
+             stopProgressPolling("No active sounds after update");
         }
 
     } catch (error) {
@@ -1301,17 +1334,18 @@ async function fetchSoundProgress() {
         soundProgress.errorCount++;
         if (soundProgress.errorCount >= soundProgress.maxErrors) {
              stopProgressPolling(`Max errors (${soundProgress.maxErrors}) reached`);
-             // Clear local state as it's likely out of sync
              state.currentlyPlaying.clear();
              soundProgress.activeSounds.clear();
-             updatePlayingStateVisuals(); // Reset all cards
-             handleAllSoundsFinishedVisuals(); // Reset global UI
-             // Optionally notify user about connection issue
+             updatePlayingStateVisuals();
+             handleAllSoundsFinishedVisuals();
              if(serverStatusEl) serverStatusEl.textContent = 'Sync Error';
              if(statusIndicatorEl) statusIndicatorEl.className = 'status-dot error';
         }
-        state.isAnythingPlayingUnpaused = false; // Reset state on error
-        updatePlayPauseButtonIcon(); // Reset icon on error
+        // Reset states on error
+        state.isAnythingPlayingUnpaused = false;
+        state.playbackGloballyPausedByToggle = false;
+        updatePlayPauseButtonIcon();
+        updateTopBarProgressState(0); // Reset progress bar on error
     }
 }
 
@@ -1320,7 +1354,7 @@ async function fetchSoundProgress() {
 
 function handleSoundPlayedVisuals(soundData) {
     // Only update the global indicator; individual card handled by polling
-    updatePlayIndicator(true);
+    updatePlayPauseButtonIcon(true);
 }
 
 function handleSoundFinishVisuals(soundData) {
@@ -1339,20 +1373,20 @@ function handleSoundFinishVisuals(soundData) {
          // Update global state and UI immediately
          state.isAnythingPlayingUnpaused = false;
          updatePlayPauseButtonIcon();
-         updateTopBarProgress(0); // Reset progress bar too
+         updateTopBarProgressState(0); // Reset progress bar too
          console.log("Last sound finished, resetting global UI.");
     }
     // Global bar/icon reset is handled by handleAllSoundsFinishedVisuals or the next poll cycle
 }
 
 function handleAllSoundsFinishedVisuals() {
-    // console.log("Handling all sounds finished visuals"); // Debug
-    updateTopBarProgress(0); // Reset top bar gradient
-
-    state.isAnythingPlayingUnpaused = false; // Update global state
-    updatePlayPauseButtonIcon(); // Update toggle button icon to 'play'
-    state.isTalkThroughButtonPressed = false; // Ensure talk-through state is reset too
-    talkThroughButton?.classList.remove('active'); // Ensure talk-through button visual is reset
+    console.log("Handling all sounds finished visuals (called by stopAll)");
+    state.isAnythingPlayingUnpaused = false;
+    state.isTalkThroughButtonPressed = false;
+    state.playbackGloballyPausedByToggle = false; // Reset toggle pause state
+    updatePlayPauseButtonIcon(); // Update icon AND visibility
+    updateTopBarProgressState(0); // Reset progress bar state/visibility
+    talkThroughButton?.classList.remove('active');
 
     // Reset all potentially playing sound card backgrounds and classes
     if (soundsContainerEl) {

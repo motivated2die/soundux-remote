@@ -362,7 +362,7 @@ h1 { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); line-heigh
 .wakelock-indicator .material-symbols-outlined { font-size: 14px; vertical-align: middle; }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--border-radius); cursor: pointer; transition: background-color var(--transition-speed) ease; background-color: transparent; color: var(--text-primary); min-height: 44px; }
-.btn-danger { background-color: var(--error-color); color: white; width: 160px; height: 60px; padding: 8px; border-radius: 30px; gap: 8px; }
+.btn-danger { background-color: var(--error-color); color: white; width: 130px; height: 60px; padding: 8px; border-radius: 30px; gap: 8px; }
 .btn-danger:hover { background-color: #ff6b6b; }
 .btn-danger .material-symbols-outlined { font-size: 32px; }
 .stop-text { font-weight: 700; font-size: 1rem; }
@@ -1002,7 +1002,6 @@ main#sounds-container.layout-list .sortable-swap-highlight {
 .btn-talk {
     background-color: var(--v-secondary-base); /* Default grey */
     color: var(--text-primary);
-    margin-right: 15px; /* Space before Stop button */
 }
 
 .btn-talk:hover {
@@ -1023,4 +1022,29 @@ main#sounds-container.layout-list .sortable-swap-highlight {
     display: flex;
     align-items: center;
     gap: 10px; /* Adjust gap if needed */
+}
+
+/* --- ADD: Styles for progress visibility --- */
+.top-bar {
+    /* ... existing styles ... */
+    /* Default background without gradient */
+    background-color: var(--v-secondary-darken1);
+    /* Remove the direct background gradient */
+    /* background: linear-gradient(...) */
+    transition: background-color var(--transition-speed) ease; /* Keep transition */
+}
+
+.top-bar.progress-active {
+    /* Apply gradient ONLY when progress is active */
+    background: linear-gradient(
+        to right,
+        var(--top-bar-progress-color) var(--progress-percentage, 0%),
+        var(--v-secondary-darken1) var(--progress-percentage, 0%)
+    );
+    transition: background var(--transition-speed) linear; /* Transition background */
+}
+
+/* --- ADD: Default hidden state for play/pause button --- */
+#play-pause-toggle-button.hidden {
+    display: none;
 }
