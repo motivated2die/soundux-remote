@@ -10,3 +10,4 @@ yarn.lock
 package.json
 compile_commands.json
 deployment/innosetup/Output
+build.ps1
