@@ -580,10 +580,22 @@ namespace Soundux::Objects
         // Store Button pointer directly
         trayPinMenuItem = tray->addEntry(Tray::Button(initialPinText, nullptr));
         if (!trayPinMenuItem) { Fancy::fancy.logTime().failure() << "Failed to add PIN display item to tray menu." << std::endl; }
-        // else { // Optionally disable: // trayPinMenuItem->setDisabled(true); // }
 
+        // --- Local IP Display Item ---
+        try {
+            std::string ip = SystemInfo::getLocalIP();
+            std::string ipText = ip != "IP Unavailable" ? 
+                "Use Remote: " + ip + ":8080" : 
+                "Remote IP Unavailable";
+            trayIpMenuItem = tray->addEntry(Tray::Button(ipText, nullptr));
+            if (!trayIpMenuItem) { 
+                Fancy::fancy.logTime().failure() << "Failed to add IP display item to tray menu." << std::endl; 
+            }
+        } catch (...) {
+            Fancy::fancy.logTime().warning() << "Failed to setup IP display, continuing without it";
+        }
 
-         tray->update();
+        tray->update();
          Fancy::fancy.logTime().success() << "Tray menu setup complete." << std::endl;
     }
 

@@ -40,7 +40,8 @@ namespace Soundux
 
             // Pointers to specific tray items we need to update
             std::shared_ptr<Tray::Button> trayShowHideMenuItem = nullptr; // ADDED
-            std::shared_ptr<Tray::Button> trayPinMenuItem = nullptr; // CHANGED back to Button
+            std::shared_ptr<Tray::Button> trayPinMenuItem = nullptr;
+            std::shared_ptr<Tray::Button> trayIpMenuItem = nullptr;
 
             void resetAllRemoteSessions();
 

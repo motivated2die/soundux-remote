@@ -9,4 +9,5 @@ class SystemInfo
 
   public:
     static std::string getSummary();
+    static std::string getLocalIP();
 };
