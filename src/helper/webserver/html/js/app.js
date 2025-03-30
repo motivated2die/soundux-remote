@@ -23,6 +23,8 @@ const tabsContainerEl = document.getElementById('tabs-container');
 const soundsContainerEl = document.getElementById('sounds-container');
 const topBarEl = document.getElementById('top-bar');
 const playIndicatorEl = document.getElementById('play-indicator');
+const headerEl = document.querySelector('header'); // Get the header element
+const rippleContainerEl = headerEl?.querySelector('.ripple-container'); // Get the ripple container
 
 const playPauseToggleButton = document.getElementById('play-pause-toggle-button');
 const talkThroughButton = document.getElementById('talk-through-button');
@@ -177,23 +179,93 @@ async function checkServerStatus() {
 }
 
 
+// --- Ripple Effect ---
+function createRipple(event, targetButton, color = 'rgba(255, 255, 255, 0.2)', persistent = false) {
+    if (!rippleContainerEl || !headerEl) return;
+
+    const headerRect = headerEl.getBoundingClientRect();
+    const ripple = document.createElement('span');
+    const diameter = Math.max(headerRect.width, headerRect.height) * 1.5; // Make ripple large enough
+    const radius = diameter / 2;
+
+    // Calculate click position relative to the header container
+    const clickX = event.clientX - headerRect.left;
+    const clickY = event.clientY - headerRect.top;
+
+    ripple.style.width = ripple.style.height = `${diameter}px`;
+    ripple.style.left = `${clickX - radius}px`;
+    ripple.style.top = `${clickY - radius}px`;
+    ripple.classList.add('ripple');
+    ripple.style.backgroundColor = color;
+
+    if (persistent) {
+        ripple.classList.add('persistent'); // Add class for persistent ripples
+        ripple.style.animation = 'none'; // Don't start animation immediately
+        ripple.style.transform = 'scale(4)'; // Start scaled up
+        ripple.style.opacity = '0.4'; // Keep opacity
+        // Store reference on the button itself
+        targetButton._persistentRipple = ripple;
+    }
+
+    rippleContainerEl.appendChild(ripple);
+
+    // Clean up non-persistent ripples after animation
+    if (!persistent) {
+        ripple.addEventListener('animationend', () => {
+            ripple.remove();
+        });
+    }
+}
+
+function removePersistentRipple(button) {
+    if (button && button._persistentRipple) {
+        const ripple = button._persistentRipple;
+        ripple.style.animation = 'ripple-animation 600ms linear'; // Trigger fade-out animation
+        ripple.style.opacity = '0'; // Ensure it fades out
+        ripple.addEventListener('animationend', () => {
+            ripple.remove();
+        });
+        button._persistentRipple = null; // Clear reference
+    }
+}
+
+
 // --- Event Listeners ---
 function setupEventListeners() {
-    if (stopAllButton) stopAllButton.addEventListener('click', stopAllSounds);
-    else console.error("Stop All button not found");
+    // Stop All Button Listener (PointerDown for ripple)
+    if (stopAllButton) {
+        stopAllButton.addEventListener('pointerdown', (e) => {
+            createRipple(e, stopAllButton, 'rgba(255, 82, 82, 0.2)'); // Red ripple
+        });
+        stopAllButton.addEventListener('click', stopAllSounds); // Keep click for action
+    } else console.error("Stop All button not found");
+
 
     if (playPauseToggleButton) {
         playPauseToggleButton.addEventListener('click', handleTogglePlayPause);
     } else console.error("Play/Pause toggle button not found");
 
+    // Talk Through Button Listeners (Modified for persistent ripple)
     if (talkThroughButton) {
-        // Use pointer events for better cross-device compatibility (touch & mouse)
-        talkThroughButton.addEventListener('pointerdown', handleTalkThroughStart);
-        talkThroughButton.addEventListener('pointerup', handleTalkThroughEnd);
-        talkThroughButton.addEventListener('pointerleave', handleTalkThroughEnd); // End if pointer leaves while pressed
+        talkThroughButton.addEventListener('pointerdown', (e) => {
+            handleTalkThroughStart(e); // Call original handler
+            createRipple(e, talkThroughButton, 'rgba(80, 222, 168, 0.3)', true); // Green, persistent ripple
+        });
+        talkThroughButton.addEventListener('pointerup', (e) => {
+            handleTalkThroughEnd(e); // Call original handler
+            removePersistentRipple(talkThroughButton); // Remove the ripple
+        });
+        talkThroughButton.addEventListener('pointerleave', (e) => {
+             // Only remove ripple if the button is actually being pressed (state check)
+             if (state.isTalkThroughButtonPressed) {
+                 handleTalkThroughEnd(e); // Call original handler to stop API call etc.
+                 removePersistentRipple(talkThroughButton); // Remove the ripple
+             }
+        });
         // Prevent context menu on long press for the button
         talkThroughButton.addEventListener('contextmenu', (e) => e.preventDefault());
     } else console.error("Talk-Through button not found");
+
 
     if (appSettingsButton) appSettingsButton.addEventListener('click', openAppSettingsModal);
     else console.error("App Settings button not found");
@@ -744,7 +816,7 @@ async function loadTabs() {
         tabsContainerEl.innerHTML = ''; // Clear existing tabs
 
         // Always add Favorites tab first
-        const favTabElement = createTabElement('Favorites', 'favorites', 'favorite');
+        const favTabElement = createTabElement('', 'favorites', 'favorite');
         tabsContainerEl.appendChild(favTabElement);
 
         // Add tabs from API
