@@ -8,6 +8,13 @@ This nifty feature lets you control your Soundux soundboard from any device with
 
 This guide will give you a quick tour of what you can do with the Web Remote.
 
+## Project Gallery
+
+| ![Image 1](https://github.com/user-attachments/assets/2b574460-eab9-4c01-b2ab-88d1091aafc8) | ![Image 2](https://github.com/user-attachments/assets/b1daa5f8-0560-483a-b00c-671a5e3076c2) | ![Image 3](https://github.com/user-attachments/assets/02dc2569-6054-4ce9-8fb8-91ab375d45ed) |
+| --- | --- | --- |
+| ![Image 4](https://github.com/user-attachments/assets/b1c99ca2-d93a-4308-bff9-607ec2644d95) | ![Image 5](https://github.com/user-attachments/assets/b9d4f3bf-fa3f-4bb7-8e78-ffd9771b1d70) | ![Image 6](https://github.com/user-attachments/assets/5b807afa-0b4c-473e-8312-c26287e3aeed) |
+
+
 ### Getting Started 🔌
 
 1.  Make sure Soundux is running on your main computer.
