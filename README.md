@@ -1,13 +1,99 @@
 # Soundux Remote 🎮
 A fork of the [Soundux cross-platform soundboard](https://github.com/Soundux/Soundux), extended by a small webserver implementation for remote-controlling the soundboard on the local network via any browser.
 
-Simply start Soundux and open your [PC's local IP address](https://www.whatismybrowser.com/detect/what-is-my-local-ip-address/), followed by :8080 like for example: 192.168.178.21:8080 on any device's browser in your local network.
 
-You'll be greeted by a mobile-optimized user interface displaying your tabs and sounds for you to conveniently trigger. 
+## How to use the Soundux Web Remote! 🚀
 
-_**Note that this remote is automatically available to ALL of the devices on your local network, so beware of where you start this application. Use this feature at your own risk!
-**_
+This nifty feature lets you control your Soundux soundboard from any device with a web browser on your **local network** – think your phone 📱, tablet 📟, or another computer 💻, without needing to install anything extra on those devices.
 
+This guide will give you a quick tour of what you can do with the Web Remote.
+
+## Project Gallery
+
+| ![Image 1](https://github.com/user-attachments/assets/2b574460-eab9-4c01-b2ab-88d1091aafc8) | ![Image 2](https://github.com/user-attachments/assets/b1daa5f8-0560-483a-b00c-671a5e3076c2) | ![Image 3](https://github.com/user-attachments/assets/02dc2569-6054-4ce9-8fb8-91ab375d45ed) |
+| --- | --- | --- |
+| ![Image 4](https://github.com/user-attachments/assets/b1c99ca2-d93a-4308-bff9-607ec2644d95) | ![Image 5](https://github.com/user-attachments/assets/b9d4f3bf-fa3f-4bb7-8e78-ffd9771b1d70) | ![Image 6](https://github.com/user-attachments/assets/5b807afa-0b4c-473e-8312-c26287e3aeed) |
+
+
+### Getting Started 🔌
+
+1.  Make sure Soundux is running on your main computer.
+2.  Find your computer's **Local IP Address** (You can usually find this in your system's network settings, or search online for "what is my local ip address").
+3.  On your remote device (phone, tablet, etc.), open a web browser.
+4.  Type in your computer's local IP address, followed by `:8080`.
+    *   Example: `http://192.168.1.100:8080`
+5.  Hit Enter, and you should see the Soundux Web Remote interface!
+
+### How to Log Into Your Remote 🔒
+
+**PIN Protection:** To prevent unauthorized access, Soundux uses a **PIN system**. The first time you connect (or after clearing sessions), you'll be asked for a 6-digit PIN.
+
+*   🔒 **Find your PIN:** Right-click the Soundux tray icon on your main computer. The current PIN will be displayed in the menu.
+*   Once you enter the correct PIN, your device will be remembered (using a cookie/token) for future sessions, unless you log out or reset sessions from the tray menu.
+
+<img src="https://github.com/user-attachments/assets/48b3ec8c-34e0-4708-8732-9a96a78c0711" height="200">
+
+
+*The Web Remote is accessible by **any device** on your local Wi-Fi/network by default. Be mindful of where you use Soundux with the web server enabled.*
+
+### The Interface at a Glance ✨
+
+*   **Sounds Grid (Main Area):** Shows all the sounds in your currently selected tab. Tap to play! ▦
+*   **Tabs Bar (Bottom):** Your soundboard tabs live here. Tap or swipe to switch between them. 📑 Includes a dedicated ⭐ **Favorites** tab!
+*   **Header (Very Bottom):** Shows the Soundux logo, connection status, and the main action buttons like Push-to-Talk and the big red **STOP** button. 🛑
+*   **Top Bar:** Contains controls like global Play/Pause, Edit Mode toggle, and App Settings. 🔝
+
+### Core Controls 🎧
+
+*   **Playing Sounds:** Simply tap any sound button in the grid to play it through Soundux. ▶️
+*   **Stopping Sounds:** Hit the big red **STOP** button in the bottom header to immediately halt all playing sounds.
+*   **Global Play/Pause:** The ▶️ / ⏸️ button in the **top bar** allows you to pause or resume *all* currently active sounds at once, useful for quick interruptions without stopping them completely.
+*   **Push-to-Talk (PTT):** Tap and hold the 🎤 button in the bottom header to activate your configured PTT keys in Soundux (if any are set). This also temporarily pauses any playing sounds and unmutes your mic (if Soundux was muting it) for the duration you hold the button. Release to stop PTT and resume sounds/mic state.
+
+### Navigation 🧭
+
+*   **Switching Tabs:** Tap a tab in the bottom bar to switch. You can also **swipe left or right** anywhere in the main sounds grid area to navigate between tabs quickly.
+
+### Customization & Editing 🛠️
+
+Want to personalize your remote layout or sound settings? **Edit Mode** is your friend!
+
+*   **Toggle Edit Mode:** Tap the **pencil icon** ✏️ in the top bar. The bar will turn green, and the icon will change to a checkmark ✅. Tap the checkmark to exit Edit Mode.
+*   **Editing Layouts:**
+    *   **Reorder Sounds:** While in Edit Mode, simply **tap and drag** sound buttons within the current tab to rearrange them.
+    *   **Change View:** Tap the layout button in the top bar (visible only in Edit Mode) to cycle between different grid densities or a list view for the current tab.
+*   **Editing Sound Buttons:** Need to tweak a specific sound?
+    *   **Access:** In Edit Mode, simply **tap** a sound button. (Outside of Edit Mode, you can usually **long-press** or **right-click** a sound button).
+    *   **The Settings Menu:** A panel will slide up from the bottom, allowing you to:
+        *   **Favorite ⭐:** Toggle the star to add/remove the sound from your Favorites tab.
+        *   **Preview 👂:** Play the sound locally on the remote device (if your browser supports it).
+        *   **Volume 🔊:** Adjust the playback volume specifically for this sound relative to the default volume (uses a +/- slider). You can also reset it back to default.
+        *   **Color 🎨:** Assign a background color to the button for visual organization.
+        *   **Emoji ✨:** Add a background emoji to the button.
+
+### App Settings ⚙️
+
+Tap the **cogwheel icon** in the top bar to open the App Settings modal. Here you can:
+
+*   **Set Preferences:**
+    *   Toggle auto-fullscreen on interaction.
+    *   Swap the position of the top-bar buttons (left/right alignment).
+*   **Manage Layouts & Settings:**
+    *   **Reset Visuals:** Long-press to reset colors/emojis for the current tab. 🔄
+    *   **Reset Layout:** Long-press to reset the button order for the current tab/view. 🔄
+    *   **Reset ALL:** Long-press to wipe *all* remote settings (visuals, layouts, favorites) back to default. 💣
+    *   **Import/Export:** Save your current remote layout and customizations to a file 📤, or load a previously saved configuration 📥.
+
+### Handy Tips ✨
+
+*   **Add to Home Screen (PWA):** Most modern mobile browsers will let you "Add to Home Screen". This installs the Web Remote like an app for quick access and a more native feel! 📲
+*   **Screen Wake Lock:** The remote tries to keep your device's screen awake while it's open, preventing it from locking during use. You'll see a small eye icon 👁️ in the bottom header indicating if the wake lock is active.
+
+---
+
+That's the Soundux Web Remote in a nutshell! It's designed to be intuitive, so feel free to explore and tap around (especially in Edit Mode!). Enjoy controlling your soundboard with ease! 🎉
+
+## The Soundux Desktop Application
 
 # 👀 Preview
 | ![Dark Interface](https://raw.githubusercontent.com/Soundux/screenshots/screenshots/home-dark.png)                   | ![Light Interface](https://raw.githubusercontent.com/Soundux/screenshots/screenshots/home-light.png)                   |
