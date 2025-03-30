@@ -142,26 +142,37 @@ if (${EMBED_PATH} STREQUAL "OFF")
         message(STATUS "Web server content source path: ${CMAKE_SOURCE_DIR}/src/helper/webserver/html")
         message(STATUS "Web server content destination path: ${CMAKE_BINARY_DIR}/web")
 
-        file(COPY "${CMAKE_SOURCE_DIR}/src/helper/webserver/html/" 
-             DESTINATION "${CMAKE_BINARY_DIR}/web"
-             FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
-        
-        # Copy to Debug/Release directories for Windows
-        if(MSVC)
-            file(COPY "${CMAKE_SOURCE_DIR}/src/helper/webserver/html/" 
-                 DESTINATION "${CMAKE_BINARY_DIR}/Debug/web"
-                 FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
-            file(COPY "${CMAKE_SOURCE_DIR}/src/helper/webserver/html/" 
-                 DESTINATION "${CMAKE_BINARY_DIR}/Release/web"
-                 FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+        # Use file(COPY ...) with trailing slash on source to copy contents
+        file(COPY "${CMAKE_SOURCE_DIR}/src/helper/webserver/html/" # Source directory (trailing slash copies contents)
+             DESTINATION "${CMAKE_BINARY_DIR}/web" # Destination directory
+             FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+        )
+        # Check if copy seemed to work (basic check)
+        if(NOT EXISTS "${CMAKE_BINARY_DIR}/web/index.html")
+            message(WARNING "file(COPY ...) might not have copied contents as expected. Check permissions and paths.")
         endif()
-        
-        # Print contents for debugging
+
+        # Copy to Debug/Release directories for Windows using file(COPY ...)
+        if(MSVC)
+             message(STATUS "Copying web server content to MSVC build directories...")
+             file(COPY "${CMAKE_SOURCE_DIR}/src/helper/webserver/html/"
+                  DESTINATION "${CMAKE_BINARY_DIR}/Debug/web"
+                  FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+             file(COPY "${CMAKE_SOURCE_DIR}/src/helper/webserver/html/"
+                  DESTINATION "${CMAKE_BINARY_DIR}/Release/web"
+                  FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+        endif()
+
+        # Print contents for debugging (Keep these)
         print_directory_contents("${CMAKE_SOURCE_DIR}/src/helper/webserver/html")
         print_directory_contents("${CMAKE_BINARY_DIR}/web")
+        if(MSVC)
+             print_directory_contents("${CMAKE_BINARY_DIR}/Release/web") # Also check Release dir
+        endif()
     else()
         message(WARNING "Web server content directory does not exist: ${CMAKE_SOURCE_DIR}/src/helper/webserver/html")
     endif()
+
 else()
     message(STATUS "Using embed path: ${EMBED_PATH}")
     target_include_directories(webview PUBLIC ${EMBED_PATH})
@@ -200,6 +211,18 @@ else()
     install(FILES "${CMAKE_SOURCE_DIR}/deployment/appstream/io.github.Soundux.metainfo.xml" DESTINATION /usr/share/metainfo)
     install(FILES "${CMAKE_SOURCE_DIR}/assets/soundux.png" DESTINATION /usr/share/pixmaps)
     if(EXISTS "${CMAKE_SOURCE_DIR}/src/helper/webserver/html")
-        install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/helper/webserver/html/" DESTINATION web)
+        set(WEB_INSTALL_DESTINATION "web") # Default install path relative to prefix
+        if(USE_FLATPAK)
+            set(WEB_INSTALL_DESTINATION "share/soundux/web") # Flatpak specific path
+        endif()
+
+        # Install the *contents* of the html directory into the destination
+        install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/helper/webserver/html/" # Trailing slash is important
+                DESTINATION ${WEB_INSTALL_DESTINATION}
+                FILES_MATCHING PATTERN "*" # Ensure all files and subdirs are matched
+        )
+        message(STATUS "Web server content will be installed to: ${CMAKE_INSTALL_PREFIX}/${WEB_INSTALL_DESTINATION}")
     endif()
+
+
 endif()

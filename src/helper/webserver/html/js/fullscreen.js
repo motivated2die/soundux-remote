@@ -82,38 +82,25 @@ const fullscreenManager = (() => {
 
     const init = () => {
         loadSetting();
-
-        // Listener for the toggle button in the modal
         const toggleButton = document.getElementById('auto-fullscreen-toggle');
         if (toggleButton) {
             toggleButton.addEventListener('change', toggleSetting);
-        } else {
-            console.error("Auto Fullscreen toggle button not found.");
-        }
-
-        // Add interaction listeners (only trigger fullscreen if enabled)
-        // Use 'pointerdown' for broader compatibility and earlier trigger than click
+        } else { /* ... */ }
         document.addEventListener('pointerdown', handleInteraction, { capture: true, passive: true });
-
-        // Add visibility change listener
         document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        console.log("Fullscreen Manager Initialized");
+        console.log("Fullscreen Manager Initialized"); // Keep log
     };
 
-    // Expose a function to manually set enabled state if needed (e.g., after import)
-    const setEnabled = (enabledStatus) => {
-         isEnabled = !!enabledStatus; // Ensure boolean
-         saveSetting();
-         updateToggleUI();
-    };
-
-
-    return {
+    const publicInterface = {
         init,
-        setEnabled, // Expose setEnabled
+        setEnabled,
         isEnabled: () => isEnabled
     };
+
+    // ---> Assign to window object <---
+    window.fullscreenManager = publicInterface; // Make it globally accessible
+
+    return publicInterface; // Return it as well (good practice)
 
 })();
 

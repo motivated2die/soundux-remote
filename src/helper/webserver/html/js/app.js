@@ -8,6 +8,10 @@ const state = {
     longPressTimer: null,
     longPressTarget: null,
     lastLongPressTime: 0,
+
+    isAnythingPlayingUnpaused: false, // Tracks overall playback state for UI
+    isTalkThroughButtonPressed: false // Tracks button press state locally
+
 };
 
 // DOM Elements
@@ -18,6 +22,11 @@ const tabsContainerEl = document.getElementById('tabs-container');
 const soundsContainerEl = document.getElementById('sounds-container');
 const topBarEl = document.getElementById('top-bar');
 const playIndicatorEl = document.getElementById('play-indicator');
+
+const playPauseToggleButton = document.getElementById('play-pause-toggle-button');
+const talkThroughButton = document.getElementById('talk-through-button');
+
+
 const appSettingsButton = document.getElementById('app-settings-button');
 const appSettingsModalOverlay = document.getElementById('app-settings-modal-overlay');
 const closeAppSettingsButton = document.getElementById('close-app-settings-button');
@@ -37,21 +46,25 @@ function updateTopBarProgress(percentage) {
     }
 }
 
-function updatePlayIndicator(isPlaying) {
-    if (playIndicatorEl) {
-        playIndicatorEl.classList.toggle('hidden', !isPlaying);
-    }
-}
 
 // Initialize the application
 function init() {
     state.apiBaseUrl = window.location.origin;
     console.log("API Base URL:", state.apiBaseUrl);
-    // Load settings using the persistence module
+    // ---> LOAD PERSISTENCE FIRST <---
     state.settings = persistence.load();
     console.log("Initial settings loaded:", state.settings);
-    checkServerStatus(); // This will now call loadTabs, which depends on state.settings
+
+    // --- Setup listeners next (which includes appReady listener) ---
     setupEventListeners();
+
+    // --- Set initial UI states based on loaded settings ---
+    state.isAnythingPlayingUnpaused = false;
+    state.isTalkThroughButtonPressed = false;
+    updatePlayPauseButtonIcon();
+
+    // --- Start the connection/loading process LAST (will dispatch appReady) ---
+    checkServerStatus();
 }
 
 // --- API Helper ---
@@ -59,35 +72,50 @@ async function apiFetch(endpoint, options = {}) {
     const url = `${state.apiBaseUrl}${endpoint}`;
     try {
         const response = await fetch(url, { credentials: 'include', ...options });
+        console.log(`API Fetch: ${options.method || 'GET'} ${endpoint} -> Status: ${response.status}`);
+
+        
         if (!response.ok) {
-            if (response.status === 401) {
-                 console.warn("API request unauthorized. Redirecting to login.");
-                 // Avoid infinite loop if login page itself fails auth check
-                 if (window.location.pathname !== '/login.html') {
-                    window.location.href = '/login.html';
-                 }
-                 throw new Error('Unauthorized');
-            }
+            let errorMsg = `HTTP error! status: ${response.status}`;
+            let errorDetails = null;
             try {
-                 const errorData = await response.json();
-                 throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-            } catch (parseError) {
-                 throw new Error(`HTTP error! status: ${response.status}`);
+                // Try to get more details from the response body
+                const textResponse = await response.text(); // Read as text first
+                try {
+                    errorDetails = JSON.parse(textResponse); // Try parsing as JSON
+                    errorMsg = errorDetails.error || errorMsg;
+                } catch (jsonError) {
+                    // If not JSON, use the text response if it's short, otherwise keep generic message
+                    if (textResponse.length > 0 && textResponse.length < 100) {
+                         errorMsg += ` - ${textResponse}`;
+                    }
+                    console.warn(`API Fetch Error: Response for ${endpoint} was not valid JSON: ${textResponse.substring(0,100)}...`);
+                }
+            } catch (bodyError) {
+                console.warn(`API Fetch Error: Could not read response body for ${endpoint}.`);
             }
+
+            if (response.status === 401) {
+                 console.warn(`API request unauthorized (${endpoint}). Redirecting to login.`);
+                 if (window.location.pathname !== '/login.html') { window.location.href = '/login.html'; }
+                 throw new Error('Unauthorized'); // Still throw for control flow
+            }
+            // Throw the constructed error message
+            throw new Error(errorMsg);
         }
+
         const contentType = response.headers.get("content-type");
-        if (contentType && contentType.indexOf("application/json") !== -1) {
-            return await response.json();
-        } else {
-            // If expecting JSON but didn't get it, treat as error for robustness
-            if (options.headers && options.headers['Accept'] === 'application/json') {
-                 console.error(`API Fetch Error: Expected JSON but received ${contentType} for ${endpoint}`);
-                 throw new Error("Unexpected response format from server.");
-            }
-            return response; // Return raw response otherwise
-        }
+         if (contentType && contentType.indexOf("application/json") !== -1) {
+             return await response.json();
+         } else {
+             if (options.headers && options.headers['Accept'] === 'application/json') {
+                  console.error(`API Fetch Error: Expected JSON but received ${contentType} for ${endpoint}`);
+                  throw new Error("Unexpected response format from server.");
+             }
+             return response; // Return raw response otherwise (e.g., for file downloads if added later)
+         }
     } catch (error) {
-        console.error(`API Fetch Error for ${endpoint}:`, error);
+        console.error(`API Fetch Error for ${url}:`, error); 
         if (serverStatusEl) serverStatusEl.textContent = 'Connection Error';
         if (statusIndicatorEl) statusIndicatorEl.className = 'status-dot error';
         throw error; // Re-throw to be handled by caller
@@ -101,31 +129,30 @@ async function checkServerStatus() {
         if (serverStatusEl) serverStatusEl.textContent = 'Connected';
         if (statusIndicatorEl) statusIndicatorEl.className = 'status-dot connected';
         updateTopBarProgress(0);
-        updatePlayIndicator(false);
+
 
         await loadTabs(); // Load tabs and activate the first/last active one
 
-        // Check state.currentTab *after* loadTabs potentially sets it
-        if (state.currentTab !== null && typeof state.currentTab !== 'undefined') {
-            checkForPlayingSounds(); // Check for sounds playing on load
-        } else {
-            console.warn("No current tab set after loadTabs, skipping initial checkForPlayingSounds.");
-            if (tabsContainerEl && tabsContainerEl.children.length === 0) {
-                 tabsContainerEl.innerHTML = '<p class="error-text">No tabs found.</p>';
-            }
-             if(soundsContainerEl) soundsContainerEl.innerHTML = '<p class="no-sounds">Select a tab.</p>'; // Clear sounds area if no tab
-        }
-        // Signal app is ready AFTER potentially setting currentTab and loading initial sounds (or determining no tab)
-        document.dispatchEvent(new CustomEvent('appReady'));
+         if (state.currentTab !== null && typeof state.currentTab !== 'undefined') {
+             checkForPlayingSounds();
+         } else {
+             console.warn("No current tab set after loadTabs, skipping initial checkForPlayingSounds.");
+             if (tabsContainerEl && tabsContainerEl.children.length === 0) { /*...*/ }
+              if(soundsContainerEl) soundsContainerEl.innerHTML = '<p class="no-sounds">Select a tab.</p>';
+         }
+         console.log("checkServerStatus successful, dispatching appReady"); // Add log
+         document.dispatchEvent(new CustomEvent('appReady'));
 
     } catch (error) {
-        console.error("Failed initial server status check or tab load sequence.");
+        console.error("Failed initial server status check or subsequent load sequence:", error.message); // Log specific error message
         if (tabsContainerEl) tabsContainerEl.innerHTML = '<p class="error-text">Failed to connect.</p>';
         if (soundsContainerEl) soundsContainerEl.innerHTML = '<p class="error-text">Failed to connect.</p>';
         updateTopBarProgress(0);
-        updatePlayIndicator(false);
-        // Signal ready even on error so modules don't wait forever
-        document.dispatchEvent(new CustomEvent('appReady'));
+        state.isAnythingPlayingUnpaused = false; // Ensure state reflects no playback on error
+        updatePlayPauseButtonIcon();
+        console.log("checkServerStatus failed, dispatching appReady (with error state)"); // Add log
+        document.dispatchEvent(new CustomEvent('appReady')); // Dispatch even on error
+
     }
 }
 
@@ -134,6 +161,19 @@ async function checkServerStatus() {
 function setupEventListeners() {
     if (stopAllButton) stopAllButton.addEventListener('click', stopAllSounds);
     else console.error("Stop All button not found");
+
+    if (playPauseToggleButton) {
+        playPauseToggleButton.addEventListener('click', handleTogglePlayPause);
+    } else console.error("Play/Pause toggle button not found");
+
+    if (talkThroughButton) {
+        // Use pointer events for better cross-device compatibility (touch & mouse)
+        talkThroughButton.addEventListener('pointerdown', handleTalkThroughStart);
+        talkThroughButton.addEventListener('pointerup', handleTalkThroughEnd);
+        talkThroughButton.addEventListener('pointerleave', handleTalkThroughEnd); // End if pointer leaves while pressed
+        // Prevent context menu on long press for the button
+        talkThroughButton.addEventListener('contextmenu', (e) => e.preventDefault());
+    } else console.error("Talk-Through button not found");
 
     if (appSettingsButton) appSettingsButton.addEventListener('click', openAppSettingsModal);
     else console.error("App Settings button not found");
@@ -156,11 +196,6 @@ function setupEventListeners() {
     if (importFileInput) importFileInput.addEventListener('change', handleImportFile);
     else console.error("Import File input not found");
 
-    const fullscreenToggle = document.getElementById('auto-fullscreen-toggle');
-    if (fullscreenToggle && window.fullscreenManager) {
-        // Listener is set up within fullscreen.js
-    } else if (!fullscreenToggle) { console.error("Fullscreen toggle not found"); }
-      else { console.error("Fullscreen Manager not found"); }
 
     if (soundsContainerEl) {
         soundsContainerEl.addEventListener('click', (e) => {
@@ -197,7 +232,134 @@ function setupEventListeners() {
 
      // Setup long press listeners for reset buttons
      setupLongPressResetButtons();
+
+     window.playbackStateChanged = (newState) => {
+        console.log("Playback state changed notification received:", newState);
+        state.isAnythingPlayingUnpaused = (newState === 'playing');
+        updatePlayPauseButtonIcon();
+   };
+   window.talkThroughStateChanged = (isActive) => {
+        console.log("Talk-through state changed notification received:", isActive);
+        state.isTalkThroughButtonPressed = isActive; // Keep local JS state in sync
+        talkThroughButton?.classList.toggle('active', isActive);
+        updatePlayPauseButtonIcon(); // Refresh play/pause icon state too
+   };
+
+    // --- NEW CODE START: Defer fullscreen toggle check until appReady ---
+    document.addEventListener('appReady', () => {
+        console.log("App ready: Setting up Fullscreen toggle listener.");
+        const fullscreenToggle = document.getElementById('auto-fullscreen-toggle');
+        if (fullscreenToggle) {
+            // Check if fullscreenManager exists NOW
+            if (window.fullscreenManager) { // Check window object directly
+                console.log("Fullscreen toggle found and manager exists.");
+                // Ensure UI matches loaded setting (check if state.settings exists first)
+                if (state.settings && typeof state.settings.autoFullscreenEnabled !== 'undefined') {
+                    fullscreenToggle.checked = state.settings.autoFullscreenEnabled;
+                }
+                // Listener itself should be handled inside fullscreen.js initialization
+            } else {
+                console.error("App ready, but window.fullscreenManager still not found!");
+            }
+        } else {
+            console.error("App ready, but Fullscreen toggle button not found!");
+        }
+    }, { once: true });
+
+
 }
+
+async function handleTogglePlayPause() {
+    if (!playPauseToggleButton) return;
+    console.log("Play/Pause toggle button clicked.");
+    // Disable button temporarily to prevent rapid clicks
+    playPauseToggleButton.disabled = true;
+    playPauseToggleButton.style.opacity = '0.5'; // Visual feedback
+
+    try {
+        const result = await apiFetch('/api/playback/toggle', { method: 'POST' });
+        if (result && result.success) {
+            console.log("Playback toggled via API. New state:", result.newState);
+            // Update state based on response
+            state.isAnythingPlayingUnpaused = (result.newState === 'playing');
+            updatePlayPauseButtonIcon(); // Update UI
+        } else {
+            console.error("Failed to toggle playback:", result ? result.error : "Unknown API error");
+            // Optionally revert UI or show error
+             updatePlayPauseButtonIcon(); // Update based on current known state if API failed
+        }
+    } catch (error) {
+        console.error("Error calling toggle playback API:", error);
+        updatePlayPauseButtonIcon(); // Update based on current known state if API failed
+    } finally {
+        // Re-enable button after a short delay
+        setTimeout(() => {
+            if (playPauseToggleButton) {
+                playPauseToggleButton.disabled = false;
+                playPauseToggleButton.style.opacity = '1';
+            }
+        }, 200); // 200ms delay
+    }
+}
+
+async function handleTalkThroughStart(event) {
+     // Don't start if already active or if globally paused by toggle
+     if (state.isTalkThroughButtonPressed || state.playbackGloballyPaused) return;
+     if (!talkThroughButton) return;
+
+     // For pointer events, we need to capture the pointer to handle pointerleave correctly
+     talkThroughButton.setPointerCapture(event.pointerId);
+
+     console.log("Talk-Through button pressed (pointerdown).");
+     state.isTalkThroughButtonPressed = true; // Set local state immediately
+     talkThroughButton.classList.add('active'); // Immediate visual feedback
+
+     try {
+         await apiFetch('/api/talkthrough/start', { method: 'POST' });
+         console.log("Talk-through started via API.");
+         // C++ side should call window.talkThroughStateChanged(true)
+     } catch (error) {
+         console.error("Error starting talk-through:", error);
+         state.isTalkThroughButtonPressed = false; // Revert state on error
+         talkThroughButton.classList.remove('active'); // Remove active state on error
+         talkThroughButton.releasePointerCapture(event.pointerId); // Release capture on error
+     }
+}
+
+async function handleTalkThroughEnd(event) {
+     // Only act if the button was actually pressed
+     if (!state.isTalkThroughButtonPressed) return;
+     if (!talkThroughButton) return;
+
+     console.log("Talk-Through button released (pointerup/leave).");
+     state.isTalkThroughButtonPressed = false; // Reset local state
+     talkThroughButton.classList.remove('active'); // Immediate visual feedback
+     talkThroughButton.releasePointerCapture(event.pointerId); // Release pointer capture
+
+     try {
+         await apiFetch('/api/talkthrough/stop', { method: 'POST' });
+         console.log("Talk-through stopped via API.");
+         // C++ side should call window.talkThroughStateChanged(false)
+     } catch (error) {
+         console.error("Error stopping talk-through:", error);
+         // Consider what state the UI should be in on error (button is already inactive visually)
+     }
+}
+
+function updatePlayPauseButtonIcon() {
+    if (!playPauseToggleButton) return;
+    const icon = playPauseToggleButton.querySelector('.material-symbols-outlined');
+    if (icon) {
+        // Use the global state variable
+        const iconName = state.isAnythingPlayingUnpaused ? 'pause' : 'play_arrow';
+        const label = state.isAnythingPlayingUnpaused ? 'Pause All Sounds' : 'Resume Paused Sounds';
+        if (icon.textContent !== iconName) {
+             icon.textContent = iconName;
+        }
+        playPauseToggleButton.setAttribute('aria-label', label);
+    }
+}
+
 
 // --- Long Press Reset Button Logic (Keep existing code from previous step) ---
 const longPressState = {
@@ -1026,7 +1188,9 @@ async function fetchSoundProgress() {
 
         const currentPlayingIdsFromServer = new Set(playingSoundsData.map(s => s.id));
         let maxProgressPercentage = 0;
-        let isAnySoundPlayingUnpaused = false;
+
+        let anyPlayingNow = playingSoundsData.some(sound => !sound.paused);
+
 
         // 2. Update tracked sounds based on API response
         playingSoundsData.forEach(soundUpdate => {
@@ -1064,6 +1228,8 @@ async function fetchSoundProgress() {
             const lengthMs = existingSound.lengthInMs;
             const readMs = existingSound.readInMs;
             let percentage = 0;
+
+
 
             if (!isPaused && lengthMs > 0) {
                 isAnySoundPlayingUnpaused = true; // At least one sound is actively playing
@@ -1114,10 +1280,19 @@ async function fetchSoundProgress() {
 
         // 4. Update Global UI based on overall state
         updateTopBarProgress(maxProgressPercentage);
-        updatePlayIndicator(isAnySoundPlayingUnpaused);
+        // Update global state *after* processing all sounds from API
+        if (state.isAnythingPlayingUnpaused !== anyPlayingNow) {
+             console.log(`Overall playing state changed: ${state.isAnythingPlayingUnpaused} -> ${anyPlayingNow}`);
+             state.isAnythingPlayingUnpaused = anyPlayingNow;
+        }
 
         // 5. Final Check: Stop polling if nothing is left *after* cleanup
         if (soundProgress.activeSounds.size === 0) {
+            // Ensure global state is reset when stopping due to no sounds
+            if (state.isAnythingPlayingUnpaused) {
+                state.isAnythingPlayingUnpaused = false;
+                updatePlayPauseButtonIcon(); // Update icon one last time
+            }
             stopProgressPolling("No active sounds after update");
         }
 
@@ -1135,6 +1310,8 @@ async function fetchSoundProgress() {
              if(serverStatusEl) serverStatusEl.textContent = 'Sync Error';
              if(statusIndicatorEl) statusIndicatorEl.className = 'status-dot error';
         }
+        state.isAnythingPlayingUnpaused = false; // Reset state on error
+        updatePlayPauseButtonIcon(); // Reset icon on error
     }
 }
 
@@ -1156,13 +1333,26 @@ function handleSoundFinishVisuals(soundData) {
             updateSoundCardDisplay(soundData.soundId, soundCard); // Re-apply base styles (color, emoji etc.)
         }
     }
+
+    // Check if this was the *last* playing sound
+    if (soundProgress.activeSounds.size === 0) {
+         // Update global state and UI immediately
+         state.isAnythingPlayingUnpaused = false;
+         updatePlayPauseButtonIcon();
+         updateTopBarProgress(0); // Reset progress bar too
+         console.log("Last sound finished, resetting global UI.");
+    }
     // Global bar/icon reset is handled by handleAllSoundsFinishedVisuals or the next poll cycle
 }
 
 function handleAllSoundsFinishedVisuals() {
     // console.log("Handling all sounds finished visuals"); // Debug
     updateTopBarProgress(0); // Reset top bar gradient
-    updatePlayIndicator(false); // Hide play icon
+
+    state.isAnythingPlayingUnpaused = false; // Update global state
+    updatePlayPauseButtonIcon(); // Update toggle button icon to 'play'
+    state.isTalkThroughButtonPressed = false; // Ensure talk-through state is reset too
+    talkThroughButton?.classList.remove('active'); // Ensure talk-through button visual is reset
 
     // Reset all potentially playing sound card backgrounds and classes
     if (soundsContainerEl) {
@@ -1175,6 +1365,7 @@ function handleAllSoundsFinishedVisuals() {
              }
         });
     }
+
 }
 
 function updatePlayingStateVisuals() {

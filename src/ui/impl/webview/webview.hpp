@@ -47,6 +47,20 @@ namespace Soundux
             void onAllSoundsFinished() override;
             Settings changeSettings(Settings newSettings) override;
 
+            bool playbackGloballyPaused = false; // Tracks if the main toggle paused sounds
+            bool isTalkThroughActive = false; // Tracks if talk-through button is currently held
+
+            // State before pausing/talk-through started
+            struct PlaybackInterruptionState {
+                bool wasPttPressedBySoundux = false;
+                bool wasMicMutedBySoundux = false;
+                std::vector<std::uint32_t> pausedSoundInstanceIds; // Store *instance* IDs (from PlayingSound)
+            };
+            PlaybackInterruptionState togglePauseState;
+            PlaybackInterruptionState talkThroughPauseState; // Separate state for talk-through
+
+
+
           public:
             // ... (rest is the same) ...
             void show() override;
@@ -67,6 +81,11 @@ namespace Soundux
             std::optional<Sound> setCustomRemoteVolumeForWeb(const std::uint32_t &id, const std::optional<int> &volume);
             bool toggleFavoriteForWeb(const std::uint32_t &id);
             void setWebRemotePin(const std::string& pin);
+
+            std::string toggleAllPlaybackState(); // Returns "paused" or "playing"
+            void startTalkThrough();
+            void stopTalkThrough();
+
         };
     } // namespace Objects
 } // namespace Soundux

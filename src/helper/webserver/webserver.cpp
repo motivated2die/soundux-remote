@@ -397,74 +397,66 @@ namespace Soundux::Objects
         }
 
         std::string effectiveWebRoot = webRootPath;
+        Fancy::fancy.logTime().message() << "[DEBUG] WebServer::start called with webRootPath: '" << webRootPath << "'" << std::endl;
 
         if (effectiveWebRoot.empty() || !std::filesystem::exists(effectiveWebRoot))
         {
-            // Try looking in various standard locations
+            Fancy::fancy.logTime().message() << "[DEBUG] webRootPath empty or doesn't exist, searching standard locations..." << std::endl;
             std::vector<std::string> possiblePaths;
+            // ... (determine possiblePaths as before) ...
 
-            #if defined(_WIN32)
-                char rawPath[MAX_PATH];
-                GetModuleFileNameA(nullptr, rawPath, MAX_PATH);
-                std::string basePath = std::filesystem::path(rawPath).parent_path().string();
-
-                possiblePaths = {
-                    basePath + "/web",
-                    basePath + "/Release/web", // Adjusted common build output dirs
-                    basePath + "/Debug/web",
-                    basePath + "/../web",      // If exe is in bin/
-                    basePath + "/../../web"    // If exe is in build/bin/
-                };
-            #else
-                std::string basePath = "."; // Default to current dir
-                try {
-                    char selfPath[PATH_MAX];
-                    ssize_t len = readlink("/proc/self/exe", selfPath, sizeof(selfPath)-1);
-                    if(len != -1) {
-                      selfPath[len] = '\0';
-                      basePath = std::filesystem::path(selfPath).parent_path().string();
-                    } else {
-                      Fancy::fancy.logTime().warning() << "Could not read /proc/self/exe, using fallback path." << std::endl;
-                    }
-                } catch (const std::exception& e) {
-                     Fancy::fancy.logTime().warning() << "Error getting executable path: " << e.what() << std::endl;
-                }
-
-                possiblePaths = {
-                    basePath + "/web",
-                    basePath + "/../web",         // Common relative path
-                    basePath + "/../share/soundux/web", // Relative from bin/
-                    "/usr/share/soundux/web",     // Standard install locations
-                    "/opt/soundux/web"
-                };
-            #endif
-
-            for (const auto &path : possiblePaths)
+            for (const auto &path_str : possiblePaths) // Use a different variable name
             {
-                 std::filesystem::path checkPath(path);
-                 try {
-                    checkPath = std::filesystem::absolute(checkPath);
+                std::filesystem::path checkPath; // Declare inside loop
+                try {
+                    // --- Added logging ---
+                    Fancy::fancy.logTime().message() << "[DEBUG] Checking possible path: '" << path_str << "'" << std::endl;
+                    checkPath = std::filesystem::absolute(path_str); // Convert to absolute
+                    Fancy::fancy.logTime().message() << "[DEBUG] Absolute path: '" << checkPath.string() << "'" << std::endl;
+
                     if (std::filesystem::exists(checkPath) && std::filesystem::is_directory(checkPath))
                     {
-                        effectiveWebRoot = checkPath.string();
-                        Fancy::fancy.logTime().success() << "Found web files at: " << effectiveWebRoot << std::endl;
-                        break;
+                        Fancy::fancy.logTime().message() << "[DEBUG] Path exists and is a directory." << std::endl;
+                        // ---> Check for index.html as a sanity check <---
+                        if (std::filesystem::exists(checkPath / "index.html")) {
+                            effectiveWebRoot = checkPath.string();
+                            Fancy::fancy.logTime().success() << "Found valid web root with index.html at: " << effectiveWebRoot << std::endl;
+                            break; // Found it, exit loop
+                        } else {
+                            Fancy::fancy.logTime().warning() << "[DEBUG] Path exists, but index.html missing inside: " << checkPath.string() << std::endl;
+                        }
+                    } else {
+                        // Fancy::fancy.logTime().message() << "[DEBUG] Path does not exist or is not a directory." << std::endl; // Can be noisy
                     }
-                 } catch (const std::filesystem::filesystem_error& e) {
-                      Fancy::fancy.logTime().warning() << "Error checking path " << path << ": " << e.what() << std::endl;
-                 }
+                } catch (const std::filesystem::filesystem_error& e) {
+                    Fancy::fancy.logTime().warning() << "[DEBUG] Filesystem error checking path " << path_str << ": " << e.what() << std::endl;
+                } catch (const std::exception& e) {
+                    Fancy::fancy.logTime().warning() << "[DEBUG] Generic error checking path " << path_str << ": " << e.what() << std::endl;
+                }
             }
+        } else {
+            Fancy::fancy.logTime().message() << "[DEBUG] Using provided webRootPath: '" << effectiveWebRoot << "'" << std::endl;
         }
 
         webRoot = effectiveWebRoot;
+        Fancy::fancy.logTime().message() << "[DEBUG] Final effectiveWebRoot determined as: '" << webRoot << "'" << std::endl;
+
 
         if (webRoot.empty() || !std::filesystem::exists(webRoot) || !std::filesystem::is_directory(webRoot))
         {
-            Fancy::fancy.logTime().failure() << "Web root directory not found or invalid. Looked in standard locations. Path searched: " << effectiveWebRoot << std::endl;
-            return false;
+            // --- Added more specific error ---
+            Fancy::fancy.logTime().failure() << "Web root directory determination failed. Final path searched/used: '" << effectiveWebRoot << "'. Server cannot start serving files." << std::endl;
+            return false; // Critical error
         } else {
-             Fancy::fancy.logTime().message() << "Using web root: " << webRoot << std::endl;
+            Fancy::fancy.logTime().message() << "Using web root: " << webRoot << std::endl;
+            // ---> Check assets folder specifically <---
+            if (!std::filesystem::exists(std::filesystem::path(webRoot) / "assets")) {
+                Fancy::fancy.logTime().warning() << "Web root confirmed, but 'assets' subfolder NOT FOUND inside: " << webRoot << std::endl;
+            } else {
+                Fancy::fancy.logTime().message() << "'assets' subfolder found inside web root." << std::endl;
+            }
         }
+
 
         // Check if login.html exists in the web root - DO NOT CREATE IT
         std::filesystem::path loginPath = std::filesystem::path(webRoot) / "login.html";
@@ -560,6 +552,54 @@ namespace Soundux::Objects
 
         server->Get("/api/status", [](const httplib::Request &, httplib::Response &res) {
             res.set_content("{\"status\":\"ok\"}", "application/json");
+        });
+
+        // Toggle global play/pause state
+        server->Post("/api/playback/toggle", [](const httplib::Request &req, httplib::Response &res) {
+            try {
+                auto* webview = dynamic_cast<Soundux::Objects::WebView*>(Soundux::Globals::gGui.get());
+                if (!webview) {
+                    res.status = 503; res.set_content("{\"error\":\"Playback control service unavailable\"}", "application/json"); return;
+                }
+                std::string newState = webview->toggleAllPlaybackState(); // Method returns "playing" or "paused"
+                res.set_content("{\"success\":true, \"newState\":\"" + newState + "\"}", "application/json");
+            } catch (const std::exception &e) {
+                res.status = 500; res.set_content("{\"error\":\"Failed to toggle playback: " + std::string(e.what()) + "\"}", "application/json");
+            } catch (...) {
+                res.status = 500; res.set_content("{\"error\":\"An unknown error occurred while toggling playback.\"}", "application/json");
+            }
+        });
+
+        // Start Talk-Through
+        server->Post("/api/talkthrough/start", [](const httplib::Request &req, httplib::Response &res) {
+            try {
+                auto* webview = dynamic_cast<Soundux::Objects::WebView*>(Soundux::Globals::gGui.get());
+                if (!webview) {
+                    res.status = 503; res.set_content("{\"error\":\"Talk-through service unavailable\"}", "application/json"); return;
+                }
+                webview->startTalkThrough();
+                res.set_content("{\"success\":true}", "application/json");
+            } catch (const std::exception &e) {
+                res.status = 500; res.set_content("{\"error\":\"Failed to start talk-through: " + std::string(e.what()) + "\"}", "application/json");
+            } catch (...) {
+                res.status = 500; res.set_content("{\"error\":\"An unknown error occurred while starting talk-through.\"}", "application/json");
+            }
+        });
+
+        // Stop Talk-Through
+        server->Post("/api/talkthrough/stop", [](const httplib::Request &req, httplib::Response &res) {
+            try {
+                auto* webview = dynamic_cast<Soundux::Objects::WebView*>(Soundux::Globals::gGui.get());
+                if (!webview) {
+                    res.status = 503; res.set_content("{\"error\":\"Talk-through service unavailable\"}", "application/json"); return;
+                }
+                webview->stopTalkThrough();
+                res.set_content("{\"success\":true}", "application/json");
+            } catch (const std::exception &e) {
+                res.status = 500; res.set_content("{\"error\":\"Failed to stop talk-through: " + std::string(e.what()) + "\"}", "application/json");
+            } catch (...) {
+                res.status = 500; res.set_content("{\"error\":\"An unknown error occurred while stopping talk-through.\"}", "application/json");
+            }
         });
 
         server->set_default_headers({

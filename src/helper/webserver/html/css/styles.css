@@ -973,3 +973,54 @@ main#sounds-container.layout-list .sortable-swap-highlight {
     background-color: rgba(82, 177, 140, 0.2); /* Slightly darker background for list */
     outline-offset: -1px; /* Adjust outline position if needed */
 }
+
+/* Style for the new Play/Pause Toggle Button in the top bar */
+#play-pause-toggle-button {
+    /* Uses existing .icon-button and .top-bar-button styles */
+    /* Add specific order or margin if needed */
+    /* order: -1; */ /* Example: Place before layout button */
+    margin-right: 5px; /* Example: Spacing */
+}
+
+/* Style for the new Talk-Through Button in the bottom header */
+.btn-round { /* Base for round buttons */
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--v-secondary-darken1);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: background-color var(--transition-speed) ease, box-shadow var(--transition-speed) ease, transform var(--transition-speed) ease;
+}
+.btn-round .material-symbols-outlined {
+    font-size: 28px; /* Adjust icon size */
+}
+
+.btn-talk {
+    background-color: var(--v-secondary-base); /* Default grey */
+    color: var(--text-primary);
+    margin-right: 15px; /* Space before Stop button */
+}
+
+.btn-talk:hover {
+    background-color: var(--v-secondary-darken1);
+}
+
+/* Active/pressed state for talk-through */
+.btn-talk.active {
+    background-color: var(--v-primary-base); /* Use primary color when active */
+    color: white;
+    box-shadow: 0 0 10px rgba(82, 177, 140, 0.5), inset 0 2px 4px rgba(0,0,0,0.3);
+    transform: scale(0.95); /* Slight press effect */
+}
+/* --- NEW CODE END --- */
+
+/* Ensure header-actions can contain the new button */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Adjust gap if needed */
+}

@@ -189,6 +189,10 @@ namespace Soundux::Objects
             response["sounds"] = soundVolumes;
             return response;
         }));
+        webview->expose(Webview::Function("toggleAllPlaybackState", [this]() { return toggleAllPlaybackState(); }));
+        webview->expose(Webview::Function("startTalkThrough", [this]() { startTalkThrough(); }));
+        webview->expose(Webview::Function("stopTalkThrough", [this]() { stopTalkThrough(); }));
+    
 
 #if !defined(__linux__)
         webview->expose(Webview::Function("getOutputs", [this]() { return getOutputs(); }));
@@ -211,6 +215,246 @@ namespace Soundux::Objects
         webview->expose(Webview::Function("unloadSwitchOnConnect", []() { auto pb = std::dynamic_pointer_cast<Soundux::Objects::PulseAudio>(Soundux::Globals::gAudioBackend); if(pb){ pb->unloadSwitchOnConnect(); pb->loadModules(); Globals::gAudio.setup(); } }));
 #endif
     }
+
+    // Method to toggle pause/resume for all playing sounds
+    std::string WebView::toggleAllPlaybackState()
+    {
+        if (isTalkThroughActive) {
+            Fancy::fancy.logTime().warning() << "Cannot toggle playback while talk-through is active." << std::endl;
+            return playbackGloballyPaused ? "paused" : "playing"; // Return current known state without changing
+        }
+
+        if (!playbackGloballyPaused) // Currently playing (or idle) -> Pause
+        {
+            Fancy::fancy.logTime().message() << "Toggling playback: Pausing all sounds." << std::endl;
+            togglePauseState.pausedSoundInstanceIds.clear();
+            togglePauseState.wasPttPressedBySoundux = false; // Reset state
+            togglePauseState.wasMicMutedBySoundux = false;
+
+            // Determine if PTT/Mute might be active *before* pausing sounds
+            bool pttPotentiallyHeld = !Globals::gSettings.pushToTalkKeys.empty() && !Globals::gAudio.getPlayingSounds().empty();
+            bool micPotentiallyMuted = Globals::gSettings.muteDuringPlayback && !Globals::gAudio.getPlayingSounds().empty();
+
+            // Pause sounds first
+            int pausedCount = 0;
+            for (const auto& playingSound : Globals::gAudio.getPlayingSounds()) {
+                if (!playingSound.paused) {
+                    // Use Window::pauseSound which handles paired sounds correctly
+                    if (this->pauseSound(playingSound.id)) {
+                        togglePauseState.pausedSoundInstanceIds.push_back(playingSound.id);
+                        pausedCount++;
+                    }
+                }
+            }
+            Fancy::fancy.logTime().message() << "Paused " << pausedCount << " sound instances.";
+
+
+            if (pttPotentiallyHeld) { // If we think PTT was held
+                Fancy::fancy.logTime().message() << "Releasing PTT keys due to pause toggle." << std::endl;
+                Globals::gHotKeys.releaseKeys(Globals::gSettings.pushToTalkKeys);
+                togglePauseState.wasPttPressedBySoundux = true; // Record that PTT was active
+            }
+
+            if (micPotentiallyMuted) { // If we think mic was muted
+                Fancy::fancy.logTime().message() << "Unmuting microphone due to pause toggle." << std::endl;
+                #if defined(__linux__)
+                if (Globals::gAudioBackend && !Globals::gAudioBackend->muteInput(false)) { onError(Enums::ErrorCode::FailedToMute); }
+                #elif defined(_WIN32)
+                if (Globals::gWinSound && Globals::gWinSound->getMic() && !Globals::gWinSound->getMic()->mute(false)) { onError(Enums::ErrorCode::FailedToMute); }
+                #endif
+                togglePauseState.wasMicMutedBySoundux = true; // Record that mic was muted
+            }
+
+            playbackGloballyPaused = true;
+            if (webview) webview->callFunction<void>(Webview::JavaScriptFunction("window.playbackStateChanged", "paused")); // Notify JS
+            return "paused";
+
+        }
+        else // Currently paused by toggle -> Resume
+        {
+            Fancy::fancy.logTime().message() << "Toggling playback: Resuming paused sounds." << std::endl;
+            int resumedCount = 0;
+            bool anySoundResumed = false;
+            for (const auto& instanceId : togglePauseState.pausedSoundInstanceIds) {
+                // Check if the sound still exists in the audio engine's map before resuming
+                bool stillExists = false;
+                for(const auto& playing : Globals::gAudio.getPlayingSounds()) {
+                    if (playing.id == instanceId) { stillExists = true; break; }
+                }
+
+                if(stillExists) {
+                    // Use Window::resumeSound which handles paired sounds correctly
+                    if(this->resumeSound(instanceId)) {
+                        resumedCount++;
+                        anySoundResumed = true;
+                    }
+                }
+            }
+            Fancy::fancy.logTime().message() << "Resumed " << resumedCount << " sound instances.";
+            togglePauseState.pausedSoundInstanceIds.clear(); // Clear the list after attempting resume
+
+            if (anySoundResumed) // Only re-apply PTT/Mute if sounds actually resumed
+            {
+                if (togglePauseState.wasPttPressedBySoundux) {
+                    Fancy::fancy.logTime().message() << "Re-pressing PTT keys after resuming." << std::endl;
+                    Globals::gHotKeys.pressKeys(Globals::gSettings.pushToTalkKeys);
+                }
+                if (togglePauseState.wasMicMutedBySoundux) {
+                    Fancy::fancy.logTime().message() << "Re-muting microphone after resuming." << std::endl;
+                    #if defined(__linux__)
+                    if (Globals::gAudioBackend && !Globals::gAudioBackend->muteInput(true)) { onError(Enums::ErrorCode::FailedToMute); }
+                    #elif defined(_WIN32)
+                    if (Globals::gWinSound && Globals::gWinSound->getMic() && !Globals::gWinSound->getMic()->mute(true)) { onError(Enums::ErrorCode::FailedToMute); }
+                    #endif
+                }
+            } else {
+                Fancy::fancy.logTime().message() << "No sounds were actually resumed, skipping PTT/Mute re-application." << std::endl;
+                // Ensure mic is unmuted if mute-during-playback was on but no sounds are playing anymore
+                if(Globals::gSettings.muteDuringPlayback && togglePauseState.wasMicMutedBySoundux) {
+                    Fancy::fancy.logTime().message() << "Ensuring mic is unmuted as no sounds resumed." << std::endl;
+                    #if defined(__linux__)
+                    if (Globals::gAudioBackend && !Globals::gAudioBackend->muteInput(false)) { onError(Enums::ErrorCode::FailedToMute); }
+                    #elif defined(_WIN32)
+                    if (Globals::gWinSound && Globals::gWinSound->getMic() && !Globals::gWinSound->getMic()->mute(false)) { onError(Enums::ErrorCode::FailedToMute); }
+                    #endif
+                }
+            }
+
+            // Reset state trackers
+            togglePauseState.wasPttPressedBySoundux = false;
+            togglePauseState.wasMicMutedBySoundux = false;
+            playbackGloballyPaused = false;
+            if (webview) webview->callFunction<void>(Webview::JavaScriptFunction("window.playbackStateChanged", "playing")); // Notify JS
+            return "playing";
+        }
+    }
+
+    void WebView::startTalkThrough()
+    {
+        if (isTalkThroughActive) return; // Already active
+        if (playbackGloballyPaused) {
+            Fancy::fancy.logTime().warning() << "Cannot start talk-through while playback is globally paused by toggle." << std::endl;
+            return;
+        }
+
+        Fancy::fancy.logTime().message() << "Starting talk-through..." << std::endl;
+        isTalkThroughActive = true;
+        talkThroughPauseState.pausedSoundInstanceIds.clear();
+        talkThroughPauseState.wasPttPressedBySoundux = false;
+        talkThroughPauseState.wasMicMutedBySoundux = false;
+
+        // Determine if PTT/Mute might be active *before* pausing sounds
+        bool pttPotentiallyHeld = !Globals::gSettings.pushToTalkKeys.empty() && !Globals::gAudio.getPlayingSounds().empty();
+        bool micPotentiallyMuted = Globals::gSettings.muteDuringPlayback && !Globals::gAudio.getPlayingSounds().empty();
+
+        // Pause currently playing sounds
+        int pausedCount = 0;
+        for (const auto& playingSound : Globals::gAudio.getPlayingSounds()) {
+            if (!playingSound.paused) {
+                // Use Window::pauseSound which handles paired sounds correctly
+                if (this->pauseSound(playingSound.id)) {
+                    talkThroughPauseState.pausedSoundInstanceIds.push_back(playingSound.id);
+                    pausedCount++;
+                }
+            }
+        }
+        Fancy::fancy.logTime().message() << "Talk-through paused " << pausedCount << " sound instances.";
+
+        // Release Soundux PTT if it was held
+        if (pttPotentiallyHeld) {
+            Fancy::fancy.logTime().message() << "Releasing Soundux PTT keys for talk-through." << std::endl;
+            Globals::gHotKeys.releaseKeys(Globals::gSettings.pushToTalkKeys);
+            talkThroughPauseState.wasPttPressedBySoundux = true;
+        }
+
+        // Unmute mic if it was muted by Soundux
+        if (micPotentiallyMuted) {
+            Fancy::fancy.logTime().message() << "Unmuting microphone for talk-through." << std::endl;
+            #if defined(__linux__)
+            if (Globals::gAudioBackend && !Globals::gAudioBackend->muteInput(false)) { onError(Enums::ErrorCode::FailedToMute); }
+            #elif defined(_WIN32)
+            if (Globals::gWinSound && Globals::gWinSound->getMic() && !Globals::gWinSound->getMic()->mute(false)) { onError(Enums::ErrorCode::FailedToMute); }
+            #endif
+            talkThroughPauseState.wasMicMutedBySoundux = true;
+        }
+
+        // Press user's PTT keys (for the game/external app)
+        if (!Globals::gSettings.pushToTalkKeys.empty()) {
+            Fancy::fancy.logTime().message() << "Pressing user PTT keys for talk-through." << std::endl;
+            Globals::gHotKeys.pressKeys(Globals::gSettings.pushToTalkKeys);
+        } else {
+            Fancy::fancy.logTime().warning() << "Talk-through started, but no PTT keys configured in Soundux." << std::endl;
+        }
+        if (webview) webview->callFunction<void>(Webview::JavaScriptFunction("window.talkThroughStateChanged", true)); // Notify JS
+    }
+
+    void WebView::stopTalkThrough()
+    {
+        if (!isTalkThroughActive) return; // Not active
+
+        Fancy::fancy.logTime().message() << "Stopping talk-through..." << std::endl;
+
+        // Release user's PTT keys first
+        if (!Globals::gSettings.pushToTalkKeys.empty()) {
+            Fancy::fancy.logTime().message() << "Releasing user PTT keys after talk-through." << std::endl;
+            Globals::gHotKeys.releaseKeys(Globals::gSettings.pushToTalkKeys);
+        }
+
+        // Resume sounds that were paused by talk-through
+        int resumedCount = 0;
+        bool anySoundResumed = false;
+        for (const auto& instanceId : talkThroughPauseState.pausedSoundInstanceIds) {
+            // Check if the sound still exists
+            bool stillExists = false;
+            for(const auto& playing : Globals::gAudio.getPlayingSounds()) { if (playing.id == instanceId) { stillExists = true; break; } }
+
+            if(stillExists) {
+                // Use Window::resumeSound which handles paired sounds correctly
+                if(this->resumeSound(instanceId)) {
+                    resumedCount++;
+                    anySoundResumed = true;
+                }
+            }
+        }
+        Fancy::fancy.logTime().message() << "Talk-through resumed " << resumedCount << " sound instances.";
+        talkThroughPauseState.pausedSoundInstanceIds.clear();
+
+        // Re-apply Soundux PTT/Mute state if necessary
+        if (anySoundResumed) // Only if sounds are actually playing now
+        {
+            if (talkThroughPauseState.wasPttPressedBySoundux) { // If Soundux *was* holding PTT before talk-through
+                Fancy::fancy.logTime().message() << "Re-pressing Soundux PTT keys after talk-through." << std::endl;
+                Globals::gHotKeys.pressKeys(Globals::gSettings.pushToTalkKeys);
+            }
+            if (talkThroughPauseState.wasMicMutedBySoundux) { // If mic *was* muted before talk-through (and should be again)
+                Fancy::fancy.logTime().message() << "Re-muting microphone after talk-through." << std::endl;
+                #if defined(__linux__)
+                if (Globals::gAudioBackend && !Globals::gAudioBackend->muteInput(true)) { onError(Enums::ErrorCode::FailedToMute); }
+                #elif defined(_WIN32)
+                if (Globals::gWinSound && Globals::gWinSound->getMic() && !Globals::gWinSound->getMic()->mute(true)) { onError(Enums::ErrorCode::FailedToMute); }
+                #endif
+            }
+        } else {
+            Fancy::fancy.logTime().message() << "No sounds resumed after talk-through, skipping Soundux PTT/Mute re-application." << std::endl;
+            // Ensure mic is unmuted if mute-during-playback was on but no sounds are playing anymore
+            if(Globals::gSettings.muteDuringPlayback && talkThroughPauseState.wasMicMutedBySoundux) {
+                Fancy::fancy.logTime().message() << "Ensuring mic is unmuted as no sounds resumed." << std::endl;
+                #if defined(__linux__)
+                if (Globals::gAudioBackend && !Globals::gAudioBackend->muteInput(false)) { onError(Enums::ErrorCode::FailedToMute); }
+                #elif defined(_WIN32)
+                if (Globals::gWinSound && Globals::gWinSound->getMic() && !Globals::gWinSound->getMic()->mute(false)) { onError(Enums::ErrorCode::FailedToMute); }
+                #endif
+            }
+        }
+
+
+        // Reset state
+        talkThroughPauseState.wasPttPressedBySoundux = false;
+        talkThroughPauseState.wasMicMutedBySoundux = false;
+        isTalkThroughActive = false;
+        if (webview) webview->callFunction<void>(Webview::JavaScriptFunction("window.talkThroughStateChanged", false)); // Notify JS
+    }
+
 
     bool WebView::onClose()
     {
@@ -388,7 +632,11 @@ namespace Soundux::Objects
     }
 
     // --- Event Handlers ---
-    void WebView::onHotKeyReceived(const std::vector<int> &keys) { if (!webview) return; std::string seq; if (!keys.empty()){ for(size_t i=0; i<keys.size(); ++i){ seq += Globals::gHotKeys.getKeyName(keys[i]); if (i < keys.size() - 1) seq += " + "; }} else {seq = "None";} webview->callFunction<void>(Webview::JavaScriptFunction("window.hotkeyReceived", seq, keys)); }
+    void WebView::onHotKeyReceived(const std::vector<int> &keys) { 
+        if (!webview) { // Add check
+            Fancy::fancy.logTime().warning() << "onHotKeyReceived called but webview is null.";
+            return;
+        }std::string seq; if (!keys.empty()){ for(size_t i=0; i<keys.size(); ++i){ seq += Globals::gHotKeys.getKeyName(keys[i]); if (i < keys.size() - 1) seq += " + "; }} else {seq = "None";} webview->callFunction<void>(Webview::JavaScriptFunction("window.hotkeyReceived", seq, keys)); }
     void WebView::onSoundFinished(const PlayingSound &sound) { if (!webview) return; Window::onSoundFinished(sound); webview->callFunction<void>(Webview::JavaScriptFunction("window.finishSound", sound)); }
     void WebView::onSoundPlayed(const PlayingSound &sound) { if (!webview) return; webview->callFunction<void>(Webview::JavaScriptFunction("window.onSoundPlayed", sound)); }
     void WebView::onSoundProgressed(const PlayingSound &sound) { if (!webview) return; webview->callFunction<void>(Webview::JavaScriptFunction("window.updateSound", sound)); }

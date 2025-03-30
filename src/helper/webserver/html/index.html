@@ -26,8 +26,6 @@
 <body>
     <!-- Top status/action bar -->
     <div class="top-bar" id="top-bar">
-        <!-- Play Indicator (Hidden by default) -->
-        <span class="material-symbols-outlined play-indicator hidden" id="play-indicator">play_arrow</span>
         <!-- Edit Mode Info (Hidden by default) -->
         <div class="edit-mode-info hidden" id="edit-mode-info">
             <span class="material-symbols-outlined">info</span>
@@ -35,9 +33,15 @@
         </div>
         <div class="top-bar-placeholder"></div> <!-- Placeholder for spacing -->
         <div class="action-buttons">
+            <button id="play-pause-toggle-button" class="icon-button top-bar-button" aria-label="Toggle Play/Pause">
+                <span class="material-symbols-outlined">play_arrow</span> <!-- Default icon -->
+            </button>
+            
+
             <button id="layout-mode-button" class="icon-button top-bar-button hidden" aria-label="Change Layout">
                 <span class="material-symbols-outlined">view_module</span>
             </button>
+            
             <button id="edit-mode-button" class="icon-button top-bar-button" aria-label="Toggle Edit Mode">
                 <span class="material-symbols-outlined">edit</span>
             </button>
@@ -80,6 +84,9 @@
                 </div>
             </div>
             <div class="header-actions">
+                <button id="talk-through-button" class="btn btn-round btn-talk" aria-label="Microphone Talk-Through">
+                    <span class="material-symbols-outlined">mic</span>
+                </button>
                 <button id="stop-all" class="btn btn-danger">
                     <span class="material-symbols-outlined">stop_circle</span>
                     <span class="stop-text">STOP</span>
@@ -281,18 +288,18 @@
              window.screenWakeLock = { enable: enableWakeLock, release: releaseWakeLock, isEnabled: () => wakelockEnabled };
         })();
     </script>
+    
+    <!-- Load core modules -->
+    <script src="js/persistence.js" defer></script>
+    <script src="js/fullscreen.js" defer></script> <!-- Load early -->
+    <script src="js/editMode.js" defer></script>
+    <script src="js/layout.js" defer></script>
+    <script src="js/dragDrop.js" defer></script>
+    <script src="js/sound-settings.js" defer></script>
+    <script src="js/tabs.js" defer></script>
 
-    <!-- Fullscreen Script -->
-    <script src="js/fullscreen.js"></script>
-
-    <!-- App Scripts -->
-    <script src="js/persistence.js"></script>
-    <script src="js/editMode.js"></script>
-    <script src="js/layout.js"></script>
-    <script src="js/dragDrop.js"></script>
-    <script src="js/sound-settings.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/tabs.js"></script>
+    <!-- Load main app logic LAST -->
+    <script src="js/app.js" defer></script>
 
 </body>
 </html>
