@@ -31,7 +31,8 @@ This guide will give you a quick tour of what you can do with the Web Remote.
 *   🔒 **Find your PIN:** Right-click the Soundux tray icon on your main computer. The current PIN will be displayed in the menu.
 *   Once you enter the correct PIN, your device will be remembered (using a cookie/token) for future sessions, unless you log out or reset sessions from the tray menu.
 
-<img src="https://github.com/user-attachments/assets/232d8d7c-b4f1-4626-8bb9-63381476133b" height="200">
+<img src="https://github.com/user-attachments/assets/48b3ec8c-34e0-4708-8732-9a96a78c0711" height="200">
+
 
 *The Web Remote is accessible by **any device** on your local Wi-Fi/network by default. Be mindful of where you use Soundux with the web server enabled.*
 
