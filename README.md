@@ -18,11 +18,13 @@ This guide will give you a quick tour of what you can do with the Web Remote.
 ### Getting Started 🔌
 
 1.  Make sure Soundux is running on your main computer.
-2.  Find your computer's **Local IP Address** (You can usually find this in your system's network settings, or search online for "what is my local ip address").
-3.  On your remote device (phone, tablet, etc.), open a web browser.
-4.  Type in your computer's local IP address, followed by `:8080`.
-    *   Example: `http://192.168.1.100:8080`
-5.  Hit Enter, and you should see the Soundux Web Remote interface!
+2.  Right-click on the tray menu icon of the Soundux Windows application
+3.  You will see the local IP-Address of your PC, followed by `:8080`.
+    *   Example address: `http://192.168.1.100:8080`
+4.  On your remote device (phone, tablet, etc.), open this address with a web browser.
+5.  You should see the Soundux Web Remote interface!
+
+<img src="https://github.com/user-attachments/assets/48b3ec8c-34e0-4708-8732-9a96a78c0711" height="200">
 
 ### How to Log Into Your Remote 🔒
 
@@ -30,9 +32,6 @@ This guide will give you a quick tour of what you can do with the Web Remote.
 
 *   🔒 **Find your PIN:** Right-click the Soundux tray icon on your main computer. The current PIN will be displayed in the menu.
 *   Once you enter the correct PIN, your device will be remembered (using a cookie/token) for future sessions, unless you log out or reset sessions from the tray menu.
-
-<img src="https://github.com/user-attachments/assets/48b3ec8c-34e0-4708-8732-9a96a78c0711" height="200">
-
 
 *The Web Remote is accessible by **any device** on your local Wi-Fi/network by default. Be mindful of where you use Soundux with the web server enabled.*
 
