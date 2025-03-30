@@ -118,59 +118,78 @@ body {
     background: var(--edit-mode-color);
 }
 
-/* Play Indicator Icon - Positioning remains centered */
+/* Play Indicator Icon - Default left position */
 .play-indicator {
     position: absolute;
     left: 10px;
-    top: 50%; /* Center within the bar's height */
+    top: 50%;
     transform: translateY(-50%);
     font-size: 20px;
     color: rgba(255, 255, 255, 0.9);
     pointer-events: none;
+    z-index: 1; /* Above placeholder */
 }
 .play-indicator.hidden {
     display: none;
 }
 
-/* Edit Mode Info Styles - Positioning remains centered */
+/* Edit Mode Info Styles - Default right position (before buttons) */
 .edit-mode-info {
-    display: none;
+    display: none; /* Hidden by default */
     align-items: center;
     gap: 5px;
     font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.8);
-    position: absolute;
-    left: 10px;
-    top: 50%; /* Center within the bar's height */
-    transform: translateY(-50%);
-    z-index: -1;
+    margin-right: 10px; /* Space before buttons */
+    order: 1; /* Default order (before buttons) */
 }
 .edit-mode-info .material-symbols-outlined {
     font-size: 16px;
 }
 .top-bar.edit-mode-active .edit-mode-info {
-    display: flex;
-    z-index: 1;
+    display: flex; /* Show when edit mode is active */
 }
+/* Hide play indicator when edit info is shown */
 .top-bar.edit-mode-active .play-indicator {
     display: none;
 }
 
+/* Placeholder - Takes up space on the opposite side of buttons */
 .top-bar .top-bar-placeholder {
-    flex-shrink: 0;
-    width: 10px;
-    margin-right: auto;
+    flex-grow: 1; /* Take up remaining space */
+    order: 0; /* Default order (left side) */
 }
 
-/* Top Bar Action Buttons - Let flexbox handle vertical centering */
+/* Top Bar Action Buttons - Default right alignment */
 .top-bar .action-buttons {
     display: flex;
-    align-items: center; /* Ensure buttons align center */
+    align-items: center;
     gap: 7px;
-    margin-left: auto;
     flex-shrink: 0;
-    height: 100%; /* Fill the vertical space */
+    height: 100%;
+    order: 2; /* Default order (right side) */
 }
+
+/* --- NEW: Left Alignment Styles --- */
+.top-bar.buttons-left .top-bar-placeholder {
+    order: 2; /* Placeholder moves to the right */
+}
+.top-bar.buttons-left .edit-mode-info {
+    order: 1; /* Edit info stays before buttons */
+    margin-right: 0; /* Remove right margin */
+    margin-left: 10px; /* Add left margin */
+}
+.top-bar.buttons-left .action-buttons {
+    order: 0; /* Buttons move to the left */
+}
+/* Adjust play indicator position when buttons are left */
+.top-bar.buttons-left .play-indicator {
+    left: auto; /* Remove fixed left */
+    right: 10px; /* Position on the right */
+}
+/* --- END Left Alignment Styles --- */
+
+
 .icon-button.top-bar-button {
     width: 32px;
     height: 32px;
@@ -508,35 +527,159 @@ emoji-picker::part(nav), emoji-picker section[aria-label*="Favorites"], emoji-pi
 /* --- App Settings Modal --- */
 #app-settings-modal-overlay { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; background-color: rgba(0, 0, 0, 0.7); opacity: 0; transition: opacity 0.3s ease, visibility 0.3s; visibility: hidden; backdrop-filter: blur(2px); }
 #app-settings-modal-overlay:not(.hidden) { opacity: 1; visibility: visible; }
-#app-settings-modal { background-color: var(--v-secondary-darken1); border-radius: 12px; padding: 25px; width: 90%; max-width: 400px; box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5); transform: scale(0.95); transition: transform 0.3s ease; }
+#app-settings-modal {
+    background-color: var(--v-secondary-darken1);
+    border-radius: 12px;
+    /* padding: 25px; */ /* Padding handled by header/content */
+    padding: 0; /* Remove default padding */
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+    overflow: hidden; /* Hide overflow for border-radius */
+}
 #app-settings-modal-overlay:not(.hidden) #app-settings-modal { transform: scale(1); }
-#app-settings-modal h2 { text-align: center; margin-bottom: 20px; font-size: 1.3rem; }
-#app-settings-modal .settings-section { margin-bottom: 20px; }
-#app-settings-modal .modal-actions { display: flex; gap: 15px; justify-content: center; margin-top: 10px; flex-wrap: wrap;}
-#app-settings-modal .action-button { font-size: 0.9rem; height: 44px; border-radius: 22px; }
-#app-settings-modal .action-button.secondary { background-color: var(--v-secondary-base); }
-#app-settings-modal .modal-info { font-size: 0.85rem; color: var(--text-secondary); margin-top: 15px; text-align: center; }
 
-/* Vertical button layout */
+/* NEW: App Settings Modal Header */
+#app-settings-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px; /* Padding for header */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Separator */
+}
+
+#app-settings-modal h2 {
+    /* text-align: center; */ /* REMOVED */
+    margin: 0; /* Remove default margin */
+    font-size: 1.2rem; /* Slightly smaller */
+    font-weight: 500;
+    flex-grow: 1;
+    text-align: left; /* Align title left */
+}
+
+/* NEW: App Settings Close Button (Top Right) */
+#app-settings-modal .modal-close-button {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 5px;
+    line-height: 1;
+    transition: color var(--transition-speed) ease;
+    margin-left: 10px; /* Space from title */
+}
+#app-settings-modal .modal-close-button:hover {
+    color: var(--text-primary);
+}
+
+/* Content area padding */
+#app-settings-modal .settings-section {
+    margin-bottom: 0; /* Remove bottom margin */
+    padding: 15px 20px; /* Padding for each section */
+}
+/* Add border between sections */
+#app-settings-modal .divider {
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.1);
+    margin: 0; /* Remove margin */
+}
+
+/* Section Title Alignment */
+#app-settings-modal h3 {
+    text-align: left;
+    margin-bottom: 8px; /* Space below title */
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* Description Text Alignment & Position */
+#app-settings-modal .modal-info {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 0; /* Remove top margin */
+    margin-bottom: 15px; /* Space below description */
+    text-align: left; /* Align left */
+    line-height: 1.3;
+}
+
+/* General Modal Actions Styling */
+#app-settings-modal .modal-actions {
+    display: flex;
+    gap: 10px; /* Consistent gap */
+    justify-content: center;
+    margin-top: 15px; /* Space above button groups */
+    flex-wrap: wrap;
+}
+#app-settings-modal .action-button {
+    font-size: 0.9rem;
+    height: 44px; /* Standard height */
+    border-radius: 22px; /* Standard radius */
+    padding: 0 18px; /* Standard padding */
+    background-color: var(--v-secondary-base); /* Standard background */
+    border: none; /* No border */
+    color: var(--text-primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color var(--transition-speed) ease;
+}
+#app-settings-modal .action-button:hover {
+    background-color: var(--v-secondary-darken2);
+}
+#app-settings-modal .action-button.secondary { /* Keep secondary style if needed */
+    background-color: var(--v-secondary-darken2);
+}
+/* #app-settings-modal .action-button.danger { ... } */ /* REMOVED default danger styling here */
+
+
+/* Vertical button layout (for Reset buttons) */
 #app-settings-modal .modal-actions.vertical {
     flex-direction: column;
-    gap: 10px; /* Adjust gap for vertical layout */
     align-items: stretch; /* Make buttons full width */
 }
 
-/* Long Press Button Styles */
-.long-press-button {
-    width: 100%; /* Make buttons full width */
-    background-color: var(--v-secondary-base); /* Default grey */
-    color: var(--text-secondary);
-    border: 1px solid var(--v-secondary-darken2);
+/* Horizontal button layout (for Import/Export) */
+#app-settings-modal .modal-actions.horizontal {
+    flex-direction: row;
+    justify-content: space-between; /* Space out buttons */
+}
+#app-settings-modal .modal-actions.horizontal .action-button {
+    flex-basis: calc(50% - 5px); /* Each button takes roughly half width minus gap */
+    flex-grow: 1; /* Allow growing if needed */
+}
+
+
+/* MODIFIED: Long Press Button Styles (Align with .action-button) */
+#app-settings-modal .long-press-button {
+    /* Inherit from .action-button where possible */
+    width: 100%; /* Keep full width for vertical layout */
+    /* background-color: var(--v-secondary-base); */ /* Use danger color */
+    /* color: var(--text-secondary); */
+    border: none; /* REMOVE border */
     transition: background-color 0.1s ease, color 0.1s ease;
     position: relative;
     overflow: hidden;
     text-align: center;
     justify-content: center;
+    /* Ensure height/padding match .action-button */
+    height: 44px;
+    border-radius: 22px;
+    padding: 0 18px;
+    font-size: 0.85rem; /* Slightly smaller text for long descriptions */
+    line-height: 1.2;
+    /* Default background for long-press buttons */
+    background-color: var(--v-secondary-base);
+    color: var(--text-primary);
+    gap: 8px; /* Add gap for icon */
 }
-.long-press-button::before { /* Progress indicator */
+#app-settings-modal .long-press-button:hover {
+    background-color: var(--v-secondary-darken2); /* Standard hover */
+}
+#app-settings-modal .long-press-button::before { /* Progress indicator */
     content: '';
     position: absolute;
     top: 0;
@@ -546,30 +689,75 @@ emoji-picker::part(nav), emoji-picker section[aria-label*="Favorites"], emoji-pi
     background-color: rgba(255, 255, 255, 0.1); /* Semi-transparent white */
     transition: width 0.1s linear; /* Smooth progress */
     z-index: 0;
+    /* background-color: rgba(255, 255, 255, 0.2); */ /* Lighter overlay for danger */
+    background-color: rgba(255, 255, 255, 0.1); /* Standard progress overlay */
 }
-.long-press-button span { /* Ensure text is above progress */
+#app-settings-modal .long-press-button span,
+#app-settings-modal .long-press-button .material-symbols-outlined { /* Ensure text and icon are above progress */
     position: relative;
     z-index: 1;
 }
 
-/* Confirmation State */
-.long-press-button.confirming {
-    background-color: var(--error-color); /* Red background */
-    color: white;
-    border-color: var(--error-color);
+/* Confirmation State - Apply danger styling here */
+#app-settings-modal .long-press-button.confirming {
+    background-color: var(--error-color); /* Apply red background */
+    color: white; /* Apply white text */
+    /* border-color: var(--error-color); */ /* No border */
 }
-.long-press-button.confirming::before {
+#app-settings-modal .long-press-button.confirming:hover {
+    background-color: #ff6b6b; /* Apply hover for danger */
+}
+#app-settings-modal .long-press-button.confirming::before {
     width: 0 !important; /* Hide progress bar in confirmation state */
+}
+
+/* Add gap for icons in horizontal buttons too */
+#app-settings-modal .modal-actions.horizontal .action-button {
+    gap: 8px;
+}
+
+/* Ensure specific containers have correct classes */
+#app-settings-modal .reset-actions {
+    /* Uses .modal-actions.vertical */
+}
+#app-settings-modal .import-export-actions {
+    /* Uses .modal-actions.horizontal */
 }
 
 
 /* Toggle Switch Styles */
-.toggle-switch { position: relative; display: inline-flex; align-items: center; width: auto; cursor: pointer; color: var(--text-primary); font-size: 0.9rem; gap: 10px; }
+.toggle-switch {
+    position: relative;
+    display: flex; /* Use flex for alignment */
+    align-items: center;
+    width: 100%; /* Take full width */
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    gap: 10px;
+    padding: 8px 0; /* Add some vertical padding */
+}
 .toggle-switch input { opacity: 0; width: 0; height: 0; }
-.toggle-switch .slider { position: relative; display: inline-block; width: 40px; height: 20px; background-color: var(--v-secondary-base); border-radius: 10px; transition: var(--transition-speed); }
+.toggle-switch .slider {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+    background-color: var(--v-secondary-base);
+    border-radius: 10px;
+    transition: var(--transition-speed);
+    flex-shrink: 0; /* Prevent slider from shrinking */
+    order: 0; /* Slider comes first */
+}
 .toggle-switch .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: var(--transition-speed); }
 .toggle-switch input:checked + .slider { background-color: var(--v-primary-base); }
 .toggle-switch input:checked + .slider:before { transform: translateX(20px); }
+/* Adjust text alignment and order */
+.toggle-switch span:not(.slider) {
+    white-space: normal;
+    text-align: left;
+    order: 1; /* Text comes after slider */
+}
 
 /* --- Utilities --- */
 .hidden { display: none !important; }

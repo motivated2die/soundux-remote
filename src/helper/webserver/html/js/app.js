@@ -36,6 +36,8 @@ const closeAppSettingsButton = document.getElementById('close-app-settings-butto
 const exportSettingsButton = document.getElementById('export-settings-button');
 const importSettingsButton = document.getElementById('import-settings-button');
 const importFileInput = document.getElementById('import-file-input');
+const autoFullscreenToggle = document.getElementById('auto-fullscreen-toggle'); // Added for completeness
+const swapButtonPositionToggle = document.getElementById('swap-button-position-toggle'); // NEW Toggle
 // Reset Buttons
 const resetCurrentPageVisualsButton = document.getElementById('reset-current-page-visuals');
 const resetCurrentPageLayoutButton = document.getElementById('reset-current-page-layout');
@@ -80,6 +82,8 @@ function init() {
     // ---> LOAD PERSISTENCE FIRST <---
     state.settings = persistence.load();
     console.log("Initial settings loaded:", state.settings);
+    // Apply initial top bar alignment BEFORE setting up listeners that might depend on it
+    applyButtonPositionSetting();
     setupEventListeners();
     state.isAnythingPlayingUnpaused = false;
     state.isTalkThroughButtonPressed = false;
@@ -325,6 +329,13 @@ function setupEventListeners() {
      // Setup long press listeners for reset buttons
      setupLongPressResetButtons();
 
+     // NEW: Listener for Swap Button Position Toggle
+     if (swapButtonPositionToggle) {
+         swapButtonPositionToggle.addEventListener('change', handleSwapButtonPositionChange);
+     } else {
+         console.error("Swap Button Position toggle not found for event listener setup.");
+     }
+
      window.playbackStateChanged = (newState) => {
         console.log("Playback state changed notification received:", newState);
         const isNowPlaying = (newState === 'playing');
@@ -343,45 +354,52 @@ function setupEventListeners() {
    };
 
 
-    // --- NEW CODE START: Defer fullscreen toggle check until appReady ---
+    // --- MODIFIED: Defer toggle checks until appReady ---
     document.addEventListener('appReady', () => {
-        // Attempt to access fullscreenManager slightly later if not immediately found
-        const checkFSManager = () => {
-            if (window.fullscreenManager) {
-                console.log("App ready: Fullscreen Manager found. Setting up toggle listener.");
-                const fullscreenToggle = document.getElementById('auto-fullscreen-toggle');
-                if (fullscreenToggle) {
-                    if (state.settings && typeof state.settings.autoFullscreenEnabled !== 'undefined') {
-                        fullscreenToggle.checked = state.settings.autoFullscreenEnabled;
-                    }
-                     // Listener should be attached within fullscreenManager.init()
-                } else {
-                    console.error("App ready, Fullscreen toggle button not found!");
-                }
+        // Fullscreen Toggle Check
+        if (window.fullscreenManager) {
+            console.log("App ready: Fullscreen Manager found.");
+            if (autoFullscreenToggle) {
+                autoFullscreenToggle.checked = state.settings?.autoFullscreenEnabled ?? false;
+                // Listener is attached within fullscreenManager.init()
             } else {
-                // If not found immediately, try again shortly after
-                console.warn("App ready, fullscreenManager not found yet, retrying in 200ms...");
-                setTimeout(() => {
-                     if (window.fullscreenManager) {
-                         console.log("Fullscreen Manager found after retry.");
-                         // Repeat setup logic
-                          const fullscreenToggle = document.getElementById('auto-fullscreen-toggle');
-                          if (fullscreenToggle) {
-                              if (state.settings && typeof state.settings.autoFullscreenEnabled !== 'undefined') {
-                                   fullscreenToggle.checked = state.settings.autoFullscreenEnabled;
-                              }
-                          } else { console.error("Fullscreen toggle button still not found after retry!"); }
-                     } else {
-                         console.error("App ready: window.fullscreenManager STILL not found after retry!");
-                     }
-                }, 200);
+                console.error("App ready, Auto Fullscreen toggle button not found!");
             }
-        };
-        checkFSManager();
-        // --- END MODIFIED Fullscreen Check ---
+        } else {
+            console.warn("App ready: window.fullscreenManager not found!");
+            if (autoFullscreenToggle) autoFullscreenToggle.disabled = true; // Disable if manager missing
+        }
+
+        // Swap Button Position Toggle Check
+        if (swapButtonPositionToggle) {
+            swapButtonPositionToggle.checked = state.settings?.swapButtonPosition ?? false;
+            // Listener is attached in setupEventListeners
+        } else {
+            console.error("App ready, Swap Button Position toggle button not found!");
+        }
+
     }, { once: true });
+    // --- END Defer toggle checks ---
 
 
+}
+
+// --- NEW Function to apply button position ---
+function applyButtonPositionSetting() {
+    if (!topBarEl) return;
+    const swapEnabled = state.settings?.swapButtonPosition ?? false;
+    topBarEl.classList.toggle('buttons-left', swapEnabled);
+    console.log(`Top bar button position set to: ${swapEnabled ? 'left' : 'right'}`);
+}
+
+// --- NEW Handler for Swap Button Position Toggle ---
+function handleSwapButtonPositionChange(event) {
+    const isEnabled = event.target.checked;
+    console.log(`Swap Button Position toggled: ${isEnabled}`);
+    if (!state.settings) state.settings = {}; // Ensure settings object exists
+    state.settings.swapButtonPosition = isEnabled;
+    persistence.save(state.settings); // Save the new setting
+    applyButtonPositionSetting(); // Apply the change immediately
 }
 
 async function handleTogglePlayPause() {
@@ -460,6 +478,7 @@ async function handleTalkThroughEnd(event) {
          // Consider what state the UI should be in on error (button is already inactive visually)
      }
 }
+
 
 function updatePlayPauseButtonIcon() {
     if (!playPauseToggleButton) return;
@@ -875,10 +894,17 @@ function createTabElement(name, id, iconName = null) {
         tabElement.setAttribute('aria-label', name || 'Favorites');
     }
 
-    // Add text label (even for icon tabs, could be visually hidden if needed)
-    const textSpan = document.createElement('span');
-    textSpan.textContent = name || (String(id) === 'favorites' ? 'Favorites' : `Tab ${id}`);
-    tabElement.appendChild(textSpan);
+    // Add text label ONLY if it's not the favorites tab
+    if (String(id) !== 'favorites') {
+        const textSpan = document.createElement('span');
+        textSpan.textContent = name || `Tab ${id}`; // Use name or default Tab ID
+        tabElement.appendChild(textSpan);
+    } else {
+         // Optionally add a specific class for styling the icon-only tab if needed
+         tabElement.classList.add('tab-icon-only');
+         // Ensure aria-label is set for accessibility even without visible text
+         tabElement.setAttribute('aria-label', 'Favorites');
+    }
 
 
     tabElement.addEventListener('click', () => {

@@ -26,12 +26,14 @@
 <body>
     <!-- Top status/action bar -->
     <div class="top-bar" id="top-bar">
-        <!-- Edit Mode Info (Hidden by default) -->
+        <!-- Placeholder for left alignment -->
+        <div class="top-bar-placeholder"></div>
+        <!-- Edit Mode Info (Moved, Hidden by default) -->
         <div class="edit-mode-info hidden" id="edit-mode-info">
             <span class="material-symbols-outlined">info</span>
             <span>TAP TO EDIT | DRAG TO REORDER</span>
         </div>
-        <div class="top-bar-placeholder"></div> <!-- Placeholder for spacing -->
+        <!-- Action Buttons -->
         <div class="action-buttons">
             <button id="play-pause-toggle-button" class="icon-button top-bar-button" aria-label="Toggle Play/Pause">
                 <span class="material-symbols-outlined">play_arrow</span> <!-- Default icon -->
@@ -197,17 +199,15 @@
     <!-- App Settings Modal -->
     <div id="app-settings-modal-overlay" class="hidden">
         <div id="app-settings-modal">
-            <h2>App Settings</h2>
-            <div class="settings-section">
-                <h3>Layout Data</h3>
-                <div class="modal-actions">
-                   <button id="export-settings-button" class="action-button">Export Layout</button>
-                   <button id="import-settings-button" class="action-button">Import Layout</button>
-                </div>
-                <input type="file" id="import-file-input" accept=".json" style="display: none;">
-                <p class="modal-info">Export/Import layout and sound customizations.</p>
+            <!-- NEW: Modal Header -->
+            <div class="modal-header">
+                <h2>App Settings</h2>
+                <button id="close-app-settings-button" class="modal-close-button" aria-label="Close app settings">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
             </div>
-            <div class="divider"></div>
+
+            <!-- Preferences Section -->
             <div class="settings-section">
                  <h3>Preferences</h3>
                  <label class="toggle-switch">
@@ -215,30 +215,55 @@
                     <span class="slider"></span>
                      Auto Fullscreen on Interaction
                  </label>
+                 <!-- NEW Toggle Switch -->
+                 <label class="toggle-switch">
+                    <input type="checkbox" id="swap-button-position-toggle">
+                    <span class="slider"></span>
+                     Swap Menu Button Position (Left Align)
+                 </label>
             </div>
             <div class="divider"></div>
 
-            <!-- Reset Layout Section -->
+            <!-- NEW: Button Layouts Section -->
             <div class="settings-section">
-                <h3>Reset Layout</h3>
-                <p class="modal-info">These actions require a long press and confirmation.</p>
-                <div class="modal-actions vertical"> <!-- Use vertical layout for buttons -->
-                    <button id="reset-current-page-visuals" class="action-button danger long-press-button" data-long-press-duration="1000">
-                        Long press to reset current page visuals
+                <h3>Button Layouts</h3>
+                <p class="modal-info">Reset page visuals/layout or all settings (requires long press). Import/Export layout and sound customizations.</p>
+                
+                <!-- Reset Buttons -->
+                <div class="modal-actions vertical reset-actions">
+                    <button id="reset-current-page-visuals" class="action-button long-press-button" data-long-press-duration="1000">
+                        <span class="material-symbols-outlined">restart_alt</span>
+                        <span>Long press to reset current page visuals</span>
                     </button>
-                    <button id="reset-current-page-layout" class="action-button danger long-press-button" data-long-press-duration="1000">
-                        Long press to reset current page layout
+                    <button id="reset-current-page-layout" class="action-button long-press-button" data-long-press-duration="1000">
+                        <span class="material-symbols-outlined">restart_alt</span>
+                        <span>Long press to reset current page layout</span>
                     </button>
-                    <button id="reset-all-settings" class="action-button danger long-press-button" data-long-press-duration="1000">
-                        Long press to reset ALL settings
+                    <button id="reset-all-settings" class="action-button long-press-button" data-long-press-duration="1000">
+                        <span class="material-symbols-outlined">delete_sweep</span>
+                        <span>Long press to reset ALL settings</span>
                     </button>
                 </div>
+
+                <!-- Import/Export Buttons -->
+                <div class="modal-actions horizontal import-export-actions">
+                   <button id="import-settings-button" class="action-button">
+                       <span class="material-symbols-outlined">file_upload</span>
+                       <span>Import Layout</span>
+                    </button>
+                   <button id="export-settings-button" class="action-button">
+                       <span class="material-symbols-outlined">file_download</span>
+                       <span>Export Layout</span>
+                    </button>
+                </div>
+                <input type="file" id="import-file-input" accept=".json" style="display: none;">
             </div>
 
-             <div class="divider"></div>
+             <!-- REMOVED: Old Close Button Section -->
+             <!-- <div class="divider"></div>
              <div class="modal-actions">
                  <button id="close-app-settings-button" class="action-button secondary">Close</button>
-             </div>
+             </div> -->
         </div>
     </div>
 
