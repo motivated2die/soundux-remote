@@ -273,23 +273,40 @@ function setupEventListeners() {
 
     // --- NEW CODE START: Defer fullscreen toggle check until appReady ---
     document.addEventListener('appReady', () => {
-        console.log("App ready: Setting up Fullscreen toggle listener.");
-        const fullscreenToggle = document.getElementById('auto-fullscreen-toggle');
-        if (fullscreenToggle) {
-            // Check if fullscreenManager exists NOW
-            if (window.fullscreenManager) { // Check window object directly
-                console.log("Fullscreen toggle found and manager exists.");
-                // Ensure UI matches loaded setting (check if state.settings exists first)
-                if (state.settings && typeof state.settings.autoFullscreenEnabled !== 'undefined') {
-                    fullscreenToggle.checked = state.settings.autoFullscreenEnabled;
+        // Attempt to access fullscreenManager slightly later if not immediately found
+        const checkFSManager = () => {
+            if (window.fullscreenManager) {
+                console.log("App ready: Fullscreen Manager found. Setting up toggle listener.");
+                const fullscreenToggle = document.getElementById('auto-fullscreen-toggle');
+                if (fullscreenToggle) {
+                    if (state.settings && typeof state.settings.autoFullscreenEnabled !== 'undefined') {
+                        fullscreenToggle.checked = state.settings.autoFullscreenEnabled;
+                    }
+                     // Listener should be attached within fullscreenManager.init()
+                } else {
+                    console.error("App ready, Fullscreen toggle button not found!");
                 }
-                // Listener itself should be handled inside fullscreen.js initialization
             } else {
-                console.error("App ready, but window.fullscreenManager still not found!");
+                // If not found immediately, try again shortly after
+                console.warn("App ready, fullscreenManager not found yet, retrying in 200ms...");
+                setTimeout(() => {
+                     if (window.fullscreenManager) {
+                         console.log("Fullscreen Manager found after retry.");
+                         // Repeat setup logic
+                          const fullscreenToggle = document.getElementById('auto-fullscreen-toggle');
+                          if (fullscreenToggle) {
+                              if (state.settings && typeof state.settings.autoFullscreenEnabled !== 'undefined') {
+                                   fullscreenToggle.checked = state.settings.autoFullscreenEnabled;
+                              }
+                          } else { console.error("Fullscreen toggle button still not found after retry!"); }
+                     } else {
+                         console.error("App ready: window.fullscreenManager STILL not found after retry!");
+                     }
+                }, 200);
             }
-        } else {
-            console.error("App ready, but Fullscreen toggle button not found!");
-        }
+        };
+        checkFSManager();
+        // --- END MODIFIED Fullscreen Check ---
     }, { once: true });
 
 

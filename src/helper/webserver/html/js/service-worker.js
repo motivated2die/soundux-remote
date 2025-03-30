@@ -6,8 +6,8 @@ const ASSETS_TO_CACHE = [
     '/css/styles.css',
     '/js/app.js',
     '/assets/soundux-logo.svg',
-    '/assets/icon-192x192.png',
-    '/assets/icon-512x512.png',
+    '/assets/soundux-logo-192.png',
+    '/assets/soundux-logo-512.png',
     '/assets/favicon.ico'
 ];
 
