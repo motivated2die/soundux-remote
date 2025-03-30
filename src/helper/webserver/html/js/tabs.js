@@ -1,14 +1,17 @@
 // --- ENTIRE FILE REPLACE ---
 // Tab swiping functionality
 function initTabSwiping() {
-    const soundsContainer = document.getElementById('sounds-container');
+    const soundsContainer = document.querySelector('.container'); // Use entire container as swipe area
     const tabsContainer = document.getElementById('tabs-container');
 
     if (!soundsContainer || !tabsContainer) return;
 
     let touchStartX = 0;
-    let touchEndX = 0;
+    let touchStartY = 0;
+    let touchCurrentX = 0;
+    let isSwiping = false;
     let tabs = [];
+    const contentWrapper = document.getElementById('tab-content-wrapper');
 
     function getTabsInfo() {
         tabs = Array.from(tabsContainer.querySelectorAll('.tab'));
@@ -19,43 +22,87 @@ function initTabSwiping() {
         };
     }
 
-    // --- MODIFIED: Added { passive: true } ---
+    // Track swipe gestures with improved handling
     soundsContainer.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-    }, { passive: true });
-    // --- END MODIFICATION ---
-
-    soundsContainer.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        handleSwipe();
-    });
-
-    function handleSwipe() {
         if (typeof editMode !== 'undefined' && editMode.isActive()) {
-            // console.log("Swipe disabled in edit mode.");
-            return;
+            return; // Disable swipe in edit mode
+        }
+        
+        touchStartX = touchCurrentX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+        isSwiping = false; // Start as non-swiping until we determine direction
+        contentWrapper.style.transition = 'none';
+    }, { passive: true });
+
+    soundsContainer.addEventListener('touchmove', (e) => {
+        if (typeof editMode !== 'undefined' && editMode.isActive()) {
+            return; // Disable swipe in edit mode
         }
 
+        const touchX = e.changedTouches[0].screenX;
+        const touchY = e.changedTouches[0].screenY;
+        const deltaX = touchX - touchStartX;
+        const deltaY = touchY - touchStartY;
+        
+        // Determine if this is a horizontal swipe (after some movement)
+        if (!isSwiping && Math.abs(deltaX) > 10) {
+            isSwiping = Math.abs(deltaX) > Math.abs(deltaY) * 1.5;
+        }
+
+        if (isSwiping) {
+            e.preventDefault();
+            touchCurrentX = touchX;
+            contentWrapper.style.transform = `translateX(${deltaX}px)`;
+        }
+    }, { passive: false });
+
+    soundsContainer.addEventListener('touchend', (e) => {
+        if (!isSwiping) return;
+        isSwiping = false;
+        
+        const deltaX = touchCurrentX - touchStartX;
+        const absDeltaX = Math.abs(deltaX);
+        
+        // Continue current transform into swipe animation
+        if (absDeltaX > 80) {
+            contentWrapper.style.transition = 'transform 0.2s ease-out';
+            contentWrapper.style.transform = `translateX(${deltaX > 0 ? '100%' : '-100%'})`;
+            handleSwipe(deltaX);
+        } else {
+            // Return to center if not enough swipe
+            contentWrapper.style.transition = 'transform 0.2s ease-out';
+            contentWrapper.style.transform = '';
+        }
+        
+        setTimeout(() => {
+            contentWrapper.style.transition = '';
+            contentWrapper.style.transform = '';
+        }, 200);
+    });
+
+    function handleSwipe(deltaX) {
         const { tabs, currentTabIndex } = getTabsInfo();
         if (tabs.length <= 1) return;
 
-        const swipeThreshold = 80; // Slightly lower threshold
-        const swipeDistance = touchEndX - touchStartX;
-
-        // Right swipe (previous tab)
-        if (swipeDistance > swipeThreshold) {
-            const newIndex = Math.max(0, currentTabIndex - 1);
-            if (newIndex !== currentTabIndex && tabs[newIndex]) {
-                setTimeout(() => { tabs[newIndex].click(); scrollActiveTabIntoView(); }, 50);
+        const swipeDirection = deltaX > 0 ? 'right' : 'left';
+        
+        setTimeout(() => {
+            let newIndex;
+            if (swipeDirection === 'right') {
+                newIndex = tabs[currentTabIndex - 1] ? currentTabIndex - 1 : tabs.length - 1;
+            } else {
+                newIndex = tabs[currentTabIndex + 1] ? currentTabIndex + 1 : 0;
             }
-        }
-        // Left swipe (next tab)
-        else if (swipeDistance < -swipeThreshold) {
-            const newIndex = Math.min(tabs.length - 1, currentTabIndex + 1);
-            if (newIndex !== currentTabIndex && tabs[newIndex]) {
-                setTimeout(() => { tabs[newIndex].click(); scrollActiveTabIntoView(); }, 50);
+            
+            if (tabs[newIndex]) {
+                tabs[newIndex].click();
+                // Force immediate opacity reset followed by fast fade-in
+                const sounds = document.getElementById('sounds-container');
+                sounds.style.opacity = '0';
+                sounds.style.transition = 'opacity 100ms ease-in';
+                setTimeout(() => sounds.style.opacity = '1', 10);
             }
-        }
+        }, 200);
     }
 
     function scrollActiveTabIntoView() {

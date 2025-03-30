@@ -10,7 +10,7 @@
     --v-background-dark: #121212;
     --v-surface-dark: #1e1e1e;
     --edit-mode-color: rgb(0, 108, 98); /* Green */
-    --text-primary: #e0e0e0;
+    --text-primary: #ffffff;
     --text-secondary: #b0b0b0;
     --error-color: #ff5252;
     --warning-color: #fb8c00;
@@ -85,6 +85,30 @@ body {
     height: 100%;
     /* --- CHANGED: Container padding matches dynamic bar height --- */
     padding-top: max(var(--top-bar-height), env(safe-area-inset-top));
+}
+
+/* Tab content wrapper */
+#tab-content-wrapper {
+    position: relative;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+/* Swipe animation for current tab */
+.swipe-out {
+    animation: swipeOut 200ms forwards;
+}
+
+@keyframes swipeOut {
+    to {
+        transform: translateX(var(--swipe-distance, -100%));
+        opacity: 0;
+    }
+}
+
+/* Faster fade-in for new tab content */
+.tab-content {
+    transition: opacity 100ms ease-in;
 }
 
 /* --- Top Bar - MODIFIED --- */
@@ -316,13 +340,16 @@ main#sounds-container.layout-list .sound-card:last-child { border-bottom: none; 
 .layout-list .sound-content-wrapper { justify-content: flex-start; gap: 10px; }
 .layout-list .sound-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 1rem; }
 .layout-list .sound-emoji-list { font-size: 1.4em; width: 24px; text-align: center; }
+span.sound-text {
+    text-shadow: 1px 1px 7px rgb(0 0 0 / 100%);
+}
 
 /* Grid Layout Emoji */
 .layout-grid-2 .sound-card::before, .layout-grid-3 .sound-card::before {
     content: var(--sound-emoji, ''); position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%); font-size: 4.5em; color: var(--text-primary);
     opacity: 1; filter: grayscale(70%) brightness(70%) saturate(1.2);
-    z-index: 0; pointer-events: none; line-height: 1;
+    z-index: 0; pointer-events: none; line-height: 1; text-shadow: 1px 1px 15px rgb(0 0 0 / 20%);
 }
 
 /* Sound Card Indicators */
