@@ -148,6 +148,12 @@ let hasMoved = false;
 
 // Handle touch start for long press
 function handleTouchStart(e) {
+    // --- NEW: Check if the target is the PTT button or inside it ---
+    if (e.target.closest('#talk-through-button')) {
+        // console.log("Ignoring long press start on PTT button."); // Optional debug
+        return; // Don't initiate long press for PTT
+    }
+    // --- END NEW ---
     const soundCard = e.target.closest('.sound-card');
     if (!soundCard) return;
     longPressStartPosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };

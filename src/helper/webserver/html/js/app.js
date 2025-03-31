@@ -12,7 +12,7 @@ const state = {
     isAnythingPlayingUnpaused: false, // Tracks overall playback state for UI
     isTalkThroughButtonPressed: false, // Tracks button press state locally
     playbackGloballyPausedByToggle: false // Tracks C++ state via callback
-
+    
 };
 
 // DOM Elements
@@ -142,7 +142,7 @@ async function apiFetch(endpoint, options = {}) {
          }
     } catch (error) {
         console.error(`API Fetch Error for ${url}:`, error); 
-        if (serverStatusEl) serverStatusEl.textContent = 'Connection Error';
+        if (serverStatusEl) serverStatusEl.textContent = 'Remote down';
         if (statusIndicatorEl) statusIndicatorEl.className = 'status-dot error';
         throw error; // Re-throw to be handled by caller
     }
@@ -221,17 +221,6 @@ function createRipple(event, targetButton, color = 'rgba(255, 255, 255, 0.2)', p
     }
 }
 
-function removePersistentRipple(button) {
-    if (button && button._persistentRipple) {
-        const ripple = button._persistentRipple;
-        ripple.style.animation = 'ripple-animation 600ms linear'; // Trigger fade-out animation
-        ripple.style.opacity = '0'; // Ensure it fades out
-        ripple.addEventListener('animationend', () => {
-            ripple.remove();
-        });
-        button._persistentRipple = null; // Clear reference
-    }
-}
 
 
 // --- Event Listeners ---
@@ -252,18 +241,29 @@ function setupEventListeners() {
     // Talk Through Button Listeners (Modified for persistent ripple)
     if (talkThroughButton) {
         talkThroughButton.addEventListener('pointerdown', (e) => {
+            // Vibrate immediately on press
+            if (navigator.vibrate) {
+                try { navigator.vibrate(7); } catch (err) { console.warn("Vibration failed:", err); }
+            }
             handleTalkThroughStart(e); // Call original handler
-            createRipple(e, talkThroughButton, 'rgba(80, 222, 168, 0.3)', true); // Green, persistent ripple
+            createRipple(e, talkThroughButton, 'rgba(80, 222, 168, 0.3)'); // REMOVED 'true' argument
         });
         talkThroughButton.addEventListener('pointerup', (e) => {
+            // Vibrate on release (only if it was actually being pressed)
+            if (state.isTalkThroughButtonPressed && navigator.vibrate) {
+                 try { navigator.vibrate(7); } catch (err) { console.warn("Vibration failed:", err); }
+            }
             handleTalkThroughEnd(e); // Call original handler
-            removePersistentRipple(talkThroughButton); // Remove the ripple
         });
         talkThroughButton.addEventListener('pointerleave', (e) => {
-             // Only remove ripple if the button is actually being pressed (state check)
-             if (state.isTalkThroughButtonPressed) {
-                 handleTalkThroughEnd(e); // Call original handler to stop API call etc.
-                 removePersistentRipple(talkThroughButton); // Remove the ripple
+            if (state.isTalkThroughButtonPressed) {
+                // --- NEW VIBRATION START ---
+                // Vibrate on leaving the button while pressed (considered a release)
+                if (navigator.vibrate) {
+                     try { navigator.vibrate(7); } catch (err) { console.warn("Vibration failed:", err); }
+                }
+                // --- NEW VIBRATION END ---
+                handleTalkThroughEnd(e); // Call original handler to stop API call etc.
              }
         });
         // Prevent context menu on long press for the button
@@ -1043,7 +1043,7 @@ function displaySounds(sounds) {
     if (!soundsContainerEl) return;
     soundsContainerEl.innerHTML = ''; // Clear previous sounds or loading message
     if (!sounds || sounds.length === 0) {
-         const message = state.currentTab === 'favorites' ? "No favorites added yet." : "No sounds found in this tab.";
+         const message = state.currentTab === 'favorites' ? "So empty..." : "No sounds found in this tab.";
          soundsContainerEl.innerHTML = `<p class="no-sounds">${message}</p>`;
         return;
     }

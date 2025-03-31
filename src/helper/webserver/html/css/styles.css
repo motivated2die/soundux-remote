@@ -62,13 +62,15 @@ html, body {
     color: var(--text-primary);
     line-height: 1.4;
     width: 100vw;
+    /* --- REVERTED: Use standard viewport height --- */
     height: 100vh;
-    overflow: hidden;
+    overflow: hidden; /* Keep body overflow hidden */
     overscroll-behavior-y: contain;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
     touch-action: manipulation;
+    margin: 0; /* Keep margin 0 */
 }
 
 /* Safe area insets - Only apply bottom/left/right to body */
@@ -82,9 +84,10 @@ body {
 .container {
     display: flex;
     flex-direction: column;
-    height: 100%;
-    /* --- CHANGED: Container padding matches dynamic bar height --- */
+    height: 100%; /* Fill body's 100vh */
     padding-top: max(var(--top-bar-height), env(safe-area-inset-top));
+    position: relative; /* Keep relative positioning */
+    /* Ensure no bottom padding here */
 }
 
 /* Tab content wrapper */
@@ -238,17 +241,21 @@ body {
 /* --- Main Sound Grid --- */
 main#sounds-container {
     order: 1;
-    flex-grow: 1;
+    flex-grow: 1; /* Should fill the wrapper */
     display: grid;
     gap: 10px;
-    padding: 10px; /* Internal grid padding */
-    overflow-y: auto;
+    /* Keep top/left/right padding */
+    padding: 10px; /* Restore padding shorthand */
+    /* padding: 10px 10px 0 10px; NO - use shorthand below */
+    overflow-y: auto; /* Make this element scrollable */
     background-color: var(--v-background-dark);
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    /* Padding bottom remains the same */
-    padding-bottom: calc(var(--header-height) + var(--tabs-height) + env(safe-area-inset-bottom, 0px) + 10px);
+    height: 100%; /* Fill the parent wrapper */
+    /* --- REVISED PADDING --- */
+    /* Re-add safe area inset to the internal padding */
+    padding-bottom: calc(var(--header-height) + var(--tabs-height) + env(safe-area-inset-bottom, 0px) + 10px); /* 10px buffer */
 }
 
 main#sounds-container::-webkit-scrollbar { display: none; }
