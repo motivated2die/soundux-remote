@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Soundux"
-#define MyAppVersion "0.2.7"
+#define MyAppVersion "0.3.3"
 #define MyAppPublisher "Soundux"
 #define MyAppURL "https://soundux.rocks"
 #define MyAppExeName "soundux.exe"
@@ -64,10 +64,6 @@ Source: "{#PATH}\build\Release\soundux.exe"; DestDir: "{app}"; Flags: ignorevers
 Source: "{#PATH}\build\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{tmp}\VBCABLE_Driver_Pack43.zip"; DestDir: "{app}"; Flags: external deleteafterinstall; Components: VBCable
 Source: "{tmp}\MicrosoftEdgeWebView2RuntimeInstallerX64.exe"; DestDir: "{tmp}"; Flags: external deleteafterinstall; Components: MicrosoftEdgeWebView2Runtime
-Source: "{tmp}\youtube-dl.exe"; DestDir: "{app}"; Flags: external ignoreversion; Components: FfmpegYouTubeDL
-Source: "{tmp}\ffmpeg.exe"; DestDir: "{app}"; Flags: external ignoreversion; Components: FfmpegYouTubeDL
-Source: "{tmp}\vcredist_x86.exe"; DestDir: "{tmp}"; Flags: external deleteafterinstall; Components: FfmpegYouTubeDL
-Source: "{tmp}\vcredist_x64.exe"; DestDir: "{tmp}"; Flags: external deleteafterinstall; Components: FfmpegYouTubeDL
 
 [Dirs]
 Name: "{app}"; Permissions: users-full
@@ -94,9 +90,6 @@ const
   INSTALLSTATE_ABSENT = 2;       { The product is installed for a different user. }
   INSTALLSTATE_DEFAULT = 5;      { The product is installed for the current user. }
 
-VC_2010_REDIST_X86 = '{196BB40D-1578-3D01-B289-BEFC77A11A1E}';
-VC_2010_REDIST_X64 = '{DA5E371C-6333-3D8A-93A4-6FD5B20BCC6E}';
-
 function IsWebView2NotInstalled: boolean;
 begin
   result := not RegKeyExists(HKEY_LOCAL_MACHINE,
@@ -105,17 +98,6 @@ end;
 
 function MsiQueryProductState(szProduct: string): INSTALLSTATE;
   external 'MsiQueryProductState{#AW}@msi.dll stdcall';
-
-function VCVersionInstalled(const ProductID: string): Boolean;
-begin
-  Result := MsiQueryProductState(ProductID) = INSTALLSTATE_DEFAULT;
-end;
-
-function VCRedistNeedsInstall: Boolean;
-begin
-  Result := not (VCVersionInstalled(VC_2010_REDIST_X86) and VCVersionInstalled(VC_2010_REDIST_X64));
-end;
-
 
 const
   SHCONTCH_NOPROGRESSBOX = 4;
@@ -166,13 +148,6 @@ begin
     if WizardIsComponentSelected('VBCable') then begin
       DownloadPage.Add('https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack43.zip', 'VBCABLE_Driver_Pack43.zip', '')
     end;
-    if WizardIsComponentSelected('FfmpegYouTubeDL') then begin
-      DownloadPage.Add('https://github.com/eugeneware/ffmpeg-static/releases/download/b4.3.2/win32-x64', 'ffmpeg.exe', '')
-      DownloadPage.Add('https://github.com/ytdl-org/youtube-dl/releases/download/2021.05.16/youtube-dl.exe', 'youtube-dl.exe', '')
-
-      DownloadPage.Add('https://download.microsoft.com/download/1/6/5/165255E7-1014-4D0A-B094-B6A430A6BFFC/vcredist_x86.exe', 'vcredist_x86.exe', '')
-      DownloadPage.Add('https://download.microsoft.com/download/1/6/5/165255E7-1014-4D0A-B094-B6A430A6BFFC/vcredist_x64.exe', 'vcredist_x64.exe', '')
-    end;
     DownloadPage.Show;
     try
       try
@@ -194,11 +169,8 @@ end;
 [Run]
 Filename: "{tmp}\MicrosoftEdgeWebView2RuntimeInstallerX64.exe"; Parameters: "/silent /install"; WorkingDir: "{tmp}"; Flags: 64bit; Description: "Install Microsoft Edge WebView2 Runtime"; Components: MicrosoftEdgeWebView2Runtime
 Filename: "{tmp}\VBCABLE_Setup_x64.exe"; Parameters: "-h -i"; WorkingDir: "{tmp}"; Flags: 64bit; Description: "Install VB Cable"; Components: VBCable
-Filename: "{tmp}\vcredist_x86.exe"; Parameters: "/q /norestart"; Check: VCRedistNeedsInstall; Components: FfmpegYouTubeDL
-Filename: "{tmp}\vcredist_x64.exe"; Parameters: "/q /norestart"; Check: VCRedistNeedsInstall; Components: FfmpegYouTubeDL
 Filename: "{app}\{#MyAppExeName}"; Flags: nowait postinstall skipifsilent; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"
 
 [Components]
 Name: "MicrosoftEdgeWebView2Runtime"; Description: "Install Microsoft Edge WebView2 Runtime (mandatory)"; Types: custom full compact; Flags: fixed disablenouninstallwarning; Check: IsWebView2NotInstalled
 Name: "VBCable"; Description: "Install VBCable (recommended)"; Types: full; Flags: disablenouninstallwarning
-Name: "FfmpegYouTubeDL"; Description: "Install ffmpeg and youtube-dl (for Downloader support)"; Types: full; Flags: disablenouninstallwarning
