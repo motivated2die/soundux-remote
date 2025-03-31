@@ -444,33 +444,24 @@ function handleSwapButtonPositionChange(event) {
 async function handleTogglePlayPause() {
     if (!playPauseToggleButton) return;
     console.log("Play/Pause toggle button clicked.");
-    // Disable button temporarily to prevent rapid clicks
-    playPauseToggleButton.disabled = true;
-    playPauseToggleButton.style.opacity = '0.5'; // Visual feedback
+    // Removed button disabling logic
 
     try {
+        // Send the request but don't update state/UI directly from the response here.
+        // Rely on the window.playbackStateChanged callback triggered by the backend.
         const result = await apiFetch('/api/playback/toggle', { method: 'POST' });
         if (result && result.success) {
-            console.log("Playback toggled via API. New state:", result.newState);
-            // Update state based on response
-            state.isAnythingPlayingUnpaused = (result.newState === 'playing');
-            updatePlayPauseButtonIcon(); // Update UI
+            console.log("Playback toggle request sent successfully via API. Waiting for backend confirmation callback.");
+            // State and UI update will be handled by window.playbackStateChanged
         } else {
-            console.error("Failed to toggle playback:", result ? result.error : "Unknown API error");
-            // Optionally revert UI or show error
-             updatePlayPauseButtonIcon(); // Update based on current known state if API failed
+            console.error("Failed to send toggle playback request:", result ? result.error : "Unknown API error");
+            // If the API call itself fails, update the icon based on the current (potentially stale) state as a fallback.
+             updatePlayPauseButtonIcon();
         }
     } catch (error) {
         console.error("Error calling toggle playback API:", error);
-        updatePlayPauseButtonIcon(); // Update based on current known state if API failed
-    } finally {
-        // Re-enable button after a short delay
-        setTimeout(() => {
-            if (playPauseToggleButton) {
-                playPauseToggleButton.disabled = false;
-                playPauseToggleButton.style.opacity = '1';
-            }
-        }, 200); // 200ms delay
+        // If the fetch fails, update the icon based on the current (potentially stale) state as a fallback.
+        updatePlayPauseButtonIcon();
     }
 }
 

@@ -161,7 +161,6 @@
 
         .error-message {
             color: #ff5252;
-            margin-top: 20px;
             font-size: 14px;
             min-height: 20px;
         }
@@ -199,7 +198,7 @@
     <div class="login-container">
         <img src="assets/soundux-logo.svg" alt="Soundux Logo" class="logo">
         <h1>Soundux Remote</h1>
-        <p class="subtitle">Right-click on the tray icon of the Soundux desktop application to retrieve your Remote PIN and enter it here:</p>
+        <p class="subtitle">Right-click on the tray icon of the Soundux desktop application to retrieve your Remote PIN.</p>
 
         <form id="login-form">
             <div class="pin-input-container">
@@ -214,7 +213,9 @@
             <button type="submit" id="login-button" disabled>
                 <span>Unlock Remote</span>
                 <div class="loader"></div>
+
             </button>
+            <p class="subtitle" style="color: var(--v-secondary-base); font-size: 13px;">remote stays unlocked on this device 🔓</p>
         </form>
 
         <div class="error-message" id="error-message"></div>

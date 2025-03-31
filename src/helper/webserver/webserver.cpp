@@ -246,7 +246,7 @@ namespace Soundux::Objects
    
    
                      res.status = 401;
-                     res.set_content("{\"success\":false,\"error\":\"Invalid PIN\"}", "application/json");
+                     res.set_content("{\"success\":false,\"error\":\"Invalid PIN. Please try again!\"}", "application/json");
                      Fancy::fancy.logTime().warning() << "Failed login attempt with PIN: " << submittedPin << std::endl;
                  }
              } catch (const nlohmann::json::parse_error& e) {
