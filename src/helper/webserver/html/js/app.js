@@ -240,67 +240,63 @@ function setupEventListeners() {
 
     // Talk Through Button Listeners (Modified for persistent ripple)
     if (talkThroughButton) {
-        talkThroughButton.addEventListener('touchstart', (e) => {
-            // --- IMPORTANT: Prevent native long-press actions ---
-            e.preventDefault();
-            // --- Stop propagation if needed ---
-            // e.stopPropagation();
+        // --- Use pointerdown for press ---
+        talkThroughButton.addEventListener('pointerdown', (e) => {
+            // Don't need stopPropagation unless causing issues elsewhere
+            // Don't use preventDefault here unless absolutely needed for vibration suppression,
+            // as it might break clicks on some platforms. Test without it first.
 
             // --- Aggressively clear sound-card timer ---
             if (typeof soundSettingsManager !== 'undefined' && soundSettingsManager.clearLongPressSoundCardTimer) {
                  soundSettingsManager.clearLongPressSoundCardTimer();
-            }
+            } else { console.warn("Could not clear sound card long-press timer - manager or function not found."); }
 
-            // --- VIBRATION START ---
+            // --- VIBRATION START (Press) ---
             if (navigator.vibrate) {
                 try { navigator.vibrate(7); } catch (err) { console.warn("Vibration failed:", err); }
             }
-            // --- VIBRATION END ---
 
             // --- Add background class to header ---
             if (headerEl) { headerEl.classList.add('ptt-active-bg'); }
 
             // --- Create standard visual ripple ---
-            // Note: Ripple uses clientX/Y which might need adjustment for touch events
-            // Let's assume createRipple handles touch event structure or uses pageX/Y if needed
-             const touchPoint = e.touches ? e.touches[0] : e; // Get touch point
-             if (touchPoint) { createRipple(touchPoint, talkThroughButton, 'rgba(80, 222, 168, 0.3)'); }
+            createRipple(e, talkThroughButton, 'rgba(80, 222, 168, 0.3)');
 
+            // --- Call handler that triggers API call ---
+            handleTalkThroughStart(e);
+        });
 
-            handleTalkThroughStart(e); // Call original handler
-        }, { passive: false }); // Ensure passive is false if using preventDefault
-
-        // --- Use touchend ---
-        talkThroughButton.addEventListener('touchend', (e) => {
-            // Check if PTT was active before proceeding with release actions
+        // --- Use pointerup for release ---
+        talkThroughButton.addEventListener('pointerup', (e) => {
+            // Only run release logic if PTT was actually active
             if (!state.isTalkThroughButtonPressed) return;
 
-            // --- VIBRATION on release ---
+            // --- VIBRATION END (Release) ---
             if (navigator.vibrate) {
                  try { navigator.vibrate(7); } catch (err) { console.warn("Vibration failed:", err); }
             }
-            // --- END VIBRATION ---
 
             // --- Remove background class from header ---
             if (headerEl) { headerEl.classList.remove('ptt-active-bg'); }
 
-            handleTalkThroughEnd(e); // Call original handler
+            // --- Call handler that triggers API call ---
+            handleTalkThroughEnd(e);
         });
 
-        // --- Use touchcancel ---
-        talkThroughButton.addEventListener('touchcancel', (e) => {
-             // Treat cancel the same as release if PTT was active
+        // --- Use pointerleave for leaving button while pressed ---
+        talkThroughButton.addEventListener('pointerleave', (e) => {
+             // Only run release logic if PTT was actually active
              if (state.isTalkThroughButtonPressed) {
-                 // --- VIBRATION on cancel ---
+                 // --- VIBRATION END (Leave while pressed) ---
                  if (navigator.vibrate) {
                       try { navigator.vibrate(7); } catch (err) { console.warn("Vibration failed:", err); }
                  }
-                 // --- END VIBRATION ---
 
                  // --- Remove background class from header ---
                  if (headerEl) { headerEl.classList.remove('ptt-active-bg'); }
 
-                 handleTalkThroughEnd(e); // Call original handler
+                 // --- Call handler that triggers API call ---
+                 handleTalkThroughEnd(e);
              }
         });
 
@@ -310,6 +306,7 @@ function setupEventListeners() {
         });
 
     } else console.error("Talk-Through button not found");
+
 
 
 

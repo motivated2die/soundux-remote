@@ -174,6 +174,12 @@ function handleTouchStart(e) {
 
     // Set the timer *only* for sound cards
     longPressTimer = setTimeout(() => {
+        // --- THIS CHECK MUST REMAIN ---
+        if (window.state && window.state.isTalkThroughButtonPressed) {
+             console.log("Long press timer fired, but PTT is active. Aborting sound card long press action.");
+             longPressSoundCard = null;
+             return;
+        }
         // Check conditions *when timer fires*
         if (!hasMoved && longPressSoundCard === soundCard) { // Ensure target hasn't changed
             // console.log("Long press timer fired for sound card."); // Optional debug

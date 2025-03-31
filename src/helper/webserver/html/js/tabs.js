@@ -1,10 +1,11 @@
 // --- ENTIRE FILE REPLACE ---
 // Tab swiping functionality
 function initTabSwiping() {
-    const soundsContainer = document.querySelector('.container'); // Use entire container as swipe area
+    // --- MODIFIED: Target the sounds grid specifically for swiping ---
+    const swipeArea = document.getElementById('sounds-container'); 
     const tabsContainer = document.getElementById('tabs-container');
 
-    if (!soundsContainer || !tabsContainer) return;
+    if (!swipeArea || !tabsContainer) return;
 
     let touchStartX = 0;
     let touchStartY = 0;
@@ -23,7 +24,7 @@ function initTabSwiping() {
     }
 
     // Track swipe gestures with improved handling
-    soundsContainer.addEventListener('touchstart', (e) => {
+    swipeArea.addEventListener('touchstart', (e) => {
         if (typeof editMode !== 'undefined' && editMode.isActive()) {
             return; // Disable swipe in edit mode
         }
@@ -34,7 +35,7 @@ function initTabSwiping() {
         contentWrapper.style.transition = 'none';
     }, { passive: true });
 
-    soundsContainer.addEventListener('touchmove', (e) => {
+    swipeArea.addEventListener('touchmove', (e) => {
         if (typeof editMode !== 'undefined' && editMode.isActive()) {
             return; // Disable swipe in edit mode
         }
@@ -56,7 +57,7 @@ function initTabSwiping() {
         }
     }, { passive: false });
 
-    soundsContainer.addEventListener('touchend', (e) => {
+    swipeArea.addEventListener('touchend', (e) => {
         if (!isSwiping) return;
         isSwiping = false;
         
