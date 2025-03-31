@@ -1,6 +1,9 @@
 # Soundux Remote 🎮
 A fork of the [Soundux cross-platform soundboard](https://github.com/Soundux/Soundux), extended by a small webserver implementation for remote-controlling the soundboard on the local network via any browser.
 
+> **I'm in no way affiliated with the (awesome!) original Soundux project or the team behind it!**
+> For infos on how to install or use the original desktop app, visit their site https://soundux.rocks
+
 
 ## How to use the Soundux Web Remote! 🚀
 
