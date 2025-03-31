@@ -148,25 +148,66 @@ let hasMoved = false;
 
 // Handle touch start for long press
 function handleTouchStart(e) {
-    // --- NEW: Check if the target is the PTT button or inside it ---
+    // --- Check if the target is the PTT button or inside it ---
     if (e.target.closest('#talk-through-button')) {
-        // console.log("Ignoring long press start on PTT button."); // Optional debug
-        return; // Don't initiate long press for PTT
+        // console.log("Ignoring touchstart for long press detection on PTT button.");
+        return; // DO NOT PROCEED for PTT button
     }
-    // --- END NEW ---
+    // --- END Check ---
+
+    // If we reach here, it's NOT the PTT button, proceed with sound card logic
     const soundCard = e.target.closest('.sound-card');
-    if (!soundCard) return;
+    if (!soundCard) {
+        // console.log("Ignoring touchstart for long press detection - not on sound card.");
+        return; // Ignore if not on a sound card either
+    }
+
+    // --- Start long press logic ONLY for sound cards ---
+    // console.log("Starting long press detection for sound card."); // Optional debug
     longPressStartPosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     hasMoved = false;
-    longPressSoundCard = soundCard;
+    longPressSoundCard = soundCard; // Track the target sound card
+
+    // Clear any potentially existing timer from previous touches
+    clearTimeout(longPressTimer);
+    longPressTimer = null; // Explicitly nullify
+
+    // Set the timer *only* for sound cards
     longPressTimer = setTimeout(() => {
-        if (!hasMoved && longPressSoundCard) {
-            if (navigator.vibrate) navigator.vibrate(50);
-            const soundId = parseInt(longPressSoundCard.dataset.soundId);
+        // Check conditions *when timer fires*
+        if (!hasMoved && longPressSoundCard === soundCard) { // Ensure target hasn't changed
+            // console.log("Long press timer fired for sound card."); // Optional debug
+            // Vibration for sound card long press (KEEP THIS if you want haptic feedback for opening settings)
+            // if (navigator.vibrate) navigator.vibrate(50);
+
+            const soundId = parseInt(soundCard.dataset.soundId);
+            // Update last long press time ONLY if it's a valid sound card long press
             if(window.state) state.lastLongPressTime = Date.now();
             openSoundSettings(soundId);
+        } else {
+            // console.log("Long press timer fired, but conditions not met (moved or target changed)."); // Optional debug
         }
+        // Clear target reference after timer execution
+        longPressSoundCard = null;
+
     }, longPressDuration);
+}
+
+
+/* --- Add clarification to handleTouchEnd --- */
+function handleTouchEnd() {
+    // Update last long press time regardless, as the touch ended
+    if(window.state) state.lastLongPressTime = Date.now();
+
+    // --- KEEP: Clear the timer on touch end ---
+    // This is crucial. If the touch ends before the timer fires,
+    // the long press action (including vibration) is cancelled.
+    clearTimeout(longPressTimer);
+    // --- END KEEP ---
+
+    longPressSoundCard = null;
+    longPressStartPosition = null;
+    hasMoved = false;
 }
 
 // Handle touch move for long press

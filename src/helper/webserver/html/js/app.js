@@ -240,35 +240,77 @@ function setupEventListeners() {
 
     // Talk Through Button Listeners (Modified for persistent ripple)
     if (talkThroughButton) {
-        talkThroughButton.addEventListener('pointerdown', (e) => {
-            // Vibrate immediately on press
+        talkThroughButton.addEventListener('touchstart', (e) => {
+            // --- IMPORTANT: Prevent native long-press actions ---
+            e.preventDefault();
+            // --- Stop propagation if needed ---
+            // e.stopPropagation();
+
+            // --- Aggressively clear sound-card timer ---
+            if (typeof soundSettingsManager !== 'undefined' && soundSettingsManager.clearLongPressSoundCardTimer) {
+                 soundSettingsManager.clearLongPressSoundCardTimer();
+            }
+
+            // --- VIBRATION START ---
             if (navigator.vibrate) {
                 try { navigator.vibrate(7); } catch (err) { console.warn("Vibration failed:", err); }
             }
+            // --- VIBRATION END ---
+
+            // --- Add background class to header ---
+            if (headerEl) { headerEl.classList.add('ptt-active-bg'); }
+
+            // --- Create standard visual ripple ---
+            // Note: Ripple uses clientX/Y which might need adjustment for touch events
+            // Let's assume createRipple handles touch event structure or uses pageX/Y if needed
+             const touchPoint = e.touches ? e.touches[0] : e; // Get touch point
+             if (touchPoint) { createRipple(touchPoint, talkThroughButton, 'rgba(80, 222, 168, 0.3)'); }
+
+
             handleTalkThroughStart(e); // Call original handler
-            createRipple(e, talkThroughButton, 'rgba(80, 222, 168, 0.3)'); // REMOVED 'true' argument
-        });
-        talkThroughButton.addEventListener('pointerup', (e) => {
-            // Vibrate on release (only if it was actually being pressed)
-            if (state.isTalkThroughButtonPressed && navigator.vibrate) {
+        }, { passive: false }); // Ensure passive is false if using preventDefault
+
+        // --- Use touchend ---
+        talkThroughButton.addEventListener('touchend', (e) => {
+            // Check if PTT was active before proceeding with release actions
+            if (!state.isTalkThroughButtonPressed) return;
+
+            // --- VIBRATION on release ---
+            if (navigator.vibrate) {
                  try { navigator.vibrate(7); } catch (err) { console.warn("Vibration failed:", err); }
             }
+            // --- END VIBRATION ---
+
+            // --- Remove background class from header ---
+            if (headerEl) { headerEl.classList.remove('ptt-active-bg'); }
+
             handleTalkThroughEnd(e); // Call original handler
         });
-        talkThroughButton.addEventListener('pointerleave', (e) => {
-            if (state.isTalkThroughButtonPressed) {
-                // --- NEW VIBRATION START ---
-                // Vibrate on leaving the button while pressed (considered a release)
-                if (navigator.vibrate) {
-                     try { navigator.vibrate(7); } catch (err) { console.warn("Vibration failed:", err); }
-                }
-                // --- NEW VIBRATION END ---
-                handleTalkThroughEnd(e); // Call original handler to stop API call etc.
+
+        // --- Use touchcancel ---
+        talkThroughButton.addEventListener('touchcancel', (e) => {
+             // Treat cancel the same as release if PTT was active
+             if (state.isTalkThroughButtonPressed) {
+                 // --- VIBRATION on cancel ---
+                 if (navigator.vibrate) {
+                      try { navigator.vibrate(7); } catch (err) { console.warn("Vibration failed:", err); }
+                 }
+                 // --- END VIBRATION ---
+
+                 // --- Remove background class from header ---
+                 if (headerEl) { headerEl.classList.remove('ptt-active-bg'); }
+
+                 handleTalkThroughEnd(e); // Call original handler
              }
         });
-        // Prevent context menu on long press for the button
-        talkThroughButton.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // --- Keep context menu prevention ---
+        talkThroughButton.addEventListener('contextmenu', (e) => {
+             e.preventDefault();
+        });
+
     } else console.error("Talk-Through button not found");
+
 
 
     if (appSettingsButton) appSettingsButton.addEventListener('click', openAppSettingsModal);
