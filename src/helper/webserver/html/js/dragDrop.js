@@ -17,16 +17,16 @@ const dragDropManager = (() => {
             swap: true,                     // *** ENABLE SWAP BEHAVIOR ***
             swapClass: 'sortable-swap-highlight', // Class applied to the item being swapped *with*
 
-            delay: 50,                      // ms delay to prevent accidental drags on tap
+            delay: 100,                      // ms delay to prevent accidental drags on tap
             delayOnTouchOnly: true,
-            touchStartThreshold: 5,         // Pixels tolerance for touch start
+            touchStartThreshold: 8,         // Pixels tolerance for touch start
 
             disabled: !editMode.isActive(), // Start disabled if edit mode isn't active
 
             onStart: function (evt) {
                 soundsContainer.style.cursor = 'grabbing';
                 if (navigator.vibrate) {
-                    navigator.vibrate(50); // Haptic feedback
+                    navigator.vibrate(40); // Haptic feedback
                 }
                 // console.log("Swap drag started"); // DEBUG
             },
