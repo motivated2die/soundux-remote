@@ -592,6 +592,7 @@ nav#tabs-container {
     border-top: 1px solid rgba(255, 255, 255, 0.05);
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     overflow-x: auto; /* Enable horizontal scrolling */
+    overflow-y: hidden;
 }
 
 nav#tabs-container::-webkit-scrollbar {
