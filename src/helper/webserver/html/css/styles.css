@@ -279,6 +279,21 @@ body {
     font-size: 20px;
 }
 
+/* Tutorial Help Button Special Styling */
+#tutorial-help-button {
+    background-color: rgba(82, 177, 140, 0.1);
+    color: var(--v-primary-base);
+}
+
+#tutorial-help-button:hover {
+    background-color: rgba(82, 177, 140, 0.2);
+}
+
+#tutorial-help-button.active {
+    background-color: var(--v-primary-base);
+    color: white;
+}
+
 /* --- Main Sound Grid --- */
 main#sounds-container {
     order: 1;

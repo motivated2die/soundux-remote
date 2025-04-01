@@ -7,17 +7,30 @@ let currentDriverInstance = null;
 // ---
 
 function initializeTutorialTrigger() {
-    // console.log("Attempting to initialize tutorial trigger...");
+    // Initialize both tutorial buttons
     const startTutorialButton = document.getElementById('start-tutorial-button');
+    const helpButton = document.getElementById('tutorial-help-button');
 
-    if (!startTutorialButton) {
-        console.error('Start Tutorial button not found in the DOM yet.');
-        return;
+    // Check if tutorial has been completed before
+    const tutorialCompleted = localStorage.getItem('tutorialCompleted') === 'true';
+    
+    // Show help button only on first run
+    if (helpButton) {
+        helpButton.classList.toggle('hidden', tutorialCompleted);
+        if (!tutorialCompleted) {
+            helpButton.addEventListener('click', () => {
+                helpButton.classList.add('hidden');
+                localStorage.setItem('tutorialCompleted', 'true');
+                startSounduxTutorial();
+            });
+        }
     }
 
-    // console.log("Found Start Tutorial button. Attaching listener.");
-    startTutorialButton.removeEventListener('click', handleStartTutorialClick);
-    startTutorialButton.addEventListener('click', handleStartTutorialClick);
+    // Initialize settings modal tutorial button
+    if (startTutorialButton) {
+        startTutorialButton.removeEventListener('click', handleStartTutorialClick);
+        startTutorialButton.addEventListener('click', handleStartTutorialClick);
+    }
 }
 
 function handleStartTutorialClick() {
