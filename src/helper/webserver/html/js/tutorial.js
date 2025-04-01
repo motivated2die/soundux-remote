@@ -130,7 +130,7 @@ function startSounduxTutorial() {
                 element: '#sounds-container .sound-button:first-of-type', // Target first sound button
                 popover: {
                     title: 'Editing Sounds',
-                    description: 'While in Edit Mode: <br/> - <b>Tap</b> a sound like this one to open its settings (color, volume, emoji). <br/> - <b>Drag and drop</b> sounds to change their order.',
+                    description: 'While in Edit Mode: <br/> <b>Tap</b> a sound like this one to open its settings (color, volume, emoji). <br/> <b>Drag and drop</b> sounds to change their order.',
                     side: "bottom", // Adjust side/align as needed for sound button
                     align: 'center'
                  },
