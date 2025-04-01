@@ -113,94 +113,83 @@ function startSounduxTutorial() {
             // Step 3: Stop All Button (Original Step 3)
             {
                 element: '#stop-all',
-                popover: { title: 'Stop All Sounds', description: 'Need silence quickly? Tap this button to stop all sounds currently playing.', side: "left", align: 'start' }
+                popover: { title: 'Stop All Sounds', description: 'Need to stop playback? Tap this button to stop all sounds currently playing.', side: "left", align: 'center' }
             },
-            // Step 4: Sound Tabs (Original Step 4 - Updated Text)
+            // Step 4: Talk-Through Button (Moved from Step 9)
+            {
+                element: '#talk-through-button',
+                popover: { title: 'Push-to-Talk', description: 'Hold this button to temporarily pause playback and talk through your default microphone output.', side: "top", align: 'center' }
+            },
+            // Step 5: Sound Tabs (Original Step 4 - Updated Text)
             {
                 element: '#tabs-container',
                 popover: { title: 'Sound Tabs', description: 'Tabs from the desktop app get shown here. Tap a tab name to switch between different pages of sounds, or simply swipe left and right.', side: "top", align: 'center' }
             },
-            // Step 5: Top Bar - Edit Mode Button (Original Step 6)
+            // Step 6: Edit Mode Button
             {
                 element: '#edit-mode-button',
-                popover: { title: 'Edit Mode', description: 'Tap here to enter Edit Mode. This allows you to customize sounds and rearrange the layout.', side: "bottom", align: 'center' }
+                popover: { 
+                    title: 'Edit Mode', 
+                    description: 'Tap this button to enter Edit Mode for customizing sounds and rearranging the layout.', 
+                    side: "bottom", 
+                    align: 'center' 
+                }
             },
-            // Step 6: Edit Mode Explained (Original Step 7 - Modified Target & Text)
+            // Step 7: Top Bar Overview
             {
-                element: '#sounds-container .sound-button:first-of-type', // Target first sound button
+                element: '.top-bar',
                 popover: {
-                    title: 'Editing Sounds',
-                    description: 'While in Edit Mode: <br/> <b>Tap</b> a sound like this one to open its settings (color, volume, emoji). <br/> <b>Drag and drop</b> sounds to change their order.',
-                    side: "bottom", // Adjust side/align as needed for sound button
+                    title: 'Edit mode controls',
+                    description: 'When in edit mode, tap on any sound to edit it, toggle through layout options or rearrange buttons via drag & drop.',
+                    side: "bottom",
                     align: 'center'
-                 },
+                },
                 onHighlightStarted: () => {
-                    console.log("Step 6: Entering Edit Mode...");
+                    console.log("Step 7: Opening Sound Settings...");
+                    // Ensure edit mode is active
                     if (!document.body.classList.contains('edit-mode-active')) {
                         if (!safeClick('#edit-mode-button')) {
-                             console.warn("Failed to enter edit mode for step 6.");
-                             // Maybe skip or show different text if edit mode fails?
+                            console.warn("Failed to enter edit mode.");
+                            return;
                         }
-                    }
-                    // Ensure the sounds container itself is visible/targetable
-                    const soundsContainer = document.querySelector('#sounds-container');
-                    if (!soundsContainer) {
-                        console.error("Sounds container not found for step 6 highlight!");
-                    } else if (!document.querySelector('#sounds-container .sound-button:first-of-type')) {
-                        console.warn("No sound buttons found to highlight in step 6.");
-                        // Potentially highlight the container instead or skip?
                     }
                 },
                 onDeselected: () => {
-                    console.log("Step 6: Exiting Edit Mode...");
+                    console.log("Step 7: Closing Edit Mode Settings...");
                     if (document.body.classList.contains('edit-mode-active')) {
                         safeClick('#edit-mode-button');
                     }
                 }
             },
-            // Step 7: Sound Settings Panel (Original Step 8)
+            // Step 8: Sound Settings Panel
             {
                 element: '#settings-card',
-                popover: { title: 'Sound Settings', description: 'Here you can customize individual sounds: toggle favorites, adjust volume, change button color, and add an emoji background.', side: "left", align: 'center' },
+                popover: { 
+                    title: 'Sound Settings', 
+                    description: 'Here you can customize individual sounds: toggle favorites, adjust volume, change button color, and add an emoji background.', 
+                    side: "left", 
+                    align: 'center' 
+                },
                 onHighlightStarted: () => {
-                    console.log("Step 7: Opening Sound Settings...");
-                    // Ensure edit mode is active first
-                    if (!document.body.classList.contains('edit-mode-active')) {
-                        if (!safeClick('#edit-mode-button')) {
-                            console.warn("Failed to enter edit mode for step 7.");
-                            return; // Stop if can't enter edit mode
-                        }
-                    }
-                    // Click the first available sound button
-                    const soundClicked = safeClick('#sounds-container .sound-button:first-of-type');
-
-                    // Exit edit mode *after* clicking the sound
-                    setTimeout(() => {
-                        if (document.body.classList.contains('edit-mode-active')) {
-                            console.log("Step 7: Exiting Edit Mode after clicking sound.");
-                            safeClick('#edit-mode-button');
-                        }
-                    }, 50);
-
-                    if (!soundClicked) {
-                         console.warn("Step 7: Could not find a sound button to click for settings demo.");
+                    console.log("Step 8: Opening Sound Settings...");
+                    const settingsOverlay = document.getElementById('sound-settings-overlay');
+                        if (settingsOverlay) {
+                            settingsOverlay.classList.remove('hidden');
                     }
                 },
-                 onDeselected: () => {
-                     console.log("Step 7: Closing Sound Settings...");
-                     safeClick('#settings-backdrop'); // Close panel
-                 }
+                onDeselected: () => {
+                    console.log("Step 8: Closing Sound Settings...");
+                    const settingsOverlay = document.getElementById('sound-settings-overlay');
+                        if (settingsOverlay) {
+                            settingsOverlay.classList.add('hidden');
+                    }
+                }
             },
-             // Step 8: App Settings Button (Original Step 9)
-             {
-                 element: '#app-settings-button',
-                 popover: { title: 'App Settings', description: 'Access general application settings, manage layouts, and find this tutorial again here.', side: "bottom", align: 'end' },
-             },
-             // Step 9: Talk-Through Button (Original Step 11)
-             {
-                 element: '#talk-through-button',
-                 popover: { title: 'Mic Talk-Through', description: 'Hold this button to temporarily talk through your default microphone output (useful for communication during streams/recordings).', side: "top", align: 'end' }
-             },
+            // Step 9: App Settings Button (Original Step 8)
+            {
+                element: '#app-settings-button',
+                popover: { title: 'App Settings', description: 'Access general application settings, manage layouts, and find this tutorial again here.', side: "bottom", align: 'center' },
+            },
              // Step 10: Final Step (Original Step 13)
             {
                 popover: { title: 'Tour Complete!', description: 'You\'ve learned the basics of Soundux Remote. Feel free to explore and customize!', side: "top", align: 'center' }
