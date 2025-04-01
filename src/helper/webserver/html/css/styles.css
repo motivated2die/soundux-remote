@@ -2320,9 +2320,14 @@ main#sounds-container.layout-list .sortable-swap-highlight {
 }
 
 .driver-popover-arrow {
-    border-color: var(--v-secondary-base);
+    border: 5px solid var(--v-secondary-base);
 }
 
 .driver-popover-progress-text {
     padding-right: 50px;
+}
+
+.driver-popover-navigation-btns {
+    max-width: 220px;
+    border-radius: 20px;
 }
