@@ -234,7 +234,7 @@ function startSounduxTutorial() {
         // --- Step Definitions ---
         steps: [
              // Step 1: Welcome
-             { popover: { title: 'Welcome to Soundux Remote!', description: 'This quick tour will guide you through the main features. Click "Next" to begin.', side: "left", align: 'start' } },
+             { popover: { title: 'Welcome to Soundux Remote 🎮', description: 'Let\'s get you familiarized with the main features! Click "Next" to begin.', side: "left", align: 'start' } },
              // Step 2: Playing Sounds
              { element: '#sounds-container', popover: { title: 'Playing Sounds', description: 'This is your sound grid. Simply tap any button to play the corresponding sound on your computer.', side: "top", align: 'center' } },
              // Step 3: Stop All Button
@@ -242,13 +242,13 @@ function startSounduxTutorial() {
              // Step 4: Talk-Through Button
              { element: '#talk-through-button', popover: { title: 'Push-to-Talk', description: 'Hold this button to temporarily pause playback and talk through your default microphone output.', side: "top", align: 'center' } },
              // Step 5: Sound Tabs
-             { element: '#tabs-container', popover: { title: 'Sound Tabs', description: 'Tabs from the desktop app get shown here. Tap a tab name to switch between different pages of sounds, or simply swipe left and right.', side: "top", align: 'center' } },
+             { element: '#tabs-container', popover: { title: 'Sound Tabs', description: 'Tabs from the desktop app get shown here. Tap a tab name to switch between different pages of sounds, or simply swipe left and right on the soundboard buttons.', side: "top", align: 'center' } },
              // Step 6: Edit Mode Button
              { element: '#edit-mode-button', popover: { title: 'Edit Mode', description: 'Tap this button to enter Edit Mode for customizing sounds and rearranging the layout.', side: "bottom", align: 'center' } },
              // Step 7: Top Bar Overview (Edit Mode Active)
              {
                  element: '.top-bar',
-                 popover: { title: 'Edit mode controls', description: 'When in edit mode, tap on any sound to edit it, toggle through layout options or rearrange buttons via drag & drop.', side: "bottom", align: 'center' },
+                 popover: { title: 'Edit mode controls', description: 'When in edit mode, toggle through layout options, rearrange soundboard buttons via drag & drop or tap on any sound to edit it. (pro tip: even when not in edit mode, you can long-press buttons to edit them)', side: "bottom", align: 'center' },
                  userData: { enteredEditMode: false },
                  onHighlightStarted: (element, step, { config, state }) => {
                      // console.log("Step 7: Entering edit mode for highlight...");
@@ -273,7 +273,7 @@ function startSounduxTutorial() {
              // Step 8: Sound Settings Panel
              {
                  element: '#settings-card',
-                 popover: { title: 'Sound Settings', description: 'Here you can customize and preview individual sounds: toggle favorites, adjust volume, change button color, and add an emoji background.', side: "top", align: 'center' },
+                 popover: { title: 'Sound Settings', description: 'All settings for a soundboard button are here: toggle favorites, adjust volume, change button color, and add an emoji background. And the preview can only be heard by you!', side: "top", align: 'center' },
                  onHighlightStarted: (element, step, { config, state }) => {
                      // console.log("Step 8: Highlighting #settings-card.");
                       const settingsOverlay = document.getElementById('sound-settings-overlay');
@@ -289,7 +289,7 @@ function startSounduxTutorial() {
              },
              // Step 9: Final Step
              {
-                 popover: { title: 'Tour Complete!', description: 'You\'ve learned the basics of Soundux Remote. Edit mode is still on, so feel free to explore and customize and press the ✅ when you\'re done!', side: "top", align: 'center' }
+                 popover: { title: 'Tour Complete!', description: 'You\'ve learned the basics of Soundux Remote. Edit mode is still on, so feel free to explore and customize! Press ✅ when you\'re happy with your creation. Enjoy :)', side: "top", align: 'center' }
              }
         ]
     }; // End driverConfig definition

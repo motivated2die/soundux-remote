@@ -336,7 +336,8 @@ main#sounds-container.layout-list {
     display: flex;
     flex-direction: column;
     gap: 0;
-    padding: 0 10px;
+    padding-left: 10px;
+    padding-right: 10px;
 }
 
 /* --- Sound Card --- */
@@ -1192,10 +1193,12 @@ emoji-picker section#favorites {
 #preview-button .button-text,
 #clear-emoji-button-settings .button-text,
 #select-emoji-button
-
-/* Added */
     {
     text-transform: uppercase;
+}
+
+#preview-button {
+    min-width: 150px;
 }
 
 

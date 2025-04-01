@@ -660,7 +660,7 @@ function enterConfirmingState(button) {
     longPressState.isPressing = false; // No longer actively pressing
     button.classList.remove('pressing');
     button.classList.add('confirming');
-    button.textContent = 'Tap again to confirm'; // Change text
+    button.textContent = 'WARNING! This can\'t be undone!'; // Change text
     if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
 }
 
