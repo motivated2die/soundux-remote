@@ -1779,119 +1779,6 @@ emoji-picker section#favorites {
 
 /* Container for the actual <emoji-picker> element */
 #emoji-picker-container {
-    border-radius: var(--border-radius);
-    overflow: hidden;
-    /* Clip picker content */
-    border: 1px solid var(--v-secondary-base);
-    /* Match other inputs */
-    /* Removed position: relative */
-}
-
-#emoji-picker-container.hidden {
-    display: none;
-}
-
-/* Style the emoji picker element itself using CSS variables */
-emoji-picker {
-    width: 100%;
-    height: 320px;
-    /* Slightly taller */
-    --border-color: transparent;
-    /* Remove internal border */
-    --outline-color: var(--v-primary-base);
-    /* Focus outline color */
-    --border-radius: 0;
-    /* Remove internal radius, container handles it */
-
-    /* Input Search Bar Styling */
-    --input-padding: 0.6rem 0.8rem;
-    /* Adjust padding */
-    --input-background-color: var(--v-secondary-base);
-    /* Match action buttons */
-    --input-text-color: var(--text-primary);
-    --input-border-radius: var(--border-radius);
-    /* Match action buttons */
-    --input-border-color: transparent;
-    /* Remove input border */
-    --input-placeholder-color: var(--text-secondary);
-    --input-line-height: 1.5;
-    /* Adjust if needed for vertical centering */
-    --input-font-size: 16px;
-
-    /* Background and other colors */
-    --background: var(--v-secondary-darken1);
-    --category-icon-color: var(--text-secondary);
-    --category-icon-color-active: var(--v-primary-base);
-    --indicator-color: var(--v-primary-base);
-
-    /* Emoji grid styling */
-    --emoji-size: 1.7em;
-    /* Slightly larger emoji? */
-    --emoji-padding: 6px;
-
-    /* Remove scrollbar (Note: This might not work perfectly across browsers for internal Shadow DOM scrollbars) */
-    scrollbar-width: none;
-    /* Firefox */
-}
-
-/* Attempt to hide scrollbar in WebKit browsers */
-emoji-picker::-webkit-scrollbar {
-    display: none;
-}
-
-/* Hide Favorites section (Note: Relies on internal structure, might break with updates) */
-/* This uses a best guess selector. Inspect the element's Shadow DOM if this doesn't work */
-emoji-picker::part(nav),
-/* Hide the entire category nav if possible */
-emoji-picker section#favorites {
-    /* Target the favorites section directly if possible */
-    display: none !important;
-}
-
-/* Uppercase Button Text */
-#preview-button .button-text,
-#clear-emoji-button-settings .button-text,
-/* Added class for delete text */
-#select-emoji-button
-
-/* Added */
-    {
-    text-transform: uppercase;
-}
-
-#settings-card {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background-color: var(--v-secondary-darken1);
-    border-radius: 16px 16px 0 0;
-    padding: 12px 20px calc(env(safe-area-inset-bottom) + 20px) 20px;
-    transform: translateY(110%);
-    /* Allow smooth transitions for transform and potentially height/max-height */
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.3s ease-out;
-    max-height: 85vh;
-    /* Start with a max height */
-    /* overflow-y: auto; */
-    /* REMOVED: Card itself shouldn't scroll internally */
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
-    /* Ensure content determines height up to max-height */
-    height: auto;
-    overflow: visible;
-    /* Allow content to potentially overflow if absolutely needed, though max-height should handle most cases */
-}
-
-/* Ensure overlay allows interaction with the grown card */
-#sound-settings-overlay {
-    /* Ensure clicks pass through backdrop to card if needed, handle backdrop separately */
-}
-
-#sound-settings-overlay:not(.hidden) #settings-card {
-    transform: translateY(0);
-}
-
-/* Container for the actual <emoji-picker> element */
-#emoji-picker-container {
     border-radius: 24px;
     /* MODIFIED: Rounded container */
     overflow: hidden;
@@ -1978,35 +1865,28 @@ emoji-picker section#favorites
 /* Styles for the floating state */
 #emoji-picker-container.emoji-picker-floating {
     position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + 10px);
-    /* Position near top, respecting safe area */
+    /* MODIFIED: Adjusted 'top' slightly higher */
+    top: calc(env(safe-area-inset-top, 0px) + 5px);
+    /* Position higher, closer to top edge */
     left: 5%;
-    /* Small margin from edges */
     right: 5%;
     width: 90%;
-    /* Use most of the width */
     max-width: 450px;
-    /* Limit max width on wider mobile screens */
     height: auto;
-    /* Allow height to adjust based on picker's content */
-    max-height: 60vh;
-    /* Limit height */
+    max-height: 55vh;
+    /* MODIFIED: Reduced max-height slightly if needed */
     z-index: 1200;
-    /* Ensure it's above the backdrop and settings card */
     background-color: var(--v-secondary-darken1);
-    /* Need a background */
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
-    /* Add shadow for separation */
-    /* Keep the rounded corners and border */
     border-radius: 24px;
     border: 1px solid var(--v-secondary-base);
-    /* Add transition for smooth appearance/disappearance */
-    transition: transform 0.25s ease-out, opacity 0.25s ease-out;
-    transform: translateY(-10px) scale(0.98);
-    /* Start slightly up and smaller */
+    /* MODIFIED: Adjusted transition duration for quicker pop */
+    transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+    /* Quicker transition */
+    transform: translateY(-5px) scale(0.98);
+    /* Start slightly closer */
     opacity: 0;
     pointer-events: none;
-    /* Initially ignore pointer events */
 }
 
 /* When the floating class is actively applied */
@@ -2017,6 +1897,7 @@ emoji-picker section#favorites
     pointer-events: auto;
     /* Enable interaction */
 }
+
 
 
 /* --- Emoji Picker Modal --- */
@@ -2305,4 +2186,143 @@ main#sounds-container.layout-list .sortable-swap-highlight {
 /* --- ADD: Default hidden state for play/pause button --- */
 #play-pause-toggle-button.hidden {
     display: none;
+}
+
+/* --- Driver.js Custom Styling --- */
+.soundux-driver-popover {
+    background-color: var(--v-secondary-darken2); /* Even darker background */
+    color: var(--text-primary); /* White text */
+    border-radius: 5px; /* Set popover radius to 5px */
+    border: 1px solid var(--v-secondary-base); /* Subtle border */
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5); /* Slightly stronger shadow */
+}
+
+.soundux-driver-popover .driver-popover-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary); /* Ensure title is white */
+    margin-bottom: 8px;
+}
+
+.soundux-driver-popover .driver-popover-description {
+    font-size: 0.9rem;
+    color: var(--text-secondary); /* Lighter grey for description */
+    line-height: 1.4;
+}
+
+.soundux-driver-popover .driver-popover-description b {
+    color: var(--v-primary-lighten1); /* Highlight bold text */
+    font-weight: 600;
+}
+
+.soundux-driver-popover .driver-popover-navigation-btns {
+    margin-top: 15px;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.soundux-driver-popover .driver-popover-navigation-btns button {
+    background-color: var(--v-secondary-base);
+    color: var(--text-primary);
+    border: none;
+    border-radius: 5px; /* Set button radius to 5px */
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    font-weight: 600; /* Slightly bolder */
+    font-family: inherit; /* Ensure correct font */
+    cursor: pointer;
+    transition: background-color var(--transition-speed) ease;
+    flex-grow: 1; /* Make buttons share space */
+}
+
+.soundux-driver-popover .driver-popover-navigation-btns button:hover {
+    background-color: var(--v-secondary-darken2);
+}
+
+.soundux-driver-popover .driver-popover-navigation-btns button.driver-popover-next-btn {
+    background-color: var(--v-primary-base); /* Primary color for Next/Done */
+    color: white;
+}
+
+.soundux-driver-popover .driver-popover-navigation-btns button.driver-popover-next-btn:hover {
+    background-color: var(--v-primary-darken1);
+}
+
+.soundux-driver-popover .driver-popover-navigation-btns button.driver-popover-prev-btn {
+    /* Keep secondary style for Previous */
+}
+
+.soundux-driver-popover .driver-popover-navigation-btns button.driver-popover-close-btn {
+    background-color: var(--error-color); /* Red for Close */
+    color: white;
+    flex-grow: 0; /* Don't let close button grow */
+    padding: 8px 12px;
+}
+.soundux-driver-popover .driver-popover-navigation-btns button.driver-popover-close-btn:hover {
+    background-color: #ff6b6b;
+}
+
+
+
+.soundux-driver-popover .driver-popover-progress-text {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    margin-top: 10px;
+    text-align: center;
+}
+
+.soundux-driver-popover .driver-popover-arrow {
+    /* Use default arrow or customize border colors if needed */
+}
+
+.soundux-driver-popover .driver-popover-arrow::before {
+    border-color: var(--v-secondary-base); /* Match popover border */
+}
+
+.soundux-driver-popover.driver-popover-position-bottom .driver-popover-arrow::before {
+    border-top-color: var(--v-secondary-darken1); /* Match popover background */
+}
+.soundux-driver-popover.driver-popover-position-top .driver-popover-arrow::before {
+    border-bottom-color: var(--v-secondary-darken1); /* Match popover background */
+}
+.soundux-driver-popover.driver-popover-position-left .driver-popover-arrow::before {
+    border-right-color: var(--v-secondary-darken1); /* Match popover background */
+}
+.soundux-driver-popover.driver-popover-position-right .driver-popover-arrow::before {
+    border-left-color: var(--v-secondary-darken1); /* Match popover background */
+}
+
+/* Overlay */
+.driver-overlay {
+    background-color: rgba(18, 18, 18, 0.1) !important; /* Minimal overlay */
+    /* backdrop-filter: blur(1px); Removed blur */
+}
+
+.driver-popover-footer button {
+    text-shadow: none;
+}
+
+.driver-popover {
+    background-color: var(--v-secondary-darken1);
+    color: var(--text-secondary);
+    border-radius: 15px;
+    margin: 0px 9px 0px 1px;
+    max-width: max(400px,90vw);
+}
+
+.driver-popover-description {
+    color: var(--text-secondary);
+}
+
+.driver-popover-title {
+    color: var(--text-primary);
+}
+
+.driver-popover-arrow {
+    border-color: var(--v-secondary-base);
+}
+
+.driver-popover-progress-text {
+    padding-right: 50px;
 }
