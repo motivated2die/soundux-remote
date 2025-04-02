@@ -2143,7 +2143,7 @@ main#sounds-container.layout-list .sortable-swap-highlight {
     /* Add specific order or margin if needed */
     /* order: -1; */
     /* Example: Place before layout button */
-    margin-right: 5px;
+    /* margin-right: 5px; */ 
     /* Example: Spacing */
 }
 
@@ -2364,6 +2364,8 @@ main#sounds-container.layout-list .sortable-swap-highlight {
 
 .driver-popover-arrow {
     border: 5px solid var(--v-secondary-base);
+    display: none;
+
 }
 
 .driver-popover-progress-text {
