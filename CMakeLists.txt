@@ -28,9 +28,16 @@ function(print_directory_contents dir_path)
     endforeach()
 endfunction()
 
-# Ensure directories exist
+# Ensure directories exist early (less critical now with MAKE_DIRECTORY in function, but good practice)
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/web")
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/dist")
+if(MSVC)
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Debug/web")
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Release/web")
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Debug/dist")
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Release/dist")
+endif()
+
 
 if (WIN32)
     add_executable(soundux WIN32 ${src} "assets/icon.rc")
@@ -49,9 +56,11 @@ if (WIN32)
     )
 
     foreach(CompilerFlag ${CompilerFlags})
-        string(REPLACE "/MD" "/MT" ${CompilerFlag} "${${CompilerFlag}}")
-        set(${CompilerFlag} "${${CompilerFlag}}" CACHE STRING "msvc compiler flags" FORCE)
-        message("MSVC flags: ${CompilerFlag}:${${CompilerFlag}}")
+        # Use CACHE variables directly without intermediate variable
+        string(REPLACE "/MD" "/MT" CURRENT_FLAGS "${${CompilerFlag}}")
+        set(${CompilerFlag} "${CURRENT_FLAGS}" CACHE STRING "msvc compiler flags" FORCE)
+        # Optional: Message only if flags changed or for debugging
+        # message(STATUS "MSVC flags: ${CompilerFlag}:${${CompilerFlag}}")
     endforeach()
 
     target_compile_definitions(soundux PRIVATE WIN32_LEAN_AND_MEAN=1)
@@ -77,17 +86,29 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 target_link_libraries(soundux PRIVATE Threads::Threads ${CMAKE_DL_LIBS})
 
-if (UNIX)
+if (UNIX AND NOT APPLE) # Added NOT APPLE check if X11/Wayland specific things are not needed on macOS
     list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
     find_package(PipeWire REQUIRED)
 
-    find_package(PulseAudio)
+    find_package(PulseAudio) # Optional? Check if linking is needed if found
     find_package(X11 REQUIRED)
-    target_include_directories(soundux SYSTEM PRIVATE ${X11_INCLUDE_DIR} ${PULSEAUDIO_INCLUDE_DIR} ${PipeWire_INCLUDE_DIRS} ${Spa_INCLUDE_DIRS}) 
+    target_include_directories(soundux SYSTEM PRIVATE ${X11_INCLUDE_DIR} ${PULSEAUDIO_INCLUDE_DIR} ${PipeWire_INCLUDE_DIRS} ${Spa_INCLUDE_DIRS})
 
     find_package(PkgConfig REQUIRED)
-	pkg_check_modules(WNCK libwnck-3.0)
+    pkg_check_modules(WNCK libwnck-3.0) # Check WNCK_FOUND before using variables
+    if(WNCK_FOUND)
+        target_include_directories(soundux PRIVATE ${WNCK_INCLUDE_DIRS})
+        target_link_libraries(soundux PRIVATE ${WNCK_LIBRARIES})
+    else()
+         message(WARNING "libwnck-3.0 not found. Window title features might be limited.")
+    endif()
     target_link_libraries(soundux PRIVATE ${X11_LIBRARIES} ${X11_Xinput_LIB} ${X11_XTest_LIB})
+    if(PulseAudio_FOUND)
+        target_link_libraries(soundux PRIVATE ${PULSEAUDIO_LIBRARY}) # Link if found
+    endif()
+    # Link PipeWire libraries
+    target_link_libraries(soundux PRIVATE ${PipeWire_LIBRARIES} ${Spa_LIBRARIES})
+
 endif()
 if (WIN32)
     target_compile_definitions(soundux PRIVATE _CRT_SECURE_NO_WARNINGS=1 _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS=1 _UNICODE=1)
@@ -113,116 +134,202 @@ set(HTTPLIB_REQUIRE_OPENSSL ON)
 add_subdirectory(lib/cpp-httplib EXCLUDE_FROM_ALL)
 target_include_directories(soundux SYSTEM PRIVATE "lib/cpp-httplib")
 
-target_link_libraries(soundux PRIVATE webview nfd tiny-process-library tray guard httplib lockpp)
+target_link_libraries(soundux PRIVATE webview nfd tiny-process-library tray guard httplib lockpp) # Add other libs like WNCK if needed
 
-# Copy main UI files
+# --- Asset Copying Logic ---
 if (${EMBED_PATH} STREQUAL "OFF")
-    message(STATUS "Main UI content will not be embedded") 
-    
-    # Copy soundux-ui frontend files
-    if (MSVC)
-        file(COPY "${CMAKE_SOURCE_DIR}/src/ui/impl/webview/lib/soundux-ui/" 
-            DESTINATION "${CMAKE_BINARY_DIR}/Release/dist"
-            FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
-        file(COPY "${CMAKE_SOURCE_DIR}/src/ui/impl/webview/lib/soundux-ui/" 
-            DESTINATION "${CMAKE_BINARY_DIR}/Debug/dist"
-            FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
-    else()
-        file(COPY "${CMAKE_SOURCE_DIR}/src/ui/impl/webview/lib/soundux-ui/" 
-            DESTINATION "${CMAKE_BINARY_DIR}/dist"
-            FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
-    endif()
-    
-    # Print contents for debugging
-    message(STATUS "Main UI source: ${CMAKE_SOURCE_DIR}/src/ui/impl/webview/lib/soundux-ui/")
-    print_directory_contents("${CMAKE_SOURCE_DIR}/src/ui/impl/webview/lib/soundux-ui")
-    
-    # Copy web server content if it exists
-    if(EXISTS "${CMAKE_SOURCE_DIR}/src/helper/webserver/html")
-        message(STATUS "Web server content source path: ${CMAKE_SOURCE_DIR}/src/helper/webserver/html")
-        message(STATUS "Web server content destination path: ${CMAKE_BINARY_DIR}/web")
+    message(STATUS "Main UI and Web server content will not be embedded")
 
-        # Use file(COPY ...) with trailing slash on source to copy contents
-        file(COPY "${CMAKE_SOURCE_DIR}/src/helper/webserver/html/" # Source directory (trailing slash copies contents)
-             DESTINATION "${CMAKE_BINARY_DIR}/web" # Destination directory
-             FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-        )
-        # Check if copy seemed to work (basic check)
-        if(NOT EXISTS "${CMAKE_BINARY_DIR}/web/index.html")
-            message(WARNING "file(COPY ...) might not have copied contents as expected. Check permissions and paths.")
-        endif()
+    # --- Copy soundux-ui frontend files ---
+    set(SOUNDUX_UI_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/ui/impl/webview/lib/soundux-ui/")
+    set(SOUNDUX_UI_DEST_DIR "${CMAKE_BINARY_DIR}/dist") # Base destination
 
-        # Copy to Debug/Release directories for Windows using file(COPY ...)
-        if(MSVC)
-             message(STATUS "Copying web server content to MSVC build directories...")
-             file(COPY "${CMAKE_SOURCE_DIR}/src/helper/webserver/html/"
-                  DESTINATION "${CMAKE_BINARY_DIR}/Debug/web"
+    if(EXISTS "${SOUNDUX_UI_SOURCE_DIR}")
+        message(STATUS "Copying main UI from ${SOUNDUX_UI_SOURCE_DIR}")
+        # Copy to base build destination
+        file(COPY "${SOUNDUX_UI_SOURCE_DIR}" DESTINATION "${SOUNDUX_UI_DEST_DIR}"
+             FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+
+        # Copy to configuration-specific directories for multi-config generators (like MSVC)
+        if (CMAKE_CONFIGURATION_TYPES) # Check if multi-config generator
+             message(STATUS "Copying main UI to configuration-specific directories (Debug/Release)")
+             file(COPY "${SOUNDUX_UI_SOURCE_DIR}" DESTINATION "${CMAKE_BINARY_DIR}/Debug/dist"
                   FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
-             file(COPY "${CMAKE_SOURCE_DIR}/src/helper/webserver/html/"
-                  DESTINATION "${CMAKE_BINARY_DIR}/Release/web"
+             file(COPY "${SOUNDUX_UI_SOURCE_DIR}" DESTINATION "${CMAKE_BINARY_DIR}/Release/dist"
                   FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
         endif()
 
-        # Print contents for debugging (Keep these)
-        print_directory_contents("${CMAKE_SOURCE_DIR}/src/helper/webserver/html")
-        print_directory_contents("${CMAKE_BINARY_DIR}/web")
-        if(MSVC)
-             print_directory_contents("${CMAKE_BINARY_DIR}/Release/web") # Also check Release dir
-        endif()
+        message(STATUS "Main UI source: ${SOUNDUX_UI_SOURCE_DIR}")
+        # Optional: Add print_directory_contents calls here if needed for debugging UI copy
+        # print_directory_contents("${SOUNDUX_UI_SOURCE_DIR}")
+        # print_directory_contents("${SOUNDUX_UI_DEST_DIR}")
     else()
-        message(WARNING "Web server content directory does not exist: ${CMAKE_SOURCE_DIR}/src/helper/webserver/html")
+        message(WARNING "Main UI source directory not found: ${SOUNDUX_UI_SOURCE_DIR}")
     endif()
 
+
+    # --- Copy web server content (with minification check) ---
+    set(WEBSERVER_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/helper/webserver/html")
+    set(WEBSERVER_DEST_DIR "${CMAKE_BINARY_DIR}/web") # Base destination
+
+    # Function to copy web content with minification preference
+    function(copy_web_content SOURCE_DIR DEST_DIR)
+        message(STATUS "Copying web content from ${SOURCE_DIR} to ${DEST_DIR}")
+
+        # Create destination directory if it doesn't exist
+        file(MAKE_DIRECTORY "${DEST_DIR}")
+
+        # Get all files from source directory recursively
+        file(GLOB_RECURSE ALL_FILES RELATIVE "${SOURCE_DIR}" "${SOURCE_DIR}/*") # Use RELATIVE for easier path handling
+
+        # Process each file individually
+        foreach(REL_PATH ${ALL_FILES})
+            set(SOURCE_FILE "${SOURCE_DIR}/${REL_PATH}")
+            set(DEST_FILE "${DEST_DIR}/${REL_PATH}")
+
+            # Skip directories explicitly (GLOB_RECURSE includes them sometimes)
+            if(IS_DIRECTORY "${SOURCE_FILE}")
+                continue()
+            endif()
+
+            # Get the directory of the destination file
+            get_filename_component(DEST_PARENT_DIR "${DEST_FILE}" DIRECTORY)
+
+            # Create the destination directory if it doesn't exist
+            file(MAKE_DIRECTORY "${DEST_PARENT_DIR}") # Use DEST_PARENT_DIR
+
+            # Check if this is a JS, CSS, or HTML file that might have a minified version
+            if(SOURCE_FILE MATCHES "\\.(js|css|html)$" AND NOT SOURCE_FILE MATCHES "\\.min\\.(js|css|html)$")
+                # Construct the potential minified filename
+                string(REGEX REPLACE "(\\.[^.]+)$" ".min\\1" MINIFIED_SOURCE_FILE "${SOURCE_FILE}")
+
+                # Check if minified version exists
+                if(EXISTS "${MINIFIED_SOURCE_FILE}")
+                    # message(STATUS "Using minified version for: ${REL_PATH}") # Uncomment for verbose debug
+                    # Copy the minified file but with the original name
+                    configure_file("${MINIFIED_SOURCE_FILE}" "${DEST_FILE}" COPYONLY)
+                else()
+                    # Use the original file
+                    # message(STATUS "Using original version for: ${REL_PATH}") # Uncomment for verbose debug
+                    configure_file("${SOURCE_FILE}" "${DEST_FILE}" COPYONLY)
+                endif()
+            # Only copy other files if they are *not* the minified versions we might have already handled
+            elseif(NOT SOURCE_FILE MATCHES "\\.min\\.(js|css|html)$")
+                # For all other files (images, fonts, etc.), copy directly
+                # message(STATUS "Copying other file: ${REL_PATH}") # Uncomment for verbose debug
+                configure_file("${SOURCE_FILE}" "${DEST_FILE}" COPYONLY)
+            # else: It's a .min.js/css/html file. Do nothing here, it was handled (or ignored if no original exists) in the first 'if' branch.
+            endif()
+        endforeach()
+    endfunction()
+
+    # Check if source web server content exists
+    if(EXISTS "${WEBSERVER_SOURCE_DIR}")
+        message(STATUS "Web server content source path: ${WEBSERVER_SOURCE_DIR}")
+        message(STATUS "Web server content base destination path: ${WEBSERVER_DEST_DIR}")
+
+        # Copy to base build directory
+        copy_web_content("${WEBSERVER_SOURCE_DIR}" "${WEBSERVER_DEST_DIR}")
+
+        # Copy to Debug/Release directories for multi-config generators (like MSVC)
+        if(CMAKE_CONFIGURATION_TYPES)
+            message(STATUS "Copying web server content to configuration-specific directories (Debug/Release)")
+            copy_web_content("${WEBSERVER_SOURCE_DIR}" "${CMAKE_BINARY_DIR}/Debug/web")
+            copy_web_content("${WEBSERVER_SOURCE_DIR}" "${CMAKE_BINARY_DIR}/Release/web")
+        endif()
+
+        # Print contents for debugging (check the base destination)
+        message(STATUS "--- Contents after copy (Source) ---")
+        print_directory_contents("${WEBSERVER_SOURCE_DIR}")
+        message(STATUS "--- Contents after copy (Build Destination) ---")
+        print_directory_contents("${WEBSERVER_DEST_DIR}")
+        if(CMAKE_CONFIGURATION_TYPES)
+             message(STATUS "--- Contents after copy (Build Destination - Release) ---")
+            print_directory_contents("${CMAKE_BINARY_DIR}/Release/web") # Also check Release dir
+        endif()
+
+        # Basic check if copy seemed to work
+        if(NOT EXISTS "${WEBSERVER_DEST_DIR}/index.html" AND EXISTS "${WEBSERVER_SOURCE_DIR}/index.html")
+             message(WARNING "Web content copy operation might have failed for base dir. index.html missing in destination.")
+        endif()
+
+    else()
+        message(WARNING "Web server content source directory does not exist: ${WEBSERVER_SOURCE_DIR}")
+    endif()
+# *** This is the start of the 'else' branch for if(${EMBED_PATH} STREQUAL "OFF") ***
 else()
     message(STATUS "Using embed path: ${EMBED_PATH}")
-    target_include_directories(webview PUBLIC ${EMBED_PATH})
+    # Ensure the webview target exists before trying to modify it
+    # This assumes webviewpp creates a target named 'webview'
+    if(TARGET webview)
+        target_include_directories(webview PUBLIC ${EMBED_PATH})
+    else()
+        message(WARNING "Target 'webview' not found. Cannot add embed path include directory.")
+    endif()
     target_compile_definitions(soundux PRIVATE IS_EMBEDDED=1)
-endif()
+endif() # *** Closes if(${EMBED_PATH} STREQUAL "OFF") ***
 
 target_compile_features(soundux PRIVATE cxx_std_17)
-set_target_properties(soundux PROPERTIES 
+set_target_properties(soundux PROPERTIES
                       CXX_STANDARD 17
                       CXX_EXTENSIONS OFF
                       CXX_STANDARD_REQUIRED ON)
 
 set_target_properties(soundux PROPERTIES VERSION ${PROJECT_VERSION})
-set_target_properties(soundux PROPERTIES PROJECT_NAME ${PROJECT_NAME})
+# set_target_properties(soundux PROPERTIES PROJECT_NAME ${PROJECT_NAME}) # PROJECT_NAME is already set by project()
 
 # Installation
+install(TARGETS soundux RUNTIME DESTINATION bin COMPONENT Runtime) # Use RUNTIME/bin more standard
+
 if(USE_FLATPAK)
     target_compile_definitions(soundux PRIVATE USE_FLATPAK)
-    target_link_libraries(soundux PRIVATE ${PULSEAUDIO_LIBRARY})
+    # Link PulseAudio if found and using Flatpak (already handled above in UNIX block)
 
-    install(TARGETS soundux DESTINATION bin)
     if (${EMBED_PATH} STREQUAL "OFF")
-        install(DIRECTORY "${CMAKE_BINARY_DIR}/dist" DESTINATION bin)
+        # Install the processed 'dist' directory from the build folder
+        install(DIRECTORY "${CMAKE_BINARY_DIR}/dist/" # Trailing slash copies contents
+                DESTINATION ${CMAKE_INSTALL_PREFIX}/bin/dist COMPONENT Runtime) # Install relative to prefix/bin
     endif()
-    if(EXISTS "${CMAKE_SOURCE_DIR}/src/helper/webserver/html")
-        install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/helper/webserver/html/" 
-                DESTINATION share/soundux/web)
+    # Install processed web content from build if it exists
+    if(EXISTS "${CMAKE_BINARY_DIR}/web")
+        install(DIRECTORY "${CMAKE_BINARY_DIR}/web/" # Trailing slash copies contents
+                DESTINATION ${CMAKE_INSTALL_PREFIX}/share/soundux/web COMPONENT Runtime) # Flatpak specific path
     endif()
-else()
-    set(CMAKE_INSTALL_PREFIX "/opt/soundux" CACHE PATH "Install path prefix, prepended onto install directories." FORCE)
-    install(TARGETS soundux DESTINATION .)
-    if (${EMBED_PATH} STREQUAL "OFF")
-        install(DIRECTORY "${CMAKE_BINARY_DIR}/dist" DESTINATION .)
-    endif()
-    install(FILES "${CMAKE_SOURCE_DIR}/deployment/soundux.desktop" DESTINATION /usr/share/applications)
-    install(FILES "${CMAKE_SOURCE_DIR}/deployment/appstream/io.github.Soundux.metainfo.xml" DESTINATION /usr/share/metainfo)
-    install(FILES "${CMAKE_SOURCE_DIR}/assets/soundux.png" DESTINATION /usr/share/pixmaps)
-    if(EXISTS "${CMAKE_SOURCE_DIR}/src/helper/webserver/html")
-        set(WEB_INSTALL_DESTINATION "web") # Default install path relative to prefix
-        if(USE_FLATPAK)
-            set(WEB_INSTALL_DESTINATION "share/soundux/web") # Flatpak specific path
-        endif()
 
-        # Install the *contents* of the html directory into the destination
-        install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/helper/webserver/html/" # Trailing slash is important
-                DESTINATION ${WEB_INSTALL_DESTINATION}
+    # Install Flatpak specific metadata if needed (adjust paths/names)
+    # install(FILES ... DESTINATION share/metainfo)
+    # install(FILES ... DESTINATION share/applications)
+    # install(FILES ... DESTINATION share/icons/hicolor/scalable/apps)
+
+else() # Not Flatpak
+    # Default install prefix might be better handled outside the script (e.g., cmake -DCMAKE_INSTALL_PREFIX=...)
+    # set(CMAKE_INSTALL_PREFIX "/opt/soundux" CACHE PATH "Install path prefix, prepended onto install directories." FORCE)
+
+    if (${EMBED_PATH} STREQUAL "OFF")
+         # Install the processed 'dist' directory from the build folder
+        install(DIRECTORY "${CMAKE_BINARY_DIR}/dist/" # Trailing slash copies contents
+                DESTINATION ${CMAKE_INSTALL_PREFIX}/bin/dist COMPONENT Runtime) # Install relative to prefix/bin
+    endif()
+
+    # Install Desktop/Metadata files (adjust destination for standard FHS)
+    install(FILES "${CMAKE_SOURCE_DIR}/deployment/soundux.desktop"
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/applications COMPONENT Runtime) # Use CMAKE_INSTALL_DATADIR
+    install(FILES "${CMAKE_SOURCE_DIR}/deployment/appstream/io.github.Soundux.metainfo.xml"
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo COMPONENT Runtime) # Use CMAKE_INSTALL_DATADIR
+    install(FILES "${CMAKE_SOURCE_DIR}/assets/soundux.png"
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/pixmaps COMPONENT Runtime) # Use CMAKE_INSTALL_DATADIR
+
+    # Install processed web content from build if it exists
+    if(EXISTS "${CMAKE_BINARY_DIR}/web")
+        set(WEB_INSTALL_DESTINATION "${CMAKE_INSTALL_DATADIR}/soundux/web") # Standard location under share
+        message(STATUS "Web server content will be installed to: ${WEB_INSTALL_DESTINATION}")
+        install(DIRECTORY "${CMAKE_BINARY_DIR}/web/" # Trailing slash copies contents
+                DESTINATION ${WEB_INSTALL_DESTINATION} # Install relative to prefix/share
+                COMPONENT Runtime
                 FILES_MATCHING PATTERN "*" # Ensure all files and subdirs are matched
         )
-        message(STATUS "Web server content will be installed to: ${CMAKE_INSTALL_PREFIX}/${WEB_INSTALL_DESTINATION}")
     endif()
 
-
 endif()
+
+message(STATUS "Configuration done. Build directory: ${CMAKE_BINARY_DIR}")

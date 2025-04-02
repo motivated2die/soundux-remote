@@ -12,3 +12,4 @@ compile_commands.json
 deployment/innosetup/Output
 build.ps1
 CreateProjectContext.ps1
+*.min.*
