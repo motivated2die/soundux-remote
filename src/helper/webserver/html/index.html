@@ -83,14 +83,13 @@
             <div class="app-title">
                 <img src="assets/soundux-logo.svg" alt="Soundux Logo" class="logo">
                 <div class="title-group">
-                    <h1>Soundux 🎮</h1>
+                    <h1 style="margin-top: 10px;">Soundux 🎮</h1>
                     <!-- Server Status -->
                     <div class="server-status" id="server-status-container">
                          <span id="status-indicator" class="status-dot"></span>
                          <span id="server-status-text">Connecting...</span>
-                         <span id="wakelock-indicator" class="wakelock-indicator">
-                             <span class="material-symbols-outlined">visibility_off</span>
-                         </span>
+                         <!-- Wake Lock Indicator (content managed by screen-wake.js) -->
+                         <span id="wake-lock-indicator" class="material-symbols-outlined icon-button top-bar-button"></span>
                     </div>
                 </div>
             </div>
@@ -218,6 +217,12 @@
             <!-- Preferences Section -->
             <div class="settings-section">
                  <h3>Preferences</h3>
+                 <!-- NEW Wake Lock Toggle -->
+                 <label class="toggle-switch" id="wake-lock-toggle-label-container">
+                    <input type="checkbox" id="wake-lock-toggle">
+                    <span class="slider"></span>
+                    <span id="wake-lock-toggle-label">Prevent Screen Lock</span>
+                 </label>
                  <label class="toggle-switch">
                     <input type="checkbox" id="auto-fullscreen-toggle">
                     <span class="slider"></span>
@@ -282,7 +287,7 @@
                 </div>
                 
                 <span>🔗<a href="https://github.com/motivated2die/soundux-remote/wiki/HOME-%F0%9F%8E%AE" style="
-                    font-size: 14px;
+                    font-size: 0.85rem;
                     color: var(--text-secondary);
                 ">or visit the soundux remote wiki here</a></span>
             </div>
@@ -295,56 +300,9 @@
         </div>
     </div>
 
-
-    <!-- Screen Wake Lock Script -->
-    <script>
-        (function() {
-            const noSleep = new NoSleep();
-            let wakelockEnabled = false;
-            const wakelockIndicator = document.getElementById('wakelock-indicator');
-            let wakeLockSentinel = null;
-
-            function updateWakeLockIndicator(active) {
-                if (wakelockIndicator) {
-                    wakelockIndicator.classList.toggle('active', active);
-                    wakelockIndicator.innerHTML = `<span class="material-symbols-outlined">${active ? 'visibility' : 'visibility_off'}</span>`;
-                }
-            }
-
-             async function requestWakeLock() {
-                 try {
-                    if ('wakeLock' in navigator) {
-                        wakeLockSentinel = await navigator.wakeLock.request('screen');
-                        wakeLockSentinel.addEventListener('release', () => {
-                            wakeLockSentinel = null; wakelockEnabled = false; updateWakeLockIndicator(false);
-                            if (document.visibilityState === 'visible') { enableWakeLock(); }
-                        });
-                        wakelockEnabled = true; updateWakeLockIndicator(true);
-                    } else { enableNoSleep(); }
-                 } catch (err) { console.warn(`Screen Wake Lock failed: ${err.name}, ${err.message}. Falling back.`); enableNoSleep(); }
-             }
-
-            function enableNoSleep() {
-                 noSleep.enable().then(() => { wakelockEnabled = true; updateWakeLockIndicator(true); })
-                 .catch(err => { console.error('Failed to enable NoSleep.js:', err); wakelockEnabled = false; updateWakeLockIndicator(false); });
-            }
-
-            function releaseWakeLock() {
-                 if (wakeLockSentinel) { wakeLockSentinel.release(); wakeLockSentinel = null; }
-                 if (noSleep && noSleep.isEnabled) { noSleep.disable(); }
-                 wakelockEnabled = false; updateWakeLockIndicator(false);
-            }
-
-             async function enableWakeLock() { if (wakelockEnabled) return; await requestWakeLock(); }
-             function handleVisibilityChange() { if (document.visibilityState === 'visible') { enableWakeLock(); } }
-             document.addEventListener('visibilitychange', handleVisibilityChange);
-             setTimeout(enableWakeLock, 1500);
-             window.screenWakeLock = { enable: enableWakeLock, release: releaseWakeLock, isEnabled: () => wakelockEnabled };
-        })();
-    </script>
-
     <!-- Load core modules -->
     <script src="js/persistence.js" defer></script>
+    <script src="js/screen-wake.js" defer></script> <!-- Added Screen Wake Lock module -->
     <script src="js/fullscreen.js" defer></script> <!-- Load early -->
     <script src="js/editMode.js" defer></script>
     <script src="js/layout.js" defer></script>

@@ -748,7 +748,6 @@ h1 {
     align-items: center;
     font-size: .8rem;
     color: var(--text-secondary);
-    margin-top: 4px;
     gap: 5px;
 }
 
@@ -1546,6 +1545,12 @@ emoji-picker section#favorites {
     text-align: left;
     order: 1;
     /* Text comes after slider */
+}
+
+/* Disabled state for toggle switch */
+.toggle-switch.disabled {
+    opacity: 0.6;
+    cursor: default;
 }
 
 /* --- Utilities --- */
@@ -2375,4 +2380,35 @@ main#sounds-container.layout-list .sortable-swap-highlight {
 .driver-popover-navigation-btns {
     max-width: 220px;
     border-radius: 20px;
+}
+
+/* --- Wake Lock Indicator Styles --- */
+#wake-lock-indicator {
+    order: 3; /* Position after status text */
+    font-size: 14px; /* Match nearby text/icons */
+    color: var(--text-secondary); /* Default: Grey (Inactive) */
+    transition: color var(--transition-speed) ease;
+    cursor: pointer; /* Clickable by default */
+    display: inline-flex; /* Align icon properly */
+    align-items: center;
+    vertical-align: middle; /* Align with text */
+    background-color: unset;
+    /* Removed button-like styles: padding, border-radius, width, height, background-hover */
+}
+
+#wake-lock-indicator.active {
+    color: var(--success-color); /* Active: Green */
+    background-color: unset;
+}
+
+#wake-lock-indicator.failed {
+    color: var(--text-secondary); /* Failed: Grey */
+    opacity: 0.6; /* Dimmed */
+    cursor: default; /* Not clickable */
+    background-color: unset;
+}
+
+/* Remove hover effect */
+#wake-lock-indicator:hover {
+    background-color: unset;
 }
