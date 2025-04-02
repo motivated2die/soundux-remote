@@ -8,7 +8,7 @@ A fork of the [Soundux cross-platform soundboard](https://github.com/Soundux/Sou
 
 ## How to use the Soundux Web Remote
 
-This nifty feature lets you control your Soundux soundboard from any device with a web browser on your **local network** – think your phone 📱, tablet 📟, or another computer 💻, without needing to install anything extra on those devices.
+This nifty feature lets you control your Soundux soundboard from any device with a web browser on your **local network** – think your phone 📱, tablet 📟, or another computer 💻 – without needing to install anything extra on those devices.
 
 Here's a quick overview of the Soundux Remote features. For a more complete set of info and guides, [check out the wiki section](https://github.com/motivated2die/soundux-remote/wiki).
 
