@@ -200,11 +200,42 @@ const persistence = (() => {
 
     const exportSettings = () => {
         try {
-             // Use the current in-memory state for export
-            const settingsToExport = { ...state.settings }; // Create a shallow copy
-            settingsToExport.version = CURRENT_VERSION; // Ensure version is correct
+            // Export current settings plus any historical versions from localStorage
+            const allSettings = [];
+            
+            // Add current settings first
+            const currentSettings = { ...state.settings };
+            currentSettings.version = CURRENT_VERSION;
+            allSettings.push(currentSettings);
 
-            const settingsString = JSON.stringify(settingsToExport, null, 2); // Pretty print
+            // Check for older versions (v1, etc.)
+            for (let v = CURRENT_VERSION - 1; v >= 1; v--) {
+                // Try both key patterns: with and without _v suffix
+                const keyPatterns = v === 1 ? 
+                    ['sounduxRemoteSettings', 'sounduxRemoteSettings_v1'] : 
+                    [`sounduxRemoteSettings_v${v}`];
+                
+                for (const oldKey of keyPatterns) {
+                    const oldSettings = localStorage.getItem(oldKey);
+                    if (oldSettings) {
+                        try {
+                            const parsed = JSON.parse(oldSettings);
+                            if (parsed && typeof parsed === 'object') {
+                                // Ensure version number is set correctly
+                                if (!parsed.version) {
+                                    parsed.version = v;
+                                }
+                                allSettings.push(parsed);
+                                break; // Found this version, move to next
+                            }
+                        } catch (e) {
+                            console.warn(`Failed to parse old settings (${oldKey})`, e);
+                        }
+                    }
+                }
+            }
+
+            const settingsString = JSON.stringify(allSettings, null, 2); // Pretty print array
             const blob = new Blob([settingsString], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -231,45 +262,80 @@ const persistence = (() => {
             const reader = new FileReader();
             reader.onload = (event) => {
                 try {
-                    const importedSettings = JSON.parse(event.target.result);
+                    let importedData = JSON.parse(event.target.result);
+                    
+                    // Handle both single object and array of versions
+                    const settingsArray = Array.isArray(importedData) ? 
+                        importedData : 
+                        [importedData];
 
-                    // Basic Validation
-                    if (typeof importedSettings !== 'object' || importedSettings === null) {
-                         throw new Error('Imported file is not a valid JSON object.');
+                    if (!settingsArray.length) {
+                        throw new Error('No valid settings found in file');
                     }
 
-                    // --- VERSION CHECK & MIGRATION (Basic Example) ---
-                    const importedVersion = importedSettings.version;
-                    if (typeof importedVersion !== 'number') {
-                         console.warn("Imported settings missing version number. Attempting to load anyway.");
-                         // Potentially try to infer structure or reject
-                    } else if (importedVersion < CURRENT_VERSION) {
-                         console.warn(`Imported settings are an older version (v${importedVersion}). Current is v${CURRENT_VERSION}. Attempting basic migration.`);
-                         // ** Add Migration Logic Here if needed **
-                         // Example: Rename old keys, add default values for new keys
-                         if (typeof importedSettings.autoFullscreenEnabled === 'undefined') {
-                             importedSettings.autoFullscreenEnabled = true; // Add default for new v2 setting
-                             console.log("Added default 'autoFullscreenEnabled' during import migration.");
-                         }
-                         // Ensure all base structures exist after potential migration
-                         importedSettings.soundSettings = importedSettings.soundSettings || {};
-                         importedSettings.tabLayouts = importedSettings.tabLayouts || {};
-                         importedSettings.layoutOrders = importedSettings.layoutOrders || {};
-                         importedSettings.lastTabId = importedSettings.lastTabId || 'favorites';
+                    // Sort by version (newest first)
+                    settingsArray.sort((a, b) => (b.version || 0) - (a.version || 0));
 
-                    } else if (importedVersion > CURRENT_VERSION) {
-                         // Reject importing newer versions than the app supports
-                         throw new Error(`Imported settings version (v${importedVersion}) is newer than supported (v${CURRENT_VERSION}). Please update the app.`);
+                    // Find newest compatible version
+                    let importedSettings = null;
+                    for (const settings of settingsArray) {
+                        // Basic Validation
+                        if (typeof settings !== 'object' || settings === null) {
+                            continue;
+                        }
+
+                        const importedVersion = settings.version || 1; // Default to v1 if missing
+                        
+                        // Skip versions newer than we support
+                        if (importedVersion > CURRENT_VERSION) {
+                            continue;
+                        }
+
+                        // First compatible version wins
+                        importedSettings = {...settings}; // Create a copy
+
+                        // Apply migration if needed
+                        if (importedVersion < CURRENT_VERSION) {
+                            console.warn(`Migrating settings from v${importedVersion} to v${CURRENT_VERSION}`);
+                            if (typeof importedSettings.autoFullscreenEnabled === 'undefined') {
+                                importedSettings.autoFullscreenEnabled = true;
+                            }
+                            if (typeof importedSettings.swapButtonPosition === 'undefined') {
+                                importedSettings.swapButtonPosition = false;
+                            }
+                        }
+
+                        // Ensure all base structures exist
+                        importedSettings.soundSettings = importedSettings.soundSettings || {};
+                        importedSettings.tabLayouts = importedSettings.tabLayouts || {};
+                        importedSettings.layoutOrders = importedSettings.layoutOrders || {};
+                        importedSettings.lastTabId = importedSettings.lastTabId || 'favorites';
+
+                        // Update version number
+                        importedSettings.version = CURRENT_VERSION;
+                        break;
                     }
 
-                    // Update version number before saving
-                    importedSettings.version = CURRENT_VERSION;
+                    if (!importedSettings) {
+                        throw new Error('No compatible settings version found');
+                    }
 
-                    // Overwrite existing settings in localStorage and in-memory state
+                    // Apply migration if needed
+                    if (typeof importedSettings.autoFullscreenEnabled === 'undefined') {
+                        importedSettings.autoFullscreenEnabled = true;
+                    }
+
+                    // Ensure all base structures exist
+                    importedSettings.soundSettings = importedSettings.soundSettings || {};
+                    importedSettings.tabLayouts = importedSettings.tabLayouts || {};
+                    importedSettings.layoutOrders = importedSettings.layoutOrders || {};
+                    importedSettings.lastTabId = importedSettings.lastTabId || 'favorites';
+
+                    // Save the selected version
                     saveSettings(importedSettings);
-                    state.settings = importedSettings; // Update global state directly
+                    state.settings = importedSettings;
 
-                    console.log('Settings imported successfully.');
+                    console.log(`Settings imported successfully (v${importedSettings.version}).`);
                     document.dispatchEvent(new CustomEvent('settingsImported')); // Notify other modules
                     resolve(); // Indicate success
                 } catch (error) {
