@@ -1,19 +1,23 @@
 // Global state management
 const state = {
-    currentlyPlaying: new Map(), // Map soundId -> playingId
-    tabs: [],
-    currentTab: null, // Can be tabId (string) or 'favorites' (string)
-    settings: {}, // Loaded by persistence module directly now
-    apiBaseUrl: '', // Determined on init
-    longPressTimer: null,
-    longPressTarget: null,
-    lastLongPressTime: 0,
+  currentlyPlaying: new Map(), // Map soundId -> playingId
+  tabs: [],
+  currentTab: null, // Can be tabId (string) or 'favorites' (string)
+  settings: {}, // Loaded by persistence module directly now
+  apiBaseUrl: '', // Determined on init
+  longPressTimer: null,
+  longPressTarget: null,
+  lastLongPressTime: 0,
 
-    isAnythingPlayingUnpaused: false, // Tracks overall playback state for UI
-    isTalkThroughButtonPressed: false, // Tracks button press state locally
-    playbackGloballyPausedByToggle: false // Tracks C++ state via callback
-    
+  isAnythingPlayingUnpaused: false, // Tracks overall playback state for UI
+  isTalkThroughButtonPressed: false, // Tracks button press state locally
+  playbackGloballyPausedByToggle: false, // Tracks C++ state via callback
+
+  // --- NEW STATE FOR SEARCH ---
+  allSounds: [], // Holds data for all sounds for searching [{id, name, path, tabId, tabName}, ...]
+  isSearchModeActive: false // Track if search results are currently displayed
 };
+
 
 // DOM Elements
 const serverStatusEl = document.getElementById('server-status-text');
@@ -93,6 +97,44 @@ function init() {
     checkServerStatus();
 }
 
+// Function to fetch all sounds data for search
+// NOTE: This assumes an endpoint '/api/sounds/all' exists and returns
+// an array of sound objects like: [{id, name, path, tabId, tabName}, ...]
+// Adjust endpoint and data structure as needed based on your C++ backend.
+async function getAllSoundsData() {
+  if (state.allSounds.length > 0) {
+      console.log("getAllSoundsData: Returning cached data.");
+      return state.allSounds;
+  }
+  console.log("getAllSoundsData: Fetching from API...");
+  try {
+      // IMPORTANT: Replace '/api/sounds/all' with your actual endpoint
+      const allSoundsFromApi = await apiFetch('/api/sounds/all');
+
+      // Basic validation and potential mapping if structure differs
+      if (!Array.isArray(allSoundsFromApi)) {
+           throw new Error("API did not return an array for all sounds.");
+      }
+
+      state.allSounds = allSoundsFromApi.map(sound => ({
+           id: sound.id, // Ensure required fields exist
+           name: sound.name || 'Unknown Sound',
+           path: sound.path,
+           tabId: sound.tabId, // Assuming these fields are provided by API
+           tabName: sound.tabName || 'Unknown Tab', // Provide defaults
+           // Add other relevant data if needed by search/display
+      }));
+
+      console.log(`getAllSoundsData: Fetched and processed ${state.allSounds.length} sounds.`);
+      return state.allSounds;
+  } catch (error) {
+      console.error("Error fetching all sounds:", error);
+      state.allSounds = []; // Clear on error
+      // Potentially notify the user or disable search
+      throw error; // Re-throw for caller handling
+  }
+}
+
 // --- API Helper ---
 async function apiFetch(endpoint, options = {}) {
     const url = `${state.apiBaseUrl}${endpoint}`;
@@ -150,37 +192,51 @@ async function apiFetch(endpoint, options = {}) {
 
 // --- Server Status & Initial Load ---
 async function checkServerStatus() {
-    try {
-        await apiFetch('/api/status');
-        if (serverStatusEl) serverStatusEl.textContent = 'Connected';
-        if (statusIndicatorEl) statusIndicatorEl.className = 'status-dot connected';
-        updateTopBarProgressState(0);
+  try {
+      await apiFetch('/api/status');
+      if (serverStatusEl) serverStatusEl.textContent = 'Connected';
+      if (statusIndicatorEl) statusIndicatorEl.className = 'status-dot connected';
+      updateTopBarProgressState(0);
 
 
-        await loadTabs(); // Load tabs and activate the first/last active one
+      await loadTabs(); // Load tabs and activate the first/last active one
 
-         if (state.currentTab !== null && typeof state.currentTab !== 'undefined') {
-             checkForPlayingSounds();
-         } else {
-             console.warn("No current tab set after loadTabs, skipping initial checkForPlayingSounds.");
-             if (tabsContainerEl && tabsContainerEl.children.length === 0) { /*...*/ }
-              if(soundsContainerEl) soundsContainerEl.innerHTML = '<p class="no-sounds">Select a tab.</p>';
-         }
-         console.log("checkServerStatus successful, dispatching appReady"); // Add log
-         document.dispatchEvent(new CustomEvent('appReady'));
+       // --- NEW: Fetch all sounds data AFTER tabs are loaded ---
+       try {
+            await getAllSoundsData(); // Fetch and cache all sounds for search
+       } catch (soundFetchError) {
+            console.warn("Could not pre-fetch all sounds for search:", soundFetchError.message);
+            // Search might not work, but the app can continue loading the current tab
+       }
+       // --- END NEW ---
 
-    } catch (error) {
-        console.error("Failed initial server status check or subsequent load sequence:", error.message); // Log specific error message
-        if (tabsContainerEl) tabsContainerEl.innerHTML = '<p class="error-text">Failed to connect.</p>';
-        if (soundsContainerEl) soundsContainerEl.innerHTML = '<p class="error-text">Failed to connect.</p>';
-        updateTopBarProgressState(0);
-        state.isAnythingPlayingUnpaused = false; // Ensure state reflects no playback on error
-        updatePlayPauseButtonIcon();
-        console.log("checkServerStatus failed, dispatching appReady (with error state)"); // Add log
-        document.dispatchEvent(new CustomEvent('appReady')); // Dispatch even on error
 
-    }
+       if (state.currentTab !== null && typeof state.currentTab !== 'undefined') {
+           checkForPlayingSounds(); // Checks for currently playing sounds
+           // loadSounds for the current tab is called within setActiveTab during loadTabs
+       } else {
+           console.warn("No current tab set after loadTabs, skipping initial checkForPlayingSounds.");
+           if (tabsContainerEl && tabsContainerEl.children.length === 0) {
+               // Handle case with no tabs if necessary
+           }
+           if(soundsContainerEl) soundsContainerEl.innerHTML = '<p class="no-sounds">Select a tab.</p>';
+       }
+       console.log("checkServerStatus successful, dispatching appReady");
+       document.dispatchEvent(new CustomEvent('appReady')); // Notify other modules (like search.js)
+
+  } catch (error) {
+      console.error("Failed initial server status check or subsequent load sequence:", error.message);
+      if (tabsContainerEl) tabsContainerEl.innerHTML = '<p class="error-text">Failed to connect.</p>';
+      if (soundsContainerEl) soundsContainerEl.innerHTML = '<p class="error-text">Failed to connect.</p>';
+      updateTopBarProgressState(0);
+      state.isAnythingPlayingUnpaused = false; // Ensure state reflects no playback on error
+      updatePlayPauseButtonIcon();
+      console.log("checkServerStatus failed, dispatching appReady (with error state)");
+      document.dispatchEvent(new CustomEvent('appReady')); // Dispatch even on error
+
+  }
 }
+
 
 
 // --- Ripple Effect ---
@@ -1258,7 +1314,10 @@ function updateSoundCardDisplay(soundId, cardElement = null) {
 
 // --- Playback Control ---
 async function playSound(soundId) {
+
+  
     if (editMode.isActive()) return; // Don't play in edit mode
+
 
     try {
         if (!soundsContainerEl) throw new Error("Sounds container not found.");
@@ -1573,15 +1632,80 @@ async function checkForPlayingSounds() {
     startProgressPolling();
 }
 
-// Make functions globally accessible if needed by other modules
+function displaySearchResults(results, searchTerm = "") {
+  if (!soundsContainerEl) return;
+  console.log(`Displaying ${results.length} search results for "${searchTerm}"`);
+  state.isSearchModeActive = true;
+  soundsContainerEl.innerHTML = ''; // Clear current grid content
+  soundsContainerEl.classList.add('search-results-mode'); // Optional class for styling
+
+  // Ensure layout mode is appropriate for results (e.g., force list or grid)
+  // For now, let's keep the current layout mode from persistence
+  layout.applyCurrentLayoutMode(state.currentTab || 'favorites'); // Re-apply grid/list class
+
+  if (results.length === 0) {
+      soundsContainerEl.innerHTML = `<p class="no-search-results">No sounds found matching "${searchTerm}"</p>`;
+  } else {
+      const fragment = document.createDocumentFragment();
+      results.forEach(sound => {
+          // Basic validation
+           if (!sound || typeof sound.id === 'undefined' || !sound.path || !sound.name) {
+               console.warn("Skipping invalid sound data during search result display:", sound);
+               return; // Skip this invalid sound
+           }
+           const soundElement = createSoundCardElement(sound); // Reuse existing function
+           if (soundElement) {
+               // Optional: Add tab info to the card for context?
+               const tabNameSpan = document.createElement('span');
+               tabNameSpan.textContent = ` (Tab: ${sound.tabName || 'Unknown'})`;
+               tabNameSpan.style.fontSize = '0.7rem';
+               tabNameSpan.style.color = 'var(--text-secondary)';
+               tabNameSpan.style.marginLeft = '5px';
+               // Append after sound name (need to find sound-text span)
+               const textElement = soundElement.querySelector('.sound-text');
+               if (textElement) {
+                   textElement.appendChild(tabNameSpan);
+               }
+
+               fragment.appendChild(soundElement);
+           } else {
+               console.warn("Failed to create sound card element for search result:", sound);
+           }
+      });
+      soundsContainerEl.appendChild(fragment);
+  }
+
+  // Re-initialize drag/drop for search results if needed? For now, disable drag/drop in search.
+   if (window.dragDropManager && typeof window.dragDropManager.destroy === 'function') {
+       // dragDropManager.destroy(soundsContainerEl); // Disable sorting
+   }
+}
+
+function restoreTabView() {
+  if (!state.isSearchModeActive) return; // Only restore if search was active
+  console.log("Restoring tab view...");
+  state.isSearchModeActive = false;
+  soundsContainerEl?.classList.remove('search-results-mode');
+  // Reload sounds for the *actual* current tab
+  reloadSoundsForCurrentTab(); // This already handles loading indicator and displaying sounds
+}
+
+
 window.app = {
-    reloadSoundsForCurrentTab: reloadSoundsForCurrentTab,
-    updateSoundCardDisplay: updateSoundCardDisplay,
-    // Expose reset functions if needed externally (optional)
-    // resetCurrentPageVisuals: resetCurrentPageVisuals,
-    // resetCurrentPageLayout: resetCurrentPageLayout,
-    // resetAllSettings: resetAllSettings
+  reloadSoundsForCurrentTab: reloadSoundsForCurrentTab,
+  updateSoundCardDisplay: updateSoundCardDisplay,
+  // Reset functions (keep if needed)
+  // resetCurrentPageVisuals: resetCurrentPageVisuals,
+  // resetCurrentPageLayout: resetCurrentPageLayout,
+  // resetAllSettings: resetAllSettings,
+  // --- NEW Search related functions ---
+  getAllSoundsData: getAllSoundsData,
+  displaySearchResults: displaySearchResults,
+  restoreTabView: restoreTabView,
+  createSoundCardElement: createSoundCardElement // Expose if needed
 };
 
+
 // --- Initialization ---
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', init); // App init
+

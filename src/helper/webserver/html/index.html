@@ -25,6 +25,8 @@
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <!-- Driver.js Core (Local - Load synchronously in head) -->
     <script src="vendor/driverjs/js/driver.js.iife.js"></script>
+    <!-- NEW: Fuse.js for fuzzy search -->
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js/dist/fuse.min.js"></script>
 </head>
 <body>
     <!-- Top status/action bar -->
@@ -37,15 +39,15 @@
         </div>
         <!-- Action Buttons -->
         <div class="action-buttons">
-            <button id="play-pause-toggle-button" class="icon-button top-bar-button" aria-label="Toggle Play/Pause">
+            <button id="play-pause-toggle-button" class="icon-button top-bar-button hidden" aria-label="Toggle Play/Pause"> <!-- Default hidden -->
                 <span class="material-symbols-outlined">play_arrow</span> <!-- Default icon -->
             </button>
-            
+
 
             <button id="layout-mode-button" class="icon-button top-bar-button hidden" aria-label="Change Layout">
                 <span class="material-symbols-outlined">view_module</span>
             </button>
-            
+
             <button id="edit-mode-button" class="icon-button top-bar-button" aria-label="Toggle Edit Mode">
                 <span class="material-symbols-outlined">edit</span>
             </button>
@@ -66,6 +68,16 @@
     <div class="container">
         <!-- Wrapper for tab content animation -->
         <div id="tab-content-wrapper">
+
+            <!-- --- NEW SEARCH BAR START --- -->
+            <div id="search-bar-container">
+                <input type="search" id="search-input" placeholder="Search all sounds..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <button id="search-clear-close-button" class="icon-button" aria-label="Clear search or close bar">
+                    <span class="material-symbols-outlined">close</span> <!-- Initial icon -->
+                </button>
+            </div>
+            <!-- --- NEW SEARCH BAR END --- -->
+
             <!-- Main sound grid -->
             <main class="sounds-grid layout-grid-3" id="sounds-container">
                 <!-- Sounds will be dynamically added here -->
@@ -232,7 +244,7 @@
                  <label class="toggle-switch">
                     <input type="checkbox" id="swap-button-position-toggle">
                     <span class="slider"></span>
-                     Swap Menu Buttons to Left 
+                     Swap Menu Buttons to Left
                  </label>
             </div>
             <div class="divider"></div>
@@ -241,7 +253,7 @@
             <div class="settings-section">
                 <h3>Button Layouts</h3>
                 <p class="modal-info">Reset page visuals/layout or all settings (requires long press). Import/Export layout and sound customizations.</p>
-                
+
                 <!-- Reset Buttons -->
                 <div class="modal-actions vertical reset-actions">
                     <button id="reset-current-page-visuals" class="action-button long-press-button" data-long-press-duration="1000">
@@ -285,7 +297,7 @@
                         <span>Start Tutorial</span>
                     </button>
                 </div>
-                
+
                 <span>🔗<a href="https://github.com/motivated2die/soundux-remote/wiki/HOME-%F0%9F%8E%AE" style="
                     font-size: 0.85rem;
                     color: var(--text-secondary);
@@ -312,6 +324,9 @@
 
     <!-- Tutorial Logic (depends on driver.js loaded in head) -->
     <script src="js/tutorial.js" defer></script>
+
+    <!-- NEW: Search Logic -->
+    <script src="js/search.js" defer></script>
 
     <!-- Load main app logic LAST -->
     <script src="js/app.js" defer></script>

@@ -301,7 +301,6 @@ main#sounds-container {
   /* Keep top/left/right padding */
   padding: 10px;
   /* Restore padding shorthand */
-  /* padding: 10px 10px 0 10px; NO - use shorthand below */
   overflow-y: auto;
   /* Make this element scrollable */
   background-color: var(--v-background-dark);
@@ -311,10 +310,13 @@ main#sounds-container {
   height: 100%;
   /* Fill the parent wrapper */
   /* --- REVISED PADDING --- */
-  /* Re-add safe area inset to the internal padding */
   padding-bottom: calc(var(--header-height) + var(--tabs-height) + env(safe-area-inset-bottom, 0px) + 10px);
   /* 10px buffer */
+
+  /* --- NEW: Align grid content (rows) to the top --- */
+  align-content: start;
 }
+
 
 main#sounds-container::-webkit-scrollbar {
   display: none;
@@ -2444,4 +2446,140 @@ main#sounds-container.layout-list .sortable-swap-highlight {
 /* Remove hover effect */
 #wake-lock-indicator:hover {
   background-color: unset;
+}
+
+
+/* --- NEW CODE START --- */
+/* === Search Bar Styles === */
+
+#search-bar-container {
+  position: fixed; /* Fixed position below top bar */
+  top: var(--top-bar-height); /* Position below the standard top bar */
+  left: env(safe-area-inset-left, 0px);
+  right: env(safe-area-inset-right, 0px);
+  z-index: 105; /* Above grid, below top bar */
+  height: 50px; /* Adjust height as needed */
+  background-color: var(--v-secondary-darken1); /* Match top bar */
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transform: translateY(-100%); /* Initially hidden above the view */
+  transition: transform 0.3s ease-out;
+  visibility: hidden; /* Initially hidden for accessibility */
+  will-change: transform; /* Hint for animation performance */
+}
+
+#search-bar-container.search-bar-visible {
+  transform: translateY(0); /* Slide into view */
+  visibility: visible;
+}
+
+#search-input {
+  flex-grow: 1;
+  height: 100%;
+  border: none;
+  border-radius: 18px; /* Rounded corners */
+  background-color: var(--v-secondary-base); /* Slightly lighter background */
+  color: var(--text-primary);
+  padding: 0 15px;
+  font-size: 0.9rem;
+  outline: none;
+  -webkit-appearance: none; /* Remove default iOS appearance */
+}
+
+/* Style placeholder text */
+#search-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+/* Style clear button (X) for search input in WebKit browsers */
+#search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none; /* Remove default */
+  display: none; /* Hide it, we use our own button */
+}
+
+#search-clear-close-button {
+  width: 34px; /* Match input height */
+  height: 34px;
+  flex-shrink: 0; /* Prevent shrinking */
+  background-color: transparent; /* Match other icon buttons */
+  color: var(--text-secondary);
+  padding: 0;
+  border-radius: 50%;
+}
+
+#search-clear-close-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+#search-clear-close-button .material-symbols-outlined {
+  font-size: 20px;
+}
+
+/* Style the main sounds container when search is active */
+main#sounds-container.search-active {
+  /* Add padding to the top to make space for the search bar */
+  /* Use calc() to combine search bar height and original padding */
+  padding-top: calc(50px + 10px); /* search-bar height + original gap */
+  transition: padding-top 0.3s ease-out;
+  will-change: padding-top; /* Hint for animation performance */
+}
+
+/* Style for when sounds container is being dragged down to reveal search */
+main#sounds-container.search-dragging {
+  /* You might add specific styles during drag if needed, e.g., transition none */
+  transition: none; /* Disable transition during drag */
+}
+
+#search-bar-container.search-dragging {
+  transition: none; /* Disable transition during drag */
+}
+
+/* Add specific class for search results if needed */
+/* main#sounds-container.search-results-mode { ... } */
+
+/* Style for "No results" message */
+.no-search-results {
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 40px 20px;
+  font-style: italic;
+  width: 100%; /* Ensure it spans grid width */
+  grid-column: 1 / -1; /* Span all columns if grid is still active */
+}
+
+
+/* --- NEW CODE END --- */
+
+
+#search-bar-container {
+  /* background-color: var(--v-secondary-darken1); */
+  /* padding: 8px 10px; */
+  /* background-color:var(--v-secondary-darken1); */
+  padding: 8px 10px 0px 10px;
+  /* border-bottom: 1px solid rgba(255,255,255,.1); */
+  /* box-shadow: 0 2px 5px rgba(0,0,0,.2); */
+  /* border-bottom:1px solid rgba(255,255,255,.1); */
+  /* box-shadow:0 2px 5px rgba(0,0,0,.2); */
+}
+#search-input {
+  /* border-radius: 18px; */
+  /* background-color: var(--v-secondary-base); */
+  border-radius: var(--border-radius);
+  background-color: var(--v-secondary-darken1);
+}
+#search-clear-close-button {
+  /* width: 34px; */
+  /* height: 34px; */
+  height: 100%;
+  width: 45px;
+  /* background-color: transparent; */
+  background-color: var(--v-secondary-darken1);
+  /* border-radius: 50% */
+  border-radius: var(--border-radius);
 }

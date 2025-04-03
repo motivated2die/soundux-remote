@@ -729,6 +729,47 @@ namespace Soundux::Objects
             catch (const std::exception &e) { res.status = 500; res.set_content("{\"error\":\"An unexpected error occurred: " + std::string(e.what()) + "\"}", "application/json"); }
         });
 
+        
+        // --- NEW: Get ALL sounds for search ---
+        server->Get("/api/sounds/all", [](const httplib::Request& req, httplib::Response& res) {
+            try {
+                nlohmann::json allSoundsJson = nlohmann::json::array();
+                auto allTabs = Soundux::Globals::gData.getTabs(); // Get all tabs
+
+                for (const auto& tab : allTabs) {
+                    for (const auto& sound : tab.sounds) {
+                        // Create a JSON object for each sound, including tab info
+                        nlohmann::json soundObj;
+                        soundObj["id"] = sound.id;
+                        soundObj["name"] = sound.name;
+                        soundObj["path"] = sound.path;
+                        soundObj["tabId"] = tab.id;       // Include the tab ID
+                        soundObj["tabName"] = tab.name;     // Include the tab name
+                        soundObj["isFavorite"] = sound.isFavorite; // Keep favorite status if needed later
+
+                        // Add other necessary fields if search needs them
+
+                        allSoundsJson.push_back(soundObj);
+                    }
+                }
+
+                
+                res.set_content(allSoundsJson.dump(), "application/json");
+                Fancy::fancy.logTime().message() << "[API] Served /api/sounds/all request with " << allSoundsJson.size() << " sounds.";
+
+            } catch (const std::exception& e) {
+                res.status = 500;
+                res.set_content("{\"error\":\"Failed to get all sounds: " + std::string(e.what()) + "\"}", "application/json");
+                Fancy::fancy.logTime().failure() << "[API] Error serving /api/sounds/all: " << e.what();
+            } catch (...) {
+                res.status = 500;
+                res.set_content("{\"error\":\"An unknown error occurred while fetching all sounds.\"}", "application/json");
+                Fancy::fancy.logTime().failure() << "[API] Unknown error serving /api/sounds/all.";
+            }
+        });
+        // --- END NEW ---
+
+
         // Get progress of currently playing sounds
         server->Get("/api/sounds/progress", [](const httplib::Request &, httplib::Response &res) {
             try {
