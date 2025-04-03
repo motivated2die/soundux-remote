@@ -1,1876 +1,1878 @@
 /* --- ENTIRE FILE REPLACE --- */
 :root {
-    /* Colors */
-    --v-primary-base: #52b18c;
-    --v-primary-lighten1: #6ecda6;
-    --v-primary-darken1: #359672;
-    --v-secondary-base: #424242;
-    --v-secondary-darken1: #2c2c2c;
-    /* Original top-bar color */
-    --v-secondary-darken2: #171717;
-    --v-background-dark: #121212;
-    --v-surface-dark: #1e1e1e;
-    --edit-mode-color: rgb(0, 108, 98);
-    /* Green */
-    --text-primary: #ffffff;
-    --text-secondary: #b0b0b0;
-    --error-color: #ff5252;
-    --warning-color: #fb8c00;
-    --success-color: #4caf50;
-    --ptt-active-color: rgb(21, 56, 43);
-    /* Slightly less opaque maybe */
+  /* Colors */
+  --v-primary-base: #52b18c;
+  --v-primary-lighten1: #6ecda6;
+  --v-primary-darken1: #359672;
+  --v-secondary-base: #424242;
+  --v-secondary-darken1: #2c2c2c;
+  /* Original top-bar color */
+  --v-secondary-darken2: #171717;
+  --v-background-dark: #121212;
+  --v-surface-dark: #1e1e1e;
+  --edit-mode-color: rgb(57 119 95);
+  /* Green */
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0b0;
+  --error-color: #ff5252;
+  --warning-color: #fb8c00;
+  --success-color: #4caf50;
+  --ptt-active-color: rgb(21, 56, 43);
+  /* Slightly less opaque maybe */
 
+  /* Highlight Colors */
+  --highlight-color-default-border: rgb(180, 180, 180);
+  --highlight-color-default-shadow: rgba(200, 200, 200, 0.6);
+  --sound-color-red-highlight: rgba(255, 100, 100, 0.7);
+  --sound-color-orange-highlight: rgba(255, 170, 100, 0.7);
+  --sound-color-yellow-highlight: rgba(255, 227, 100, 0.7);
+  --sound-color-green-highlight: rgba(165, 255, 100, 0.7);
+  --sound-color-blue-highlight: rgba(100, 154, 255, 0.7);
+  --sound-color-purple-highlight: rgba(200, 100, 255, 0.7);
+  --sound-color-pink-highlight: rgba(255, 150, 208, 0.7);
 
-    /* Highlight Colors */
-    --highlight-color-default-border: rgb(180, 180, 180);
-    --highlight-color-default-shadow: rgba(200, 200, 200, 0.6);
-    --sound-color-red-highlight: rgba(255, 100, 100, 0.7);
-    --sound-color-orange-highlight: rgba(255, 170, 100, 0.7);
-    --sound-color-yellow-highlight: rgba(255, 227, 100, 0.7);
-    --sound-color-green-highlight: rgba(165, 255, 100, 0.7);
-    --sound-color-blue-highlight: rgba(100, 154, 255, 0.7);
-    --sound-color-purple-highlight: rgba(200, 100, 255, 0.7);
-    --sound-color-pink-highlight: rgba(255, 150, 208, 0.7);
+  /* Top bar progress color */
+  --top-bar-progress-color: #444;
+  /* Lighter grey */
+  --progress-percentage: 0%;
+  /* JS will update this */
 
-    /* Top bar progress color */
-    --top-bar-progress-color: #444;
-    /* Lighter grey */
-    --progress-percentage: 0%;
-    /* JS will update this */
+  /* Sound Card Colors */
+  --sound-color-red-bg: #4a2a2a;
+  --sound-color-orange-bg: #5a3c1f;
+  --sound-color-yellow-bg: #5a502a;
+  --sound-color-green-bg: #344a2a;
+  --sound-color-blue-bg: #2a3a4a;
+  --sound-color-purple-bg: #3a2a4a;
+  --sound-color-pink-bg: #4a2a3a;
 
-    /* Sound Card Colors */
-    --sound-color-red-bg: #4a2a2a;
-    --sound-color-orange-bg: #5a3c1f;
-    --sound-color-yellow-bg: #5a502a;
-    --sound-color-green-bg: #344a2a;
-    --sound-color-blue-bg: #2a3a4a;
-    --sound-color-purple-bg: #3a2a4a;
-    --sound-color-pink-bg: #4a2a3a;
-
-    /* Layout */
-    --border-radius: 6px;
-    --transition-speed: 0.2s;
-    --top-bar-height: 35px;
-    /* Base height */
-    --header-height: 80px;
-    --tabs-height: 60px;
+  /* Layout */
+  --border-radius: 6px;
+  --transition-speed: 0.2s;
+  --top-bar-height: 35px;
+  /* Base height */
+  --header-height: 80px;
+  --tabs-height: 60px;
 }
 
 /* --- Base & Reset --- */
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
 body {
-    font-family: "Roboto", sans-serif;
-    background-color: var(--v-background-dark);
-    color: var(--text-primary);
-    line-height: 1.4;
-    width: 100vw;
-    /* --- REVERTED: Use standard viewport height --- */
-    height: 100vh;
-    overflow: hidden;
-    /* Keep body overflow hidden */
-    overscroll-behavior-y: contain;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
-    touch-action: manipulation;
-    margin: 0;
-    /* Keep margin 0 */
+  font-family: 'Roboto', sans-serif;
+  background-color: var(--v-background-dark);
+  color: var(--text-primary);
+  line-height: 1.4;
+  width: 100vw;
+  /* --- REVERTED: Use standard viewport height --- */
+  height: 100vh;
+  overflow: hidden;
+  /* Keep body overflow hidden */
+  overscroll-behavior-y: contain;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  margin: 0;
+  /* Keep margin 0 */
 }
 
 /* Safe area insets - Only apply bottom/left/right to body */
 body {
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* --- Layout Structure --- */
 .container {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    /* Fill body's 100vh */
-    padding-top: max(var(--top-bar-height), env(safe-area-inset-top));
-    position: relative;
-    /* Keep relative positioning */
-    /* Ensure no bottom padding here */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  /* Fill body's 100vh */
+  padding-top: max(var(--top-bar-height), env(safe-area-inset-top));
+  position: relative;
+  /* Keep relative positioning */
+  /* Ensure no bottom padding here */
 }
 
 /* Tab content wrapper */
 #tab-content-wrapper {
-    position: relative;
-    flex-grow: 1;
-    overflow: hidden;
+  position: relative;
+  flex-grow: 1;
+  overflow: hidden;
 }
 
 /* Swipe animation for current tab */
 .swipe-out {
-    animation: swipeOut 200ms forwards;
+  animation: swipeOut 200ms forwards;
 }
 
 @keyframes swipeOut {
-    to {
-        transform: translateX(var(--swipe-distance, -100%));
-        opacity: 0;
-    }
+  to {
+    transform: translateX(var(--swipe-distance, -100%));
+    opacity: 0;
+  }
 }
 
 /* Faster fade-in for new tab content */
 .tab-content {
-    transition: opacity 100ms ease-in;
+  transition: opacity 100ms ease-in;
 }
 
 /* --- Top Bar - MODIFIED --- */
 .top-bar {
-    position: fixed;
-    top: 0;
-    left: env(safe-area-inset-left, 0px);
-    right: env(safe-area-inset-right, 0px);
-    z-index: 110;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    /* Vertically center content */
-    padding: 0 10px;
-    /* Standard horizontal padding only */
-    /* --- CHANGED: Height is dynamic, minimum of base height, max of inset --- */
-    height: max(var(--top-bar-height), env(safe-area-inset-top));
-    /* Gradient background */
-    background: linear-gradient(to right,
-            var(--top-bar-progress-color) var(--progress-percentage),
-            var(--v-secondary-darken1) var(--progress-percentage));
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    transition: background-color var(--transition-speed) ease;
-    box-sizing: border-box;
+  position: fixed;
+  top: 0;
+  left: env(safe-area-inset-left, 0px);
+  right: env(safe-area-inset-right, 0px);
+  z-index: 110;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  /* Vertically center content */
+  padding: 0 10px;
+  /* Standard horizontal padding only */
+  /* --- CHANGED: Height is dynamic, minimum of base height, max of inset --- */
+  height: max(var(--top-bar-height), env(safe-area-inset-top));
+  /* Gradient background */
+  background: linear-gradient(to right,
+      var(--top-bar-progress-color) var(--progress-percentage),
+      var(--v-secondary-darken1) var(--progress-percentage));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  transition: background-color var(--transition-speed) ease;
+  box-sizing: border-box;
 }
 
 /* --- END TOP BAR MODIFICATIONS --- */
 
-
 /* Top bar in Edit Mode */
 .top-bar.edit-mode-active {
-    background: var(--edit-mode-color);
+  background: var(--edit-mode-color);
 }
 
 /* Play Indicator Icon - Default left position */
 .play-indicator {
-    position: absolute;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 20px;
-    color: rgba(255, 255, 255, 0.9);
-    pointer-events: none;
-    z-index: 1;
-    /* Above placeholder */
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.9);
+  pointer-events: none;
+  z-index: 1;
+  /* Above placeholder */
 }
 
 .play-indicator.hidden {
-    display: none;
+  display: none;
 }
 
 /* Edit Mode Info Styles - Default right position (before buttons) */
 .edit-mode-info {
-    display: none;
-    /* Hidden by default */
-    align-items: center;
-    gap: 5px;
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.8);
-    margin-right: 10px;
-    /* Space before buttons */
-    order: 1;
-    /* Default order (before buttons) */
+  display: none;
+  /* Hidden by default */
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-right: 10px;
+  /* Space before buttons */
+  order: 1;
+  /* Default order (before buttons) */
 }
 
 .edit-mode-info .material-symbols-outlined {
-    font-size: 16px;
+  font-size: 16px;
 }
 
 .top-bar.edit-mode-active .edit-mode-info {
-    display: flex;
-    /* Show when edit mode is active */
+  display: flex;
+  /* Show when edit mode is active */
 }
 
 /* Hide play indicator when edit info is shown */
 .top-bar.edit-mode-active .play-indicator {
-    display: none;
+  display: none;
 }
 
 /* Placeholder - Takes up space on the opposite side of buttons */
 .top-bar .top-bar-placeholder {
-    flex-grow: 1;
-    /* Take up remaining space */
-    order: 0;
-    /* Default order (left side) */
+  flex-grow: 1;
+  /* Take up remaining space */
+  order: 0;
+  /* Default order (left side) */
 }
 
 /* Top Bar Action Buttons - Default right alignment */
 .top-bar .action-buttons {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    flex-shrink: 0;
-    height: 100%;
-    order: 2;
-    /* Default order (right side) */
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  height: 100%;
+  order: 2;
+  /* Default order (right side) */
 }
 
 /* --- NEW: Left Alignment Styles --- */
 .top-bar.buttons-left .top-bar-placeholder {
-    order: 2;
-    /* Placeholder moves to the right */
+  order: 2;
+  /* Placeholder moves to the right */
 }
 
 .top-bar.buttons-left .edit-mode-info {
-    order: 1;
-    /* Edit info stays before buttons */
-    margin-right: 0;
-    /* Remove right margin */
-    margin-left: 10px;
-    /* Add left margin */
+  order: 1;
+  /* Edit info stays before buttons */
+  margin-right: 0;
+  /* Remove right margin */
+  margin-left: 10px;
+  /* Add left margin */
 }
 
 .top-bar.buttons-left .action-buttons {
-    order: 0;
-    /* Buttons move to the left */
+  order: 0;
+  /* Buttons move to the left */
 }
 
 /* Adjust play indicator position when buttons are left */
 .top-bar.buttons-left .play-indicator {
-    left: auto;
-    /* Remove fixed left */
-    right: 10px;
-    /* Position on the right */
+  left: auto;
+  /* Remove fixed left */
+  right: 10px;
+  /* Position on the right */
 }
 
 /* --- END Left Alignment Styles --- */
 
-
 .icon-button.top-bar-button {
-    width: 32px;
-    height: 32px;
-    color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
+  color: var(--text-secondary);
 }
 
 .icon-button.top-bar-button:hover,
 .icon-button.top-bar-button.active {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: var(--text-primary);
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
 }
 
 .top-bar.edit-mode-active .icon-button.top-bar-button {
-    color: white;
+  color: white;
 }
 
 .top-bar.edit-mode-active .icon-button.top-bar-button:hover,
 .top-bar.edit-mode-active .icon-button.top-bar-button.active {
-    background-color: rgba(0, 0, 0, 0.2);
+  background-color: rgba(0, 0, 0, 0.2);
 }
 
 .icon-button.top-bar-button .material-symbols-outlined {
-    font-size: 20px;
+  font-size: 20px;
 }
 
 /* Tutorial Help Button Special Styling */
 #tutorial-help-button {
-    background-color: rgba(82, 177, 140, 0.1);
-    color: var(--v-primary-base);
+  background-color: rgba(82, 177, 140, 0.1);
+  color: var(--v-primary-base);
 }
 
 #tutorial-help-button:hover {
-    background-color: rgba(82, 177, 140, 0.2);
+  background-color: rgba(82, 177, 140, 0.2);
 }
 
 #tutorial-help-button.active {
-    background-color: var(--v-primary-base);
-    color: white;
+  background-color: var(--v-primary-base);
+  color: white;
 }
 
 /* --- Main Sound Grid --- */
 main#sounds-container {
-    order: 1;
-    flex-grow: 1;
-    /* Should fill the wrapper */
-    display: grid;
-    gap: 10px;
-    /* Keep top/left/right padding */
-    padding: 10px;
-    /* Restore padding shorthand */
-    /* padding: 10px 10px 0 10px; NO - use shorthand below */
-    overflow-y: auto;
-    /* Make this element scrollable */
-    background-color: var(--v-background-dark);
-    overscroll-behavior-y: contain;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    height: 100%;
-    /* Fill the parent wrapper */
-    /* --- REVISED PADDING --- */
-    /* Re-add safe area inset to the internal padding */
-    padding-bottom: calc(var(--header-height) + var(--tabs-height) + env(safe-area-inset-bottom, 0px) + 10px);
-    /* 10px buffer */
+  order: 1;
+  flex-grow: 1;
+  /* Should fill the wrapper */
+  display: grid;
+  gap: 10px;
+  /* Keep top/left/right padding */
+  padding: 10px;
+  /* Restore padding shorthand */
+  /* padding: 10px 10px 0 10px; NO - use shorthand below */
+  overflow-y: auto;
+  /* Make this element scrollable */
+  background-color: var(--v-background-dark);
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  height: 100%;
+  /* Fill the parent wrapper */
+  /* --- REVISED PADDING --- */
+  /* Re-add safe area inset to the internal padding */
+  padding-bottom: calc(var(--header-height) + var(--tabs-height) + env(safe-area-inset-bottom, 0px) + 10px);
+  /* 10px buffer */
 }
 
 main#sounds-container::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 
 /* Layout modes */
 main#sounds-container.layout-grid-3 {
-    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
 }
 
 main#sounds-container.layout-grid-2 {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
 }
 
 main#sounds-container.layout-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    padding-left: 10px;
-    padding-right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 /* --- Sound Card --- */
 .sound-card {
-    position: relative;
-    background-color: var(--v-surface-dark);
-    border-radius: var(--border-radius);
-    padding: 10px;
-    text-align: center;
-    cursor: pointer;
-    transition: background-color var(--transition-speed) ease, transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease, background var(--transition-speed) ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 75px;
-    max-height: 90px;
-    color: var(--text-primary);
-    border: 2px solid transparent;
-    font-size: 0.9rem;
-    line-height: 1.2;
-    word-break: break-word;
-    hyphens: auto;
-    overflow: hidden;
-    --sound-base-color: var(--v-surface-dark);
-    --highlight-border-color: transparent;
-    --highlight-shadow-color: transparent;
+  position: relative;
+  background-color: var(--v-surface-dark);
+  border-radius: var(--border-radius);
+  padding: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color var(--transition-speed) ease,
+    transform var(--transition-speed) ease,
+    box-shadow var(--transition-speed) ease,
+    background var(--transition-speed) ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 75px;
+  max-height: 90px;
+  color: var(--text-primary);
+  border: 2px solid transparent;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  word-break: break-word;
+  hyphens: auto;
+  overflow: hidden;
+  --sound-base-color: var(--v-surface-dark);
+  --highlight-border-color: transparent;
+  --highlight-shadow-color: transparent;
 }
 
 .sound-card:hover {
-    background-color: var(--v-secondary-darken1);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, .2);
-    --sound-base-color: var(--v-secondary-darken1);
+  background-color: var(--v-secondary-darken1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  --sound-base-color: var(--v-secondary-darken1);
 }
 
 /* Edit Mode Sound Card Styles */
 .edit-mode .sound-card {
-    cursor: default;
+  cursor: default;
 }
 
 .edit-mode .sound-card:hover {
-    background-color: var(--v-secondary-darken1);
-    box-shadow: none;
+  background-color: var(--v-secondary-darken1);
+  box-shadow: none;
 }
 
 .sortable-ghost {
-    opacity: 0.4;
-    background-color: var(--v-secondary-base) !important;
+  opacity: 0.4;
+  background-color: var(--v-secondary-base) !important;
 }
 
 .sortable-chosen,
 .sortable-drag {
-    opacity: 0.8;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, .3);
-    transform: scale(1.05);
-    cursor: grabbing !important;
+  opacity: 0.8;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  transform: scale(1.05);
+  cursor: grabbing !important;
 }
 
 /* Playing State Highlight Animation */
 .sound-card.playing {
-    --highlight-border-color: var(--highlight-color-default-border);
-    --highlight-shadow-color: var(--highlight-color-default-shadow);
-    animation: highlightFade 2.5s forwards ease-out;
+  --highlight-border-color: var(--highlight-color-default-border);
+  --highlight-shadow-color: var(--highlight-color-default-shadow);
+  animation: highlightFade 2.5s forwards ease-out;
 }
 
 @keyframes highlightFade {
-    0% {
-        border-color: var(--highlight-border-color);
-        box-shadow: 0 0 6px var(--highlight-shadow-color);
-    }
+  0% {
+    border-color: var(--highlight-border-color);
+    box-shadow: 0 0 6px var(--highlight-shadow-color);
+  }
 
-    100% {
-        border-color: transparent;
-        box-shadow: none;
-    }
+  100% {
+    border-color: transparent;
+    box-shadow: none;
+  }
 }
 
 /* Playing state background gradient (for grid) */
 .sound-card.playing:not(.layout-list .sound-card) {
-    background: linear-gradient(to right,
-            var(--v-primary-darken1) var(--progress-percentage, 0%),
-            var(--sound-base-color) var(--progress-percentage, 0%));
+  background: linear-gradient(to right,
+      var(--v-primary-darken1) var(--progress-percentage, 0%),
+      var(--sound-base-color) var(--progress-percentage, 0%));
 }
 
 /* Custom Color Highlight Overrides */
 .sound-card.sound-color-red.playing {
-    --highlight-border-color: #ff8a80;
-    --highlight-shadow-color: var(--sound-color-red-highlight);
+  --highlight-border-color: #ff8a80;
+  --highlight-shadow-color: var(--sound-color-red-highlight);
 }
 
 .sound-card.sound-color-orange.playing {
-    --highlight-border-color: #ffcc80;
-    --highlight-shadow-color: var(--sound-color-orange-highlight);
+  --highlight-border-color: #ffcc80;
+  --highlight-shadow-color: var(--sound-color-orange-highlight);
 }
 
 .sound-card.sound-color-yellow.playing {
-    --highlight-border-color: #fff59d;
-    --highlight-shadow-color: var(--sound-color-yellow-highlight);
+  --highlight-border-color: #fff59d;
+  --highlight-shadow-color: var(--sound-color-yellow-highlight);
 }
 
 .sound-card.sound-color-green.playing {
-    --highlight-border-color: #a5d6a7;
-    --highlight-shadow-color: var(--sound-color-green-highlight);
+  --highlight-border-color: #a5d6a7;
+  --highlight-shadow-color: var(--sound-color-green-highlight);
 }
 
 .sound-card.sound-color-blue.playing {
-    --highlight-border-color: #90caf9;
-    --highlight-shadow-color: var(--sound-color-blue-highlight);
+  --highlight-border-color: #90caf9;
+  --highlight-shadow-color: var(--sound-color-blue-highlight);
 }
 
 .sound-card.sound-color-purple.playing {
-    --highlight-border-color: #ce93d8;
-    --highlight-shadow-color: var(--sound-color-purple-highlight);
+  --highlight-border-color: #ce93d8;
+  --highlight-shadow-color: var(--sound-color-purple-highlight);
 }
 
 .sound-card.sound-color-pink.playing {
-    --highlight-border-color: #f48fb1;
-    --highlight-shadow-color: var(--sound-color-pink-highlight);
+  --highlight-border-color: #f48fb1;
+  --highlight-shadow-color: var(--sound-color-pink-highlight);
 }
 
 /* Sound Card Content Wrapper */
 .sound-content-wrapper {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    width: 100%;
-    justify-content: center;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  justify-content: center;
 }
 
 /* List Layout Specific Styles */
 main#sounds-container.layout-list .sound-card {
-    min-height: auto;
-    max-height: none;
-    justify-content: flex-start;
-    padding: 4% 15px;
-    text-align: left;
-    border-radius: 0;
-    border: none;
-    border-bottom: 1px solid var(--v-secondary-darken1);
-    background-color: transparent;
-    --sound-base-color: transparent;
-    background: transparent !important;
-    animation: none;
-    border-color: transparent !important;
-    box-shadow: none !important;
+  min-height: auto;
+  max-height: none;
+  justify-content: flex-start;
+  padding: 4% 15px;
+  text-align: left;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--v-secondary-darken1);
+  background-color: transparent;
+  --sound-base-color: transparent;
+  background: transparent !important;
+  animation: none;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
 main#sounds-container.layout-list .sound-card:hover {
-    background-color: var(--v-secondary-darken2);
-    --sound-base-color: var(--v-secondary-darken2);
+  background-color: var(--v-secondary-darken2);
+  --sound-base-color: var(--v-secondary-darken2);
 }
 
 main#sounds-container.layout-list .sound-card:last-child {
-    border-bottom: none;
+  border-bottom: none;
 }
 
 .layout-list .sound-content-wrapper {
-    justify-content: flex-start;
-    gap: 10px;
+  justify-content: flex-start;
+  gap: 10px;
 }
 
 .layout-list .sound-text {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 1rem;
 }
 
 .layout-list .sound-emoji-list {
-    font-size: 1.4em;
-    width: 24px;
-    text-align: center;
+  font-size: 1.4em;
+  width: 24px;
+  text-align: center;
 }
 
 span.sound-text {
-    text-shadow: 1px 1px 7px rgb(0 0 0 / 100%);
+  text-shadow: 1px 1px 7px rgb(0 0 0 / 100%);
 }
 
 /* Grid Layout Emoji */
 .layout-grid-2 .sound-card::before,
 .layout-grid-3 .sound-card::before {
-    content: var(--sound-emoji, '');
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 4.5em;
-    color: var(--text-primary);
-    opacity: 1;
-    filter: grayscale(70%) brightness(70%) saturate(1.2);
-    z-index: 0;
-    pointer-events: none;
-    line-height: 1;
-    text-shadow: 1px 1px 15px rgb(0 0 0 / 20%);
+  content: var(--sound-emoji, '');
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 4.5em;
+  color: var(--text-primary);
+  opacity: 1;
+  filter: grayscale(70%) brightness(70%) saturate(1.2);
+  z-index: 0;
+  pointer-events: none;
+  line-height: 1;
+  text-shadow: 1px 1px 15px rgb(0 0 0 / 20%);
 }
 
 /* Sound Card Indicators */
 .sound-indicators {
-    position: absolute;
-    bottom: 3px;
-    right: 3px;
-    display: flex;
-    gap: 3px;
-    z-index: 2;
-    pointer-events: none;
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  display: flex;
+  gap: 3px;
+  z-index: 2;
+  pointer-events: none;
 }
 
 .indicator-icon {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .indicator-icon.favorite-indicator {
-    color: var(--edit-mode-color);
-    font-variation-settings: "'FILL' 1";
+  color: var(--edit-mode-color);
+  font-variation-settings: "'FILL' 1";
 }
 
 /* Sound Card Custom Colors */
 .sound-card.sound-color-red {
-    background-color: var(--sound-color-red-bg);
-    --sound-base-color: var(--sound-color-red-bg);
+  background-color: var(--sound-color-red-bg);
+  --sound-base-color: var(--sound-color-red-bg);
 }
 
 .sound-card.sound-color-orange {
-    background-color: var(--sound-color-orange-bg);
-    --sound-base-color: var(--sound-color-orange-bg);
+  background-color: var(--sound-color-orange-bg);
+  --sound-base-color: var(--sound-color-orange-bg);
 }
 
 .sound-card.sound-color-yellow {
-    background-color: var(--sound-color-yellow-bg);
-    --sound-base-color: var(--sound-color-yellow-bg);
+  background-color: var(--sound-color-yellow-bg);
+  --sound-base-color: var(--sound-color-yellow-bg);
 }
 
 .sound-card.sound-color-green {
-    background-color: var(--sound-color-green-bg);
-    --sound-base-color: var(--sound-color-green-bg);
+  background-color: var(--sound-color-green-bg);
+  --sound-base-color: var(--sound-color-green-bg);
 }
 
 .sound-card.sound-color-blue {
-    background-color: var(--sound-color-blue-bg);
-    --sound-base-color: var(--sound-color-blue-bg);
+  background-color: var(--sound-color-blue-bg);
+  --sound-base-color: var(--sound-color-blue-bg);
 }
 
 .sound-card.sound-color-purple {
-    background-color: var(--sound-color-purple-bg);
-    --sound-base-color: var(--sound-color-purple-bg);
+  background-color: var(--sound-color-purple-bg);
+  --sound-base-color: var(--sound-color-purple-bg);
 }
 
 .sound-card.sound-color-pink {
-    background-color: var(--sound-color-pink-bg);
-    --sound-base-color: var(--sound-color-pink-bg);
+  background-color: var(--sound-color-pink-bg);
+  --sound-base-color: var(--sound-color-pink-bg);
 }
 
 /* --- Tabs --- */
 nav#tabs-container {
-    order: 2;
-    position: fixed;
-    bottom: calc(var(--header-height) + env(safe-area-inset-bottom, 0px));
-    left: env(safe-area-inset-left, 0px);
-    right: env(safe-area-inset-right, 0px);
-    z-index: 90;
-    height: var(--tabs-height);
-    display: flex;
-    white-space: nowrap;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-    background-color: var(--v-secondary-darken1);
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    overflow-x: auto; /* Enable horizontal scrolling */
-    overflow-y: hidden;
+  order: 2;
+  position: fixed;
+  bottom: calc(var(--header-height) + env(safe-area-inset-bottom, 0px));
+  left: env(safe-area-inset-left, 0px);
+  right: env(safe-area-inset-right, 0px);
+  z-index: 90;
+  height: var(--tabs-height);
+  display: flex;
+  white-space: nowrap;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  background-color: var(--v-secondary-darken1);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  overflow-x: auto;
+  /* Enable horizontal scrolling */
+  overflow-y: hidden;
 }
 
 nav#tabs-container::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 
 .tab {
-    flex: 0 0 auto;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 20px;
-    height: var(--tabs-height);
-    background-color: transparent;
-    color: var(--text-secondary);
-    border: 0;
-    border-top: 4px solid transparent;
-    cursor: pointer;
-    transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease, border-color var(--transition-speed) ease;
-    font-size: 0.9rem;
-    font-weight: 600;
-    gap: 6px;
-    text-transform: uppercase;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  height: var(--tabs-height);
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 0;
+  border-top: 4px solid transparent;
+  cursor: pointer;
+  transition: background-color var(--transition-speed) ease,
+    color var(--transition-speed) ease,
+    border-color var(--transition-speed) ease;
+  font-size: 0.9rem;
+  font-weight: 600;
+  gap: 6px;
+  text-transform: uppercase;
 }
 
 .tab .material-symbols-outlined {
-    font-size: 20px;
+  font-size: 20px;
 }
 
 .tab:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-    color: var(--text-primary);
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
 }
 
 .tab.active {
-    color: var(--v-primary-base);
-    border-top-color: var(--v-primary-base);
-    background-color: rgba(82, 177, 140, 0.1);
+  color: var(--v-primary-base);
+  border-top-color: var(--v-primary-base);
+  background-color: rgba(82, 177, 140, 0.1);
 }
 
 .tab.active .material-symbols-outlined {
-    color: var(--v-primary-base);
-    font-variation-settings: "'FILL' 1";
+  color: var(--v-primary-base);
+  font-variation-settings: "'FILL' 1";
 }
 
 /* --- Bottom Header --- */
 header {
-    order: 3;
-    position: fixed;
-    bottom: env(safe-area-inset-bottom, 0px);
-    left: env(safe-area-inset-left, 0px);
-    right: env(safe-area-inset-right, 0px);
-    z-index: 100;
-    height: var(--header-height);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 16px;
-    background-color: var(--v-secondary-darken2);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
-    overflow: hidden;
-    /* ADDED: Clip ripples within the header bounds */
-    transition: background-color 0.4s ease-out;
+  order: 3;
+  position: fixed;
+  bottom: env(safe-area-inset-bottom, 0px);
+  left: env(safe-area-inset-left, 0px);
+  right: env(safe-area-inset-right, 0px);
+  z-index: 100;
+  height: var(--header-height);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  background-color: var(--v-secondary-darken2);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  /* ADDED: Clip ripples within the header bounds */
+  transition: background-color 0.4s ease-out;
 }
 
 /* Style for the header when PTT is active */
 header.ptt-active-bg {
-    background-color: var(--ptt-active-color);
-    transition: background-color 0.1s ease-in;
-    /* Faster transition for appearing */
+  background-color: var(--ptt-active-color);
+  transition: background-color 0.1s ease-in;
+  /* Faster transition for appearing */
 }
 
 /* Ripple Container - Positioned absolutely within the header */
 .ripple-container {
-    position: absolute;
-    /* Position relative to the header */
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    /* Allow clicks to pass through */
-    z-index: 0;
-    /* Behind header content */
-    overflow: hidden;
-    /* Ensure ripples don't escape */
+  position: absolute;
+  /* Position relative to the header */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  /* Allow clicks to pass through */
+  z-index: 0;
+  /* Behind header content */
+  overflow: hidden;
+  /* Ensure ripples don't escape */
 }
 
 /* Individual Ripple Element */
 .ripple {
-    position: absolute;
-    border-radius: 50%;
-    background-color: rgba(255, 255, 255, 0.2);
-    /* Default ripple color */
-    transform: scale(0);
-    animation: ripple-animation 600ms linear;
-    pointer-events: none;
+  position: absolute;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.2);
+  /* Default ripple color */
+  transform: scale(0);
+  animation: ripple-animation 600ms linear;
+  pointer-events: none;
 }
 
 @keyframes ripple-animation {
-    to {
-        transform: scale(4);
-        opacity: 0;
-    }
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
 }
 
-
 .app-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    position: relative;
-    z-index: 1;
-    /* Ensure title is above ripples */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+  /* Ensure title is above ripples */
 }
 
 .logo {
-    width: 40px;
-    height: 40px;
+  width: 40px;
+  height: 40px;
 }
 
 .title-group {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }
 
 h1 {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    line-height: 1;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1;
 }
 
 .server-status {
-    display: flex;
-    align-items: center;
-    font-size: .8rem;
-    color: var(--text-secondary);
-    gap: 5px;
+  display: flex;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  gap: 5px;
 }
 
 #status-indicator {
-    order: 1;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: var(--error-color);
-    transition: background-color var(--transition-speed);
+  order: 1;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--error-color);
+  transition: background-color var(--transition-speed);
 }
 
 #status-indicator.connected {
-    background-color: var(--success-color);
+  background-color: var(--success-color);
 }
 
 #server-status-text {
-    order: 2;
+  order: 2;
 }
 
 .wakelock-indicator {
-    order: 3;
-    display: inline-flex;
-    align-items: center;
-    font-size: 14px;
-    color: var(--text-secondary);
-    transition: color var(--transition-speed) ease;
+  order: 3;
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+  color: var(--text-secondary);
+  transition: color var(--transition-speed) ease;
 }
 
 .wakelock-indicator.active {
-    color: var(--v-primary-base);
+  color: var(--v-primary-base);
 }
 
 .wakelock-indicator .material-symbols-outlined {
-    font-size: 14px;
-    vertical-align: middle;
+  font-size: 14px;
+  vertical-align: middle;
 }
 
 .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    transition: background-color var(--transition-speed) ease;
-    background-color: transparent;
-    color: var(--text-primary);
-    min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background-color var(--transition-speed) ease;
+  background-color: transparent;
+  color: var(--text-primary);
+  min-height: 44px;
 }
 
 .btn-danger {
-    background-color: var(--error-color);
-    color: white;
-    width: 120px;
-    height: 60px;
-    padding: 8px;
-    border-radius: 30px;
-    gap: 8px;
+  background-color: var(--error-color);
+  color: white;
+  width: 120px;
+  height: 60px;
+  padding: 8px;
+  border-radius: 30px;
+  gap: 8px;
 }
 
 .btn-danger:hover {
-    background-color: #ff6b6b;
+  background-color: #ff6b6b;
 }
 
 .btn-danger .material-symbols-outlined {
-    font-size: 32px;
+  font-size: 32px;
 }
 
 .stop-text {
-    font-weight: 700;
-    font-size: 1rem;
+  font-weight: 700;
+  font-size: 1rem;
 }
 
 /* --- Sound Settings Menu --- */
 #sound-settings-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
-    transition: visibility 0.3s;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  transition: visibility 0.3s;
 }
 
 #sound-settings-overlay.hidden {
-    visibility: hidden;
-    pointer-events: none;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 #settings-backdrop {
-    position: absolute;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.6);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    backdrop-filter: blur(2px);
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  backdrop-filter: blur(2px);
 }
 
 #sound-settings-overlay:not(.hidden) #settings-backdrop {
-    opacity: 1;
+  opacity: 1;
 }
 
 #settings-card {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background-color: var(--v-secondary-darken1);
-    border-radius: 16px 16px 0 0;
-    padding: 12px 20px calc(env(safe-area-inset-bottom) + 20px) 20px;
-    transform: translateY(110%);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.3s ease-out;
-    max-height: 85vh;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
-    height: auto;
-    overflow: visible;
-    /* Let content define height, overflow visible */
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--v-secondary-darken1);
+  border-radius: 16px 16px 0 0;
+  padding: 12px 20px calc(env(safe-area-inset-bottom) + 20px) 20px;
+  transform: translateY(110%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    max-height 0.3s ease-out, visibility 0s linear 0.3s;
+  max-height: 85vh;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+  height: auto;
+  overflow: visible;
+  /* Let content define height, overflow visible */
 }
 
 #sound-settings-overlay:not(.hidden) #settings-card {
-    transform: translateY(0);
+  transform: translateY(0);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    max-height 0.3s ease-out;
+}
+
+#sound-settings-overlay:not(.hidden) #settings-card {
+  transform: translateY(0);
 }
 
 .handle-bar {
-    width: 40px;
-    height: 4px;
-    background-color: var(--text-secondary);
-    border-radius: 2px;
-    margin: 0 auto 12px;
+  width: 40px;
+  height: 4px;
+  background-color: var(--text-secondary);
+  border-radius: 2px;
+  margin: 0 auto 12px;
 }
 
 .sound-info {
-    margin-bottom: 16px;
-    text-align: center;
+  margin-bottom: 16px;
+  text-align: center;
 }
 
 #settings-sound-name {
-    font-size: 1.4rem;
-    margin: 0;
-    word-break: break-word;
+  font-size: 1.4rem;
+  margin: 0;
+  word-break: break-word;
 }
 
 #settings-tab-name {
-    color: var(--text-secondary);
-    margin: 4px 0 0;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    font-weight: 600;
-    letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .action-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 16px;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
 }
 
 .icon-button {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background-color: var(--v-secondary-darken1);
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-primary);
-    transition: background-color var(--transition-speed) ease;
-    cursor: pointer;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: var(--v-secondary-darken1);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  transition: background-color var(--transition-speed) ease;
+  cursor: pointer;
 }
 
 .icon-button .material-symbols-outlined {
-    font-size: 24px;
+  font-size: 24px;
 }
 
 .action-button {
-    padding: 0 18px;
-    height: 48px;
-    border-radius: 24px;
-    background-color: var(--v-secondary-base);
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-primary);
-    gap: 8px;
-    transition: all var(--transition-speed) ease;
-    min-width: 120px;
-    font-weight: 500;
-    font-size: 0.9rem;
-    cursor: pointer;
+  padding: 0 18px;
+  height: 48px;
+  border-radius: 24px;
+  background-color: var(--v-secondary-base);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  gap: 8px;
+  transition: all var(--transition-speed) ease;
+  min-width: 120px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
 }
 
 .action-button.secondary {
-    background-color: var(--v-secondary-darken2);
+  background-color: var(--v-secondary-darken2);
 }
 
 .action-button:active {
-    background-color: var(--v-secondary-darken2);
+  background-color: var(--v-secondary-darken2);
 }
 
 .action-button .material-symbols-outlined {
-    font-size: 22px;
+  font-size: 22px;
 }
 
-.action-button[data-state="stop"] {
-    background-color: var(--error-color);
+.action-button[data-state='stop'] {
+  background-color: var(--error-color);
 }
 
 .divider {
-    height: 1px;
-    background-color: rgba(255, 255, 255, 0.1);
-    margin: 16px 0;
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin: 16px 0;
 }
 
 .settings-section {
-    margin-bottom: 20px;
-    position: relative;
+  margin-bottom: 20px;
+  position: relative;
 }
 
 .settings-section h3 {
-    font-size: 1rem;
-    margin-bottom: 12px;
-    color: var(--text-primary);
-    font-weight: 500;
+  font-size: 1rem;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+  font-weight: 500;
 }
-
 
 /* Color Selector (Round Buttons) */
 .color-selector {
-    display: flex;
-    justify-content: space-between;
-    gap: 5px;
-    padding: 0 2px;
+  display: flex;
+  justify-content: space-between;
+  gap: 5px;
+  padding: 0 2px;
 }
 
 .color-swatch {
-    flex-grow: 1;
-    flex-basis: 0;
-    aspect-ratio: 1 / 1;
-    border-radius: 50%;
-    border: 2px solid transparent;
-    cursor: pointer;
-    transition: border-color var(--transition-speed) ease, transform var(--transition-speed) ease;
-    max-width: 36px;
+  flex-grow: 1;
+  flex-basis: 0;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color var(--transition-speed) ease,
+    transform var(--transition-speed) ease;
+  max-width: 36px;
 }
 
 .color-swatch.selected {
-    border-color: var(--text-primary);
-    transform: scale(1.1);
+  border-color: var(--text-primary);
+  transform: scale(1.1);
 }
 
 .color-swatch:active {
-    transform: scale(0.95);
+  transform: scale(0.95);
 }
 
 /* Colors */
 .color-swatch.default {
-    background-color: var(--v-surface-dark);
+  background-color: var(--v-surface-dark);
 }
 
 .color-swatch.red {
-    background-color: var(--sound-color-red-bg);
+  background-color: var(--sound-color-red-bg);
 }
 
 .color-swatch.orange {
-    background-color: var(--sound-color-orange-bg);
+  background-color: var(--sound-color-orange-bg);
 }
 
 .color-swatch.yellow {
-    background-color: var(--sound-color-yellow-bg);
+  background-color: var(--sound-color-yellow-bg);
 }
 
 .color-swatch.green {
-    background-color: var(--sound-color-green-bg);
+  background-color: var(--sound-color-green-bg);
 }
 
 .color-swatch.blue {
-    background-color: var(--sound-color-blue-bg);
+  background-color: var(--sound-color-blue-bg);
 }
 
 .color-swatch.purple {
-    background-color: var(--sound-color-purple-bg);
+  background-color: var(--sound-color-purple-bg);
 }
 
 .color-swatch.pink {
-    background-color: var(--sound-color-pink-bg);
+  background-color: var(--sound-color-pink-bg);
 }
 
 /* Emoji Selector Section Styling */
 .emoji-section {
-    position: relative;
+  position: relative;
 }
 
 .emoji-display-area {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .emoji-display-area.hidden {
-    display: none;
+  display: none;
 }
 
 #selected-emoji-button {
-    flex-grow: 1;
-    height: 48px;
-    border-radius: 24px;
-    background-color: var(--v-secondary-base);
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-primary);
-    gap: 8px;
-    transition: all var(--transition-speed) ease;
-    font-weight: 500;
-    font-size: 0.9rem;
-    cursor: default;
-    text-transform: uppercase;
+  flex-grow: 1;
+  height: 48px;
+  border-radius: 24px;
+  background-color: var(--v-secondary-base);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  gap: 8px;
+  transition: all var(--transition-speed) ease;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: default;
+  text-transform: uppercase;
 }
 
 .current-emoji {
-    font-size: 1.4em;
-    display: inline-block;
-    width: 24px;
-    text-align: center;
+  font-size: 1.4em;
+  display: inline-block;
+  width: 24px;
+  text-align: center;
 }
 
 #clear-emoji-button-settings {
-    padding: 0 18px;
-    height: 48px;
-    min-width: 130px;
-    border-radius: 24px;
-    background-color: var(--v-secondary-base);
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-primary);
-    gap: 8px;
-    transition: all var(--transition-speed) ease;
-    font-weight: 500;
-    font-size: 0.9rem;
-    cursor: pointer;
-    text-transform: uppercase;
+  padding: 0 18px;
+  height: 48px;
+  min-width: 130px;
+  border-radius: 24px;
+  background-color: var(--v-secondary-base);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  gap: 8px;
+  transition: all var(--transition-speed) ease;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-transform: uppercase;
 }
 
 #clear-emoji-button-settings:hover {
-    background-color: var(--v-secondary-darken1);
+  background-color: var(--v-secondary-darken1);
 }
 
 #clear-emoji-button-settings .material-symbols-outlined {
-    font-size: 20px;
+  font-size: 20px;
 }
 
 /* Container for <emoji-picker> */
 #emoji-picker-container {
-    border-radius: 24px;
-    overflow: hidden;
-    border: 1px solid var(--v-secondary-base);
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid var(--v-secondary-base);
 }
 
 #emoji-picker-container.hidden {
-    display: none;
+  display: none;
 }
 
 /* Emoji Picker Element */
 emoji-picker {
-    width: 100%;
-    height: 280px;
-    --border-color: transparent;
-    --outline-color: var(--v-primary-base);
-    --border-radius: 0;
-    --background: var(--v-secondary-darken1);
-    --input-padding: 0.8rem 1.2rem;
-    --input-background-color: var(--v-secondary-base);
-    --input-text-color: var(--text-primary);
-    --input-border-radius: 24px;
-    --input-border-size: 1px;
-    --input-border-color: var(--v-secondary-base);
-    --input-line-height: 1.5;
-    --input-font-size: 0.9rem;
-    --category-icon-color: var(--text-secondary);
-    --category-icon-color-active: var(--v-primary-base);
-    --indicator-height: 0px;
-    --button-active-background: var(--v-secondary-darken1);
-    --num-columns: 8;
-    --emoji-size: 1.4em;
-    --emoji-padding: 4px;
-    scrollbar-width: none;
+  width: 100%;
+  height: 280px;
+  --border-color: transparent;
+  --outline-color: var(--v-primary-base);
+  --border-radius: 0;
+  --background: var(--v-secondary-darken1);
+  --input-padding: 0.8rem 1.2rem;
+  --input-background-color: var(--v-secondary-base);
+  --input-text-color: var(--text-primary);
+  --input-border-radius: 24px;
+  --input-border-size: 1px;
+  --input-border-color: var(--v-secondary-base);
+  --input-line-height: 1.5;
+  --input-font-size: 0.9rem;
+  --category-icon-color: var(--text-secondary);
+  --category-icon-color-active: var(--v-primary-base);
+  --indicator-height: 0px;
+  --button-active-background: var(--v-secondary-darken1);
+  --num-columns: 8;
+  --emoji-size: 1.4em;
+  --emoji-padding: 4px;
+  scrollbar-width: none;
 }
 
 emoji-picker::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 
 emoji-picker::part(nav),
-emoji-picker section[aria-label*="Favorites"],
+emoji-picker section[aria-label*='Favorites'],
 emoji-picker section#favorites {
-    display: none !important;
+  display: none !important;
 }
 
 /* Floating Emoji Picker */
 #emoji-picker-container.emoji-picker-floating {
-    position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + 5px);
-    left: 5%;
-    right: 5%;
-    width: 90%;
-    max-width: 450px;
-    height: auto;
-    max-height: 55vh;
-    z-index: 1200;
-    background-color: var(--v-secondary-darken1);
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
-    border-radius: 24px;
-    border: 1px solid var(--v-secondary-base);
-    transition: transform 0.2s ease-out, opacity 0.2s ease-out;
-    transform: translateY(-5px) scale(0.98);
-    opacity: 0;
-    pointer-events: none;
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 5px);
+  left: 5%;
+  right: 5%;
+  width: 90%;
+  max-width: 450px;
+  height: auto;
+  max-height: 55vh;
+  z-index: 1200;
+  background-color: var(--v-secondary-darken1);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+  border-radius: 24px;
+  border: 1px solid var(--v-secondary-base);
+  transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+  transform: translateY(-5px) scale(0.98);
+  opacity: 0;
+  pointer-events: none;
 }
 
 #emoji-picker-container.emoji-picker-floating.visible {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-    pointer-events: auto;
+  transform: translateY(0) scale(1);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* Emoji Picker Placeholder */
 .emoji-picker-placeholder {
-    display: none;
-    height: 305px;
-    /* Adjust height if needed */
+  display: none;
+  height: 305px;
+  /* Adjust height if needed */
 }
 
 .emoji-picker-placeholder.placeholder-active {
-    display: block;
+  display: block;
 }
 
 /* Uppercase Button Text */
 #preview-button .button-text,
 #clear-emoji-button-settings .button-text,
-#select-emoji-button
-    {
-    text-transform: uppercase;
+#select-emoji-button {
+  text-transform: uppercase;
 }
 
 #preview-button {
-    min-width: 150px;
+  min-width: 150px;
 }
-
 
 /* --- App Settings Modal --- */
 #app-settings-modal-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 1100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: rgba(0, 0, 0, 0.7);
-    opacity: 0;
-    transition: opacity 0.3s ease, visibility 0.3s;
-    visibility: hidden;
-    backdrop-filter: blur(2px);
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.7);
+  opacity: 0;
+  transition: opacity 0.3s ease, visibility 0.3s;
+  visibility: hidden;
+  backdrop-filter: blur(2px);
 }
 
 #app-settings-modal-overlay:not(.hidden) {
-    opacity: 1;
-    visibility: visible;
+  opacity: 1;
+  visibility: visible;
 }
 
 #app-settings-modal {
-    background-color: var(--v-secondary-darken1);
-    border-radius: 12px;
-    /* padding: 25px; */
-    /* Padding handled by header/content */
-    padding: 0;
-    /* Remove default padding */
-    width: 90%;
-    max-width: 400px;
-    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
-    transform: scale(0.95);
-    transition: transform 0.3s ease;
-    overflow: hidden;
-    /* Hide overflow for border-radius */
+  background-color: var(--v-secondary-darken1);
+  border-radius: 12px;
+  /* padding: 25px; */
+  /* Padding handled by header/content */
+  padding: 0;
+  /* Remove default padding */
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+  transform: scale(0.95);
+  transition: transform 0.3s ease;
+  overflow: hidden;
+  /* Hide overflow for border-radius */
 }
 
 #app-settings-modal-overlay:not(.hidden) #app-settings-modal {
-    transform: scale(1);
+  transform: scale(1);
 }
 
 /* NEW: App Settings Modal Header */
 #app-settings-modal .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
-    /* Padding for header */
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    /* Separator */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  /* Padding for header */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  /* Separator */
 }
 
 #app-settings-modal h2 {
-    /* text-align: center; */
-    /* REMOVED */
-    margin: 0;
-    /* Remove default margin */
-    font-size: 1.2rem;
-    /* Slightly smaller */
-    font-weight: 500;
-    flex-grow: 1;
-    text-align: left;
-    /* Align title left */
+  /* text-align: center; */
+  /* REMOVED */
+  margin: 0;
+  /* Remove default margin */
+  font-size: 1.2rem;
+  /* Slightly smaller */
+  font-weight: 500;
+  flex-grow: 1;
+  text-align: left;
+  /* Align title left */
 }
 
 /* NEW: App Settings Close Button (Top Right) */
 #app-settings-modal .modal-close-button {
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    font-size: 24px;
-    cursor: pointer;
-    padding: 5px;
-    line-height: 1;
-    transition: color var(--transition-speed) ease;
-    margin-left: 10px;
-    /* Space from title */
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 24px;
+  cursor: pointer;
+  padding: 5px;
+  line-height: 1;
+  transition: color var(--transition-speed) ease;
+  margin-left: 10px;
+  /* Space from title */
 }
 
 #app-settings-modal .modal-close-button:hover {
-    color: var(--text-primary);
+  color: var(--text-primary);
 }
 
 /* Content area padding */
 #app-settings-modal .settings-section {
-    margin-bottom: 0;
-    /* Remove bottom margin */
-    padding: 15px 20px;
-    /* Padding for each section */
+  margin-bottom: 0;
+  /* Remove bottom margin */
+  padding: 15px 20px;
+  /* Padding for each section */
 }
 
 /* Add border between sections */
 #app-settings-modal .divider {
-    height: 1px;
-    background-color: rgba(255, 255, 255, 0.1);
-    margin: 0px 20px;
-    /* Remove margin */
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin: 0px 20px;
+  /* Remove margin */
 }
 
 /* Section Title Alignment */
 #app-settings-modal h3 {
-    text-align: left;
-    margin-bottom: 8px;
-    /* Space below title */
-    font-size: 1rem;
-    font-weight: 500;
+  text-align: left;
+  margin-bottom: 8px;
+  /* Space below title */
+  font-size: 1rem;
+  font-weight: 500;
 }
 
 /* Description Text Alignment & Position */
 #app-settings-modal .modal-info {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    margin-top: 0;
-    /* Remove top margin */
-    margin-bottom: 15px;
-    /* Space below description */
-    text-align: left;
-    /* Align left */
-    line-height: 1.3;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0;
+  /* Remove top margin */
+  margin-bottom: 15px;
+  /* Space below description */
+  text-align: left;
+  /* Align left */
+  line-height: 1.3;
 }
 
 /* General Modal Actions Styling */
 #app-settings-modal .modal-actions {
-    display: flex;
-    gap: 10px;
-    /* Consistent gap */
-    justify-content: center;
-    margin-top: 15px;
-    /* Space above button groups */
-    flex-wrap: wrap;
+  display: flex;
+  gap: 10px;
+  /* Consistent gap */
+  justify-content: center;
+  margin-top: 15px;
+  /* Space above button groups */
+  flex-wrap: wrap;
 }
 
 #app-settings-modal .action-button {
-    font-size: 0.9rem;
-    height: 44px;
-    /* Standard height */
-    border-radius: 22px;
-    /* Standard radius */
-    padding: 0 18px;
-    /* Standard padding */
-    background-color: var(--v-secondary-base);
-    /* Standard background */
-    border: none;
-    /* No border */
-    color: var(--text-primary);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: background-color var(--transition-speed) ease;
+  font-size: 0.9rem;
+  height: 44px;
+  /* Standard height */
+  border-radius: 22px;
+  /* Standard radius */
+  padding: 0 18px;
+  /* Standard padding */
+  background-color: var(--v-secondary-base);
+  /* Standard background */
+  border: none;
+  /* No border */
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color var(--transition-speed) ease;
 }
 
 #app-settings-modal .action-button:hover {
-    background-color: var(--v-secondary-darken2);
+  background-color: var(--v-secondary-darken2);
 }
 
 #app-settings-modal .action-button.secondary {
-    /* Keep secondary style if needed */
-    background-color: var(--v-secondary-darken2);
+  /* Keep secondary style if needed */
+  background-color: var(--v-secondary-darken2);
 }
 
 /* #app-settings-modal .action-button.danger { ... } */
 /* REMOVED default danger styling here */
 
-
 /* Vertical button layout (for Reset buttons) */
 #app-settings-modal .modal-actions.vertical {
-    flex-direction: column;
-    align-items: stretch;
-    /* Make buttons full width */
+  flex-direction: column;
+  align-items: stretch;
+  /* Make buttons full width */
 }
 
 /* Horizontal button layout (for Import/Export) */
 #app-settings-modal .modal-actions.horizontal {
-    flex-direction: row;
-    justify-content: space-between;
-    /* Space out buttons */
+  flex-direction: row;
+  justify-content: space-between;
+  /* Space out buttons */
 }
 
 #app-settings-modal .modal-actions.horizontal .action-button {
-    flex-basis: calc(50% - 5px);
-    /* Each button takes roughly half width minus gap */
-    flex-grow: 1;
-    /* Allow growing if needed */
+  flex-basis: calc(50% - 5px);
+  /* Each button takes roughly half width minus gap */
+  flex-grow: 1;
+  /* Allow growing if needed */
 }
-
 
 /* MODIFIED: Long Press Button Styles (Align with .action-button) */
 #app-settings-modal .long-press-button {
-    /* Inherit from .action-button where possible */
-    width: 100%;
-    /* Keep full width for vertical layout */
-    /* background-color: var(--v-secondary-base); */
-    /* Use danger color */
-    /* color: var(--text-secondary); */
-    border: none;
-    /* REMOVE border */
-    transition: background-color 0.1s ease, color 0.1s ease;
-    position: relative;
-    overflow: hidden;
-    text-align: center;
-    justify-content: center;
-    /* Ensure height/padding match .action-button */
-    height: 44px;
-    border-radius: 22px;
-    padding: 0 18px;
-    font-size: 0.85rem;
-    /* Slightly smaller text for long descriptions */
-    line-height: 1.2;
-    /* Default background for long-press buttons */
-    background-color: var(--v-secondary-base);
-    color: var(--text-primary);
-    gap: 8px;
-    /* Add gap for icon */
+  /* Inherit from .action-button where possible */
+  width: 100%;
+  /* Keep full width for vertical layout */
+  /* background-color: var(--v-secondary-base); */
+  /* Use danger color */
+  /* color: var(--text-secondary); */
+  border: none;
+  /* REMOVE border */
+  transition: background-color 0.1s ease, color 0.1s ease;
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  justify-content: center;
+  /* Ensure height/padding match .action-button */
+  height: 44px;
+  border-radius: 22px;
+  padding: 0 18px;
+  font-size: 0.85rem;
+  /* Slightly smaller text for long descriptions */
+  line-height: 1.2;
+  /* Default background for long-press buttons */
+  background-color: var(--v-secondary-base);
+  color: var(--text-primary);
+  gap: 8px;
+  /* Add gap for icon */
 }
 
 #app-settings-modal .long-press-button:hover {
-    background-color: var(--v-secondary-darken2);
-    /* Standard hover */
+  background-color: var(--v-secondary-darken2);
+  /* Standard hover */
 }
 
 #app-settings-modal .long-press-button::before {
-    /* Progress indicator */
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 0;
-    /* Starts at 0 width */
-    background-color: rgba(255, 255, 255, 0.1);
-    /* Semi-transparent white */
-    transition: width 0.1s linear;
-    /* Smooth progress */
-    z-index: 0;
-    /* background-color: rgba(255, 255, 255, 0.2); */
-    /* Lighter overlay for danger */
-    background-color: rgba(255, 255, 255, 0.1);
-    /* Standard progress overlay */
+  /* Progress indicator */
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0;
+  /* Starts at 0 width */
+  background-color: rgba(255, 255, 255, 0.1);
+  /* Semi-transparent white */
+  transition: width 0.1s linear;
+  /* Smooth progress */
+  z-index: 0;
+  /* background-color: rgba(255, 255, 255, 0.2); */
+  /* Lighter overlay for danger */
+  background-color: rgba(255, 255, 255, 0.1);
+  /* Standard progress overlay */
 }
 
 #app-settings-modal .long-press-button span,
 #app-settings-modal .long-press-button .material-symbols-outlined {
-    /* Ensure text and icon are above progress */
-    position: relative;
-    z-index: 1;
+  /* Ensure text and icon are above progress */
+  position: relative;
+  z-index: 1;
 }
 
 /* Confirmation State - Apply danger styling here */
 #app-settings-modal .long-press-button.confirming {
-    background-color: var(--error-color);
-    /* Apply red background */
-    color: white;
-    /* Apply white text */
-    /* border-color: var(--error-color); */
-    /* No border */
+  background-color: var(--error-color);
+  /* Apply red background */
+  color: white;
+  /* Apply white text */
+  /* border-color: var(--error-color); */
+  /* No border */
 }
 
 #app-settings-modal .long-press-button.confirming:hover {
-    background-color: #ff6b6b;
-    /* Apply hover for danger */
+  background-color: #ff6b6b;
+  /* Apply hover for danger */
 }
 
 #app-settings-modal .long-press-button.confirming::before {
-    width: 0 !important;
-    /* Hide progress bar in confirmation state */
+  width: 0 !important;
+  /* Hide progress bar in confirmation state */
 }
 
 /* Add gap for icons in horizontal buttons too */
 #app-settings-modal .modal-actions.horizontal .action-button {
-    gap: 8px;
+  gap: 8px;
 }
 
 /* Ensure specific containers have correct classes */
 #app-settings-modal .reset-actions {
-    /* Uses .modal-actions.vertical */
+  /* Uses .modal-actions.vertical */
 }
 
 #app-settings-modal .import-export-actions {
-    /* Uses .modal-actions.horizontal */
+  /* Uses .modal-actions.horizontal */
 }
-
 
 /* Toggle Switch Styles */
 .toggle-switch {
-    position: relative;
-    display: flex;
-    /* Use flex for alignment */
-    align-items: center;
-    width: 100%;
-    /* Take full width */
-    cursor: pointer;
-    color: var(--text-primary);
-    font-size: 0.9rem;
-    gap: 10px;
-    padding: 8px 0;
-    /* Add some vertical padding */
+  position: relative;
+  display: flex;
+  /* Use flex for alignment */
+  align-items: center;
+  width: 100%;
+  /* Take full width */
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  gap: 10px;
+  padding: 8px 0;
+  /* Add some vertical padding */
 }
 
 .toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
+  opacity: 0;
+  width: 0;
+  height: 0;
 }
 
 .toggle-switch .slider {
-    position: relative;
-    display: inline-block;
-    width: 40px;
-    height: 20px;
-    background-color: var(--v-secondary-base);
-    border-radius: 10px;
-    transition: var(--transition-speed);
-    flex-shrink: 0;
-    /* Prevent slider from shrinking */
-    order: 0;
-    /* Slider comes first */
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+  background-color: var(--v-secondary-base);
+  border-radius: 10px;
+  transition: var(--transition-speed);
+  flex-shrink: 0;
+  /* Prevent slider from shrinking */
+  order: 0;
+  /* Slider comes first */
 }
 
 .toggle-switch .slider:before {
-    position: absolute;
-    content: "";
-    height: 14px;
-    width: 14px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    border-radius: 50%;
-    transition: var(--transition-speed);
+  position: absolute;
+  content: '';
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: var(--transition-speed);
 }
 
 .toggle-switch input:checked+.slider {
-    background-color: var(--v-primary-base);
+  background-color: var(--v-primary-base);
 }
 
 .toggle-switch input:checked+.slider:before {
-    transform: translateX(20px);
+  transform: translateX(20px);
 }
 
 /* Adjust text alignment and order */
 .toggle-switch span:not(.slider) {
-    white-space: normal;
-    text-align: left;
-    order: 1;
-    /* Text comes after slider */
+  white-space: normal;
+  text-align: left;
+  order: 1;
+  /* Text comes after slider */
 }
 
 /* Disabled state for toggle switch */
 .toggle-switch.disabled {
-    opacity: 0.6;
-    cursor: default;
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* --- Utilities --- */
 .hidden {
-    display: none !important;
+  display: none !important;
 }
 
 .fade-in {
-    animation: fadeIn 0.3s ease-in;
+  animation: fadeIn 0.3s ease-in;
 }
 
 @keyframes fadeIn {
-    0% {
-        opacity: 0;
-    }
+  0% {
+    opacity: 0;
+  }
 
-    100% {
-        opacity: 1;
-    }
+  100% {
+    opacity: 1;
+  }
 }
 
 .error-text {
-    color: var(--error-color);
-    text-align: center;
-    padding: 20px;
+  color: var(--error-color);
+  text-align: center;
+  padding: 20px;
 }
 
 .no-sounds {
-    color: var(--text-secondary);
-    text-align: center;
-    padding: 20px;
-    font-style: italic;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 20px;
+  font-style: italic;
 }
 
 .loading-sounds {
-    color: var(--text-secondary);
-    text-align: center;
-    padding: 40px 20px;
-    font-style: italic;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 40px 20px;
+  font-style: italic;
 }
 
 .material-symbols-outlined {
-    vertical-align: middle;
+  vertical-align: middle;
 }
-
 
 /* Favorite Button Styling */
-.icon-button[data-type="favorite"] {
-    background-color: var(--v-secondary-base);
+.icon-button[data-type='favorite'] {
+  background-color: var(--v-secondary-base);
 }
 
-.icon-button[data-type="favorite"] .material-symbols-outlined {
-    transition: color 0.2s, transform 0.2s, font-variation-settings 0.2s;
-    font-variation-settings: "'FILL' 0";
-    color: var(--text-secondary);
+.icon-button[data-type='favorite'] .material-symbols-outlined {
+  transition: color 0.2s, transform 0.2s, font-variation-settings 0.2s;
+  font-variation-settings: "'FILL' 0";
+  color: var(--text-secondary);
 }
 
-.icon-button[data-type="favorite"].active .material-symbols-outlined {
-    color: var(--error-color);
-    transform: scale(1.1);
-    font-variation-settings: "'FILL' 1";
+.icon-button[data-type='favorite'].active .material-symbols-outlined {
+  color: var(--error-color);
+  transform: scale(1.1);
+  font-variation-settings: "'FILL' 1";
 }
 
 /* Volume Control Layout */
 .volume-control {
-    margin-top: 16px;
+  margin-top: 16px;
 }
 
 .volume-control .volume-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
 }
 
 .volume-control h3 {
-    font-size: 1rem;
-    color: var(--text-primary);
-    font-weight: 500;
-    margin-bottom: 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  margin-bottom: 0;
 }
 
 .volume-control .volume-header .reset-button {
-    margin-left: 10px;
+  margin-left: 10px;
 }
 
 .volume-control .volume-subtext {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    margin-bottom: 12px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
 }
 
 .slider-container {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .slider-container .material-symbols-outlined {
-    color: var(--text-secondary);
+  color: var(--text-secondary);
 }
 
 #volume-slider {
-    flex: 1;
-    -webkit-appearance: none;
-    height: 6px;
-    border-radius: 3px;
-    background-color: var(--v-secondary-darken2);
-    outline: none;
-    position: relative;
+  flex: 1;
+  -webkit-appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background-color: var(--v-secondary-darken2);
+  outline: none;
+  position: relative;
 }
 
 #volume-slider::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 2px;
-    height: 12px;
-    background-color: var(--text-secondary);
-    z-index: 1;
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 12px;
+  background-color: var(--text-secondary);
+  z-index: 1;
 }
 
 #volume-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--text-primary);
-    cursor: pointer;
-    transition: background 0.15s;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s;
 }
 
 #volume-slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--text-primary);
-    cursor: pointer;
-    transition: background 0.15s;
-    border: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s;
+  border: none;
 }
 
 .reset-button {
-    background-color: transparent;
-    border: 1px solid var(--text-secondary);
-    color: var(--text-secondary);
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    cursor: pointer;
-    transition: all var(--transition-speed) ease;
+  background-color: transparent;
+  border: 1px solid var(--text-secondary);
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all var(--transition-speed) ease;
 }
 
 .reset-button:hover {
-    background-color: var(--v-secondary-base);
-    color: var(--text-primary);
+  background-color: var(--v-secondary-base);
+  color: var(--text-primary);
 }
 
 .reset-button.hidden {
-    display: none;
+  display: none;
 }
 
 /* Emoji Selector Section Styling */
 .emoji-section {
-    position: relative;
-    /* Keep for potential absolute positioning needs */
+  position: relative;
+  /* Keep for potential absolute positioning needs */
 }
 
 .emoji-display-area {
-    /* Wrapper when emoji IS selected */
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-    /* Consistent spacing */
+  /* Wrapper when emoji IS selected */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  /* Consistent spacing */
 }
 
 .emoji-display-area.hidden {
-    /* Hide when picker is shown */
-    display: none;
+  /* Hide when picker is shown */
+  display: none;
 }
 
 /* Style the button showing the selected emoji */
 #selected-emoji-button {
-    flex-grow: 1;
-    /* Take available space */
-    height: 48px;
-    /* Consistent height */
-    border-radius: 24px;
-    /* Rounded */
-    background-color: var(--v-secondary-base);
-    /* Grey */
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-primary);
-    gap: 8px;
-    transition: all var(--transition-speed) ease;
-    font-weight: 500;
-    font-size: 0.9rem;
-    cursor: default;
-    /* Not clickable itself */
-    text-transform: uppercase;
-    /* Uppercase text */
+  flex-grow: 1;
+  /* Take available space */
+  height: 48px;
+  /* Consistent height */
+  border-radius: 24px;
+  /* Rounded */
+  background-color: var(--v-secondary-base);
+  /* Grey */
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  gap: 8px;
+  transition: all var(--transition-speed) ease;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: default;
+  /* Not clickable itself */
+  text-transform: uppercase;
+  /* Uppercase text */
 }
 
 .current-emoji {
-    /* The actual emoji character span */
-    font-size: 1.4em;
-    display: inline-block;
-    width: 24px;
-    text-align: center;
+  /* The actual emoji character span */
+  font-size: 1.4em;
+  display: inline-block;
+  width: 24px;
+  text-align: center;
 }
 
 /* Style the clear emoji button */
 #clear-emoji-button-settings {
-    padding: 0 18px;
-    height: 48px;
-    min-width: 130px;
-    /* Allow natural width */
-    border-radius: 24px;
-    background-color: var(--v-secondary-base);
-    /* Grey */
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-primary);
-    gap: 8px;
-    transition: all var(--transition-speed) ease;
-    font-weight: 500;
-    font-size: 0.9rem;
-    cursor: pointer;
-    text-transform: uppercase;
-    /* Uppercase text */
+  padding: 0 18px;
+  height: 48px;
+  min-width: 130px;
+  /* Allow natural width */
+  border-radius: 24px;
+  background-color: var(--v-secondary-base);
+  /* Grey */
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  gap: 8px;
+  transition: all var(--transition-speed) ease;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  /* Uppercase text */
 }
 
 #clear-emoji-button-settings:hover {
-    background-color: var(--v-secondary-darken1);
+  background-color: var(--v-secondary-darken1);
 }
 
 #clear-emoji-button-settings .material-symbols-outlined {
-    font-size: 20px;
+  font-size: 20px;
 }
-
 
 /* Container for the actual <emoji-picker> element */
 #emoji-picker-container {
-    border-radius: 24px;
-    /* MODIFIED: Rounded container */
-    overflow: hidden;
-    /* Clip picker content */
-    border: 1px solid var(--v-secondary-base);
-    /* Keep border on container */
+  border-radius: 24px;
+  /* MODIFIED: Rounded container */
+  overflow: hidden;
+  /* Clip picker content */
+  border: 1px solid var(--v-secondary-base);
+  /* Keep border on container */
 }
 
 #emoji-picker-container.hidden {
-    display: none;
+  display: none;
 }
 
 /* Style the emoji picker element itself using CSS variables */
 emoji-picker {
-    width: 100%;
-    height: 280px;
-    /* Keep height or adjust as needed */
-    /* Internal styling via variables */
-    --border-color: transparent;
-    /* Remove internal borders */
-    --outline-color: var(--v-primary-base);
-    --border-radius: 0;
-    /* No internal radius */
-    --background: var(--v-secondary-darken1);
-    /* Match card background */
+  width: 100%;
+  height: 280px;
+  /* Keep height or adjust as needed */
+  /* Internal styling via variables */
+  --border-color: transparent;
+  /* Remove internal borders */
+  --outline-color: var(--v-primary-base);
+  --border-radius: 0;
+  /* No internal radius */
+  --background: var(--v-secondary-darken1);
+  /* Match card background */
 
-    /* Input Search Bar Styling */
-    --input-padding: 0.8rem 1.2rem;
-    /* Adjust padding for 48px visual height */
-    --input-background-color: var(--v-secondary-base);
-    --input-text-color: var(--text-primary);
-    --input-border-radius: 24px;
-    /* MODIFIED: Rounded search bar */
-    --input-border-size: 1px;
-    /* MODIFIED: Add border */
-    --input-border-color: var(--v-secondary-base);
-    /* MODIFIED: Light grey border */
-    --input-line-height: 1.5;
-    /* Adjust line height */
-    --input-font-size: 0.9rem;
-    /* The effective height comes from padding + line-height + border */
+  /* Input Search Bar Styling */
+  --input-padding: 0.8rem 1.2rem;
+  /* Adjust padding for 48px visual height */
+  --input-background-color: var(--v-secondary-base);
+  --input-text-color: var(--text-primary);
+  --input-border-radius: 24px;
+  /* MODIFIED: Rounded search bar */
+  --input-border-size: 1px;
+  /* MODIFIED: Add border */
+  --input-border-color: var(--v-secondary-base);
+  /* MODIFIED: Light grey border */
+  --input-line-height: 1.5;
+  /* Adjust line height */
+  --input-font-size: 0.9rem;
+  /* The effective height comes from padding + line-height + border */
 
-    /* Category Nav Styling */
-    --category-icon-color: var(--text-secondary);
-    --category-icon-color-active: var(--v-primary-base);
-    /* Keep icon color change */
-    --indicator-height: 0px;
-    /* MODIFIED: Hide underline indicator */
-    /* MODIFIED: Use active button background for highlight */
-    /* Note: Use a slightly lighter grey than the search bar for contrast */
-    --button-active-background: var(--v-secondary-darken1);
-    /* e.g., #3a3a3a or adjust as needed */
+  /* Category Nav Styling */
+  --category-icon-color: var(--text-secondary);
+  --category-icon-color-active: var(--v-primary-base);
+  /* Keep icon color change */
+  --indicator-height: 0px;
+  /* MODIFIED: Hide underline indicator */
+  /* MODIFIED: Use active button background for highlight */
+  /* Note: Use a slightly lighter grey than the search bar for contrast */
+  --button-active-background: var(--v-secondary-darken1);
+  /* e.g., #3a3a3a or adjust as needed */
 
-    /* Emoji grid styling */
-    --num-columns: 8;
-    /* MODIFIED: Set default number of columns */
-    --emoji-size: 1.4em;
-    /* Keep or adjust */
-    --emoji-padding: 4px;
-    /* Keep or adjust */
+  /* Emoji grid styling */
+  --num-columns: 8;
+  /* MODIFIED: Set default number of columns */
+  --emoji-size: 1.4em;
+  /* Keep or adjust */
+  --emoji-padding: 4px;
+  /* Keep or adjust */
 
-    /* Scrollbar Hiding */
-    scrollbar-width: none;
-    /* Firefox */
+  /* Scrollbar Hiding */
+  scrollbar-width: none;
+  /* Firefox */
 }
 
 /* Explicitly hide scrollbars for WebKit */
 emoji-picker::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 
 /* Hide Favorites section (Selector might be fragile) */
@@ -1881,534 +1883,565 @@ emoji-picker section[aria-label*="Favorites"],
 emoji-picker section#favorites
 
 /* Fallback */
-    {
-    display: none !important;
+  {
+  display: none !important;
 }
 
 /* Styles for the floating state */
 #emoji-picker-container.emoji-picker-floating {
-    position: fixed;
-    /* MODIFIED: Adjusted 'top' slightly higher */
-    top: calc(env(safe-area-inset-top, 0px) + 5px);
-    /* Position higher, closer to top edge */
-    left: 5%;
-    right: 5%;
-    width: 90%;
-    max-width: 450px;
-    height: auto;
-    max-height: 55vh;
-    /* MODIFIED: Reduced max-height slightly if needed */
-    z-index: 1200;
-    background-color: var(--v-secondary-darken1);
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
-    border-radius: 24px;
-    border: 1px solid var(--v-secondary-base);
-    /* MODIFIED: Adjusted transition duration for quicker pop */
-    transition: transform 0.2s ease-out, opacity 0.2s ease-out;
-    /* Quicker transition */
-    transform: translateY(-5px) scale(0.98);
-    /* Start slightly closer */
-    opacity: 0;
-    pointer-events: none;
+  position: fixed;
+  /* MODIFIED: Adjusted 'top' slightly higher */
+  top: calc(env(safe-area-inset-top, 0px) + 5px);
+  /* Position higher, closer to top edge */
+  left: 5%;
+  right: 5%;
+  width: 90%;
+  max-width: 450px;
+  height: auto;
+  max-height: 55vh;
+  /* MODIFIED: Reduced max-height slightly if needed */
+  z-index: 1200;
+  background-color: var(--v-secondary-darken1);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+  border-radius: 24px;
+  border: 1px solid var(--v-secondary-base);
+  /* MODIFIED: Adjusted transition duration for quicker pop */
+  transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+  /* Quicker transition */
+  transform: translateY(-5px) scale(0.98);
+  /* Start slightly closer */
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Help section styles */
 .help-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
 }
 
 .help-text {
-    flex: 1;
+  flex: 1;
 }
 
 .help-text h3 {
-    margin-bottom: 4px;
-    font-size: 1rem;
-    color: var(--text-primary);
+  margin-bottom: 4px;
+  font-size: 1rem;
+  color: var(--text-primary);
 }
 
 .help-text p {
-    margin: 0;
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    line-height: 1.4;
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
 }
 
 /* When the floating class is actively applied */
 #emoji-picker-container.emoji-picker-floating.visible {
-    transform: translateY(0) scale(1);
-    /* Animate into final position */
-    opacity: 1;
-    pointer-events: auto;
-    /* Enable interaction */
+  transform: translateY(0) scale(1);
+  /* Animate into final position */
+  opacity: 1;
+  pointer-events: auto;
+  /* Enable interaction */
 }
-
-
 
 /* --- Emoji Picker Modal --- */
 #emoji-picker-modal-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 1150;
-    /* Above settings card, below floating picker if it existed */
-    display: flex;
-    /* Center vertically, but allow space for keyboard */
-    align-items: flex-start;
-    /* Align to top */
-    padding-top: 5vh;
-    /* MODIFIED: Push down less from the top */
-    justify-content: center;
-    background-color: rgba(0, 0, 0, 0.7);
-    /* Darker backdrop */
-    opacity: 0;
-    transition: opacity 0.25s ease, visibility 0.25s;
-    visibility: hidden;
-    backdrop-filter: blur(3px);
+  position: fixed;
+  inset: 0;
+  z-index: 1150;
+  /* Above settings card, below floating picker if it existed */
+  display: flex;
+  /* Center vertically, but allow space for keyboard */
+  align-items: flex-start;
+  /* Align to top */
+  padding-top: 5vh;
+  /* MODIFIED: Push down less from the top */
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.7);
+  /* Darker backdrop */
+  opacity: 0;
+  transition: opacity 0.25s ease, visibility 0.25s;
+  visibility: hidden;
+  backdrop-filter: blur(3px);
 }
 
 #emoji-picker-modal-overlay:not(.hidden) {
-    opacity: 1;
-    visibility: visible;
+  opacity: 1;
+  visibility: visible;
 }
 
 #emoji-picker-modal {
-    background-color: var(--v-secondary-darken1);
-    /* Match settings card */
-    border-radius: 12px;
-    /* Consistent rounding */
-    padding: 20px;
-    width: 90%;
-    max-width: 400px;
-    /* Limit width */
-    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
-    transform: scale(0.95);
-    transition: transform 0.25s ease;
-    /* Allow internal scrolling if picker is tall */
-    max-height: 80vh;
-    /* Limit height */
-    overflow-y: auto;
-    /* Add scroll if needed */
+  background-color: var(--v-secondary-darken1);
+  /* Match settings card */
+  border-radius: 12px;
+  /* Consistent rounding */
+  padding: 20px;
+  width: 90%;
+  max-width: 400px;
+  /* Limit width */
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+  transform: scale(0.95);
+  transition: transform 0.25s ease;
+  /* Allow internal scrolling if picker is tall */
+  max-height: 80vh;
+  /* Limit height */
+  overflow-y: auto;
+  /* Add scroll if needed */
 }
 
 #emoji-picker-modal-overlay:not(.hidden) #emoji-picker-modal {
-    transform: scale(1);
+  transform: scale(1);
 }
 
 /* NEW: Modal Header Styles */
 #emoji-picker-modal .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-    /* Space below header */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  /* Space below header */
 }
 
 #emoji-picker-modal h2 {
-    /* text-align: center; */
-    /* REMOVED */
-    margin-bottom: 0;
-    /* Handled by header margin */
-    font-size: 1.2rem;
-    font-weight: 500;
-    flex-grow: 1;
-    /* Allow title to take space */
-    text-align: left;
-    /* MODIFIED */
+  /* text-align: center; */
+  /* REMOVED */
+  margin-bottom: 0;
+  /* Handled by header margin */
+  font-size: 1.2rem;
+  font-weight: 500;
+  flex-grow: 1;
+  /* Allow title to take space */
+  text-align: left;
+  /* MODIFIED */
 }
 
 /* NEW: Close button style */
 #emoji-picker-modal .modal-close-button {
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    font-size: 24px;
-    /* Material icon size */
-    cursor: pointer;
-    padding: 5px;
-    /* Easier click target */
-    line-height: 1;
-    transition: color var(--transition-speed) ease;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 24px;
+  /* Material icon size */
+  cursor: pointer;
+  padding: 5px;
+  /* Easier click target */
+  line-height: 1;
+  transition: color var(--transition-speed) ease;
 }
 
 #emoji-picker-modal .modal-close-button:hover {
-    color: var(--text-primary);
+  color: var(--text-primary);
 }
-
 
 /* Container for the picker inside the modal */
 #emoji-picker-modal #emoji-picker-container {
-    border-radius: 24px;
-    /* MODIFIED: Restore original rounded container */
-    border: 1px solid var(--v-secondary-base);
-    overflow: hidden;
-    /* Clip picker */
-    margin-bottom: 15px;
-    /* Space before actions */
+  border-radius: 24px;
+  /* MODIFIED: Restore original rounded container */
+  border: 1px solid var(--v-secondary-base);
+  overflow: hidden;
+  /* Clip picker */
+  margin-bottom: 15px;
+  /* Space before actions */
 }
 
 /* Style the picker inside the modal */
 #emoji-picker-modal emoji-picker {
-    height: 300px;
-    /* Adjust height as needed for modal context */
-    /* Inherit variables or redefine if needed */
-    --background: var(--v-secondary-darken1);
-    --input-background-color: var(--v-secondary-base);
-    --input-border-radius: 24px;
-    /* MODIFIED: Restore original rounded search bar */
-    --input-border-color: transparent;
-    /* etc. */
+  height: 300px;
+  /* Adjust height as needed for modal context */
+  /* Inherit variables or redefine if needed */
+  --background: var(--v-secondary-darken1);
+  --input-background-color: var(--v-secondary-base);
+  --input-border-radius: 24px;
+  /* MODIFIED: Restore original rounded search bar */
+  --input-border-color: transparent;
+  /* etc. */
 }
 
 /* REMOVED: .modal-actions styles are no longer needed here */
 
 /* Optional: Slightly dim the main settings card when picker is floating */
 #sound-settings-overlay.picker-is-floating #settings-card {
-    /* filter: brightness(0.8); */
-    /* Example: Dim the card */
-    /* transition: filter 0.25s ease-out; */
+  /* filter: brightness(0.8); */
+  /* Example: Dim the card */
+  /* transition: filter 0.25s ease-out; */
 }
 
 /* Placeholder Styling */
 .emoji-picker-placeholder {
-    display: none;
-    /* Hidden by default */
-    height: 305px;
-    /* ESTIMATED height: picker (280px) + container border (2px) + some margin/padding? Adjust this! */
-    /* Match container border visually if needed when debugging */
-    /* border: 1px dashed red; */
+  display: none;
+  /* Hidden by default */
+  height: 305px;
+  /* ESTIMATED height: picker (280px) + container border (2px) + some margin/padding? Adjust this! */
+  /* Match container border visually if needed when debugging */
+  /* border: 1px dashed red; */
 }
 
 .emoji-picker-placeholder.placeholder-active {
-    display: block;
-    /* Show the placeholder */
+  display: block;
+  /* Show the placeholder */
 }
 
 /* Styles for the floating state */
 #emoji-picker-container.emoji-picker-floating {
-    position: fixed;
-    /* MODIFIED: Adjusted 'top' slightly higher */
-    top: calc(env(safe-area-inset-top, 0px) + 5px);
-    /* Position higher, closer to top edge */
-    left: 5%;
-    right: 5%;
-    width: 90%;
-    max-width: 450px;
-    height: auto;
-    max-height: 55vh;
-    /* MODIFIED: Reduced max-height slightly if needed */
-    z-index: 1200;
-    background-color: var(--v-secondary-darken1);
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
-    border-radius: 24px;
-    border: 1px solid var(--v-secondary-base);
-    /* MODIFIED: Adjusted transition duration for quicker pop */
-    transition: transform 0.2s ease-out, opacity 0.2s ease-out;
-    /* Quicker transition */
-    transform: translateY(-5px) scale(0.98);
-    /* Start slightly closer */
-    opacity: 0;
-    pointer-events: none;
+  position: fixed;
+  /* MODIFIED: Adjusted 'top' slightly higher */
+  top: calc(env(safe-area-inset-top, 0px) + 5px);
+  /* Position higher, closer to top edge */
+  left: 5%;
+  right: 5%;
+  width: 90%;
+  max-width: 450px;
+  height: auto;
+  max-height: 55vh;
+  /* MODIFIED: Reduced max-height slightly if needed */
+  z-index: 1200;
+  background-color: var(--v-secondary-darken1);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+  border-radius: 24px;
+  border: 1px solid var(--v-secondary-base);
+  /* MODIFIED: Adjusted transition duration for quicker pop */
+  transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+  /* Quicker transition */
+  transform: translateY(-5px) scale(0.98);
+  /* Start slightly closer */
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* When the floating class is actively applied */
 #emoji-picker-container.emoji-picker-floating.visible {
-    transform: translateY(0) scale(1);
-    /* Animate into final position */
-    opacity: 1;
-    pointer-events: auto;
-    /* Enable interaction */
+  transform: translateY(0) scale(1);
+  /* Animate into final position */
+  opacity: 1;
+  pointer-events: auto;
+  /* Enable interaction */
 }
-
-
 
 /* Style for the element that the dragged item will swap with */
 .sortable-swap-highlight {
-    outline: 2px dashed var(--v-primary-base);
-    /* Example: Dashed primary color outline */
-    background-color: rgba(82, 177, 140, 0.1);
-    /* Example: Faint primary color background */
-    transition: outline 0.1s ease, background-color 0.1s ease;
-    /* Smooth transition for the highlight */
+  outline: 2px dashed var(--v-primary-base);
+  /* Example: Dashed primary color outline */
+  background-color: rgba(82, 177, 140, 0.1);
+  /* Example: Faint primary color background */
+  transition: outline 0.1s ease, background-color 0.1s ease;
+  /* Smooth transition for the highlight */
 }
 
 /* Optional: Slightly different style for list items during swap */
 main#sounds-container.layout-list .sortable-swap-highlight {
-    background-color: rgba(82, 177, 140, 0.2);
-    /* Slightly darker background for list */
-    outline-offset: -1px;
-    /* Adjust outline position if needed */
+  background-color: rgba(82, 177, 140, 0.2);
+  /* Slightly darker background for list */
+  outline-offset: -1px;
+  /* Adjust outline position if needed */
 }
 
 /* Style for the new Play/Pause Toggle Button in the top bar */
 #play-pause-toggle-button {
-    /* Uses existing .icon-button and .top-bar-button styles */
-    /* Add specific order or margin if needed */
-    /* order: -1; */
-    /* Example: Place before layout button */
-    /* margin-right: 5px; */ 
-    /* Example: Spacing */
+  /* Uses existing .icon-button and .top-bar-button styles */
+  /* Add specific order or margin if needed */
+  /* order: -1; */
+  /* Example: Place before layout button */
+  /* margin-right: 5px; */
+  /* Example: Spacing */
 }
 
 /* Style for the new Talk-Through Button in the bottom header */
 .btn-round {
-    /* Base for round buttons */
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid var(--v-secondary-darken1);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    transition: background-color var(--transition-speed) ease, box-shadow var(--transition-speed) ease, transform var(--transition-speed) ease;
+  /* Base for round buttons */
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--v-secondary-darken1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: background-color var(--transition-speed) ease,
+    box-shadow var(--transition-speed) ease,
+    transform var(--transition-speed) ease;
 }
 
 .btn-round .material-symbols-outlined {
-    font-size: 28px;
-    /* Adjust icon size */
+  font-size: 28px;
+  /* Adjust icon size */
 }
 
 .btn-talk {
-    background-color: var(--v-secondary-base); /* Default grey */
-    color: var(--text-primary);
-    /* --- NEW: Explicitly set touch-action --- */
-    touch-action: manipulation;
-    /* Prevent text selection on accidental drag */
-    user-select: none;
-    -webkit-user-select: none;
-    /* --- NEW: Prevent iOS callout menu --- */
-    -webkit-touch-callout: none;
+  background-color: var(--v-secondary-base);
+  /* Default grey */
+  color: var(--text-primary);
+  /* --- NEW: Explicitly set touch-action --- */
+  touch-action: manipulation;
+  /* Prevent text selection on accidental drag */
+  user-select: none;
+  -webkit-user-select: none;
+  /* --- NEW: Prevent iOS callout menu --- */
+  -webkit-touch-callout: none;
 }
 
 .btn-talk:hover {
-    background-color: var(--v-secondary-darken1);
+  background-color: var(--v-secondary-darken1);
 }
 
 /* Active/pressed state for talk-through */
 .btn-talk.active {
-    background-color: var(--v-primary-base);
-    /* Use primary color when active */
-    color: white;
-    box-shadow: 0 0 10px rgba(82, 177, 140, 0.5), inset 0 2px 4px rgba(0, 0, 0, 0.3);
-    transform: scale(0.95);
-    /* Slight press effect */
+  background-color: var(--v-primary-base);
+  /* Use primary color when active */
+  color: white;
+  box-shadow: 0 0 10px rgba(82, 177, 140, 0.5),
+    inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  transform: scale(0.95);
+  /* Slight press effect */
 }
 
 /* --- NEW CODE END --- */
 
 /* Ensure header-actions can contain the new button */
 .header-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    /* Adjust gap if needed */
-    position: relative;
-    /* Ensure buttons are above ripples */
-    z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Adjust gap if needed */
+  position: relative;
+  /* Ensure buttons are above ripples */
+  z-index: 1;
 }
 
 /* --- ADD: Styles for progress visibility --- */
 .top-bar {
-    /* ... existing styles ... */
-    /* Default background without gradient */
-    background-color: var(--v-secondary-darken1);
-    /* Remove the direct background gradient */
-    /* background: linear-gradient(...) */
-    transition: background-color var(--transition-speed) ease;
-    /* Keep transition */
+  /* ... existing styles ... */
+  /* Default background without gradient */
+  background-color: var(--v-secondary-darken1);
+  /* Remove the direct background gradient */
+  /* background: linear-gradient(...) */
+  transition: background-color var(--transition-speed) ease;
+  /* Keep transition */
 }
 
 .top-bar.progress-active {
-    /* Apply gradient ONLY when progress is active */
-    background: linear-gradient(to right,
-            var(--top-bar-progress-color) var(--progress-percentage, 0%),
-            var(--v-secondary-darken1) var(--progress-percentage, 0%));
-    transition: background var(--transition-speed) linear;
-    /* Transition background */
+  /* Apply gradient ONLY when progress is active */
+  background: linear-gradient(to right,
+      var(--top-bar-progress-color) var(--progress-percentage, 0%),
+      var(--v-secondary-darken1) var(--progress-percentage, 0%));
+  transition: background var(--transition-speed) linear;
+  /* Transition background */
 }
 
 /* --- ADD: Default hidden state for play/pause button --- */
 #play-pause-toggle-button.hidden {
-    display: none;
+  display: none;
 }
 
 /* --- Driver.js Custom Styling --- */
 .soundux-driver-popover {
-    background-color: var(--v-secondary-darken2); /* Even darker background */
-    color: var(--text-primary); /* White text */
-    border-radius: 5px; /* Set popover radius to 5px */
-    border: 1px solid var(--v-secondary-base); /* Subtle border */
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5); /* Slightly stronger shadow */
+  background-color: var(--v-secondary-darken2);
+  /* Even darker background */
+  color: var(--text-primary);
+  /* White text */
+  border-radius: 5px;
+  /* Set popover radius to 5px */
+  border: 1px solid var(--v-secondary-base);
+  /* Subtle border */
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+  /* Slightly stronger shadow */
 }
 
 .soundux-driver-popover .driver-popover-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-primary); /* Ensure title is white */
-    margin-bottom: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  /* Ensure title is white */
+  margin-bottom: 8px;
 }
 
 .soundux-driver-popover .driver-popover-description {
-    font-size: 0.9rem;
-    color: var(--text-secondary); /* Lighter grey for description */
-    line-height: 1.4;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  /* Lighter grey for description */
+  line-height: 1.4;
 }
 
 .soundux-driver-popover .driver-popover-description b {
-    color: var(--v-primary-lighten1); /* Highlight bold text */
-    font-weight: 600;
+  color: var(--v-primary-lighten1);
+  /* Highlight bold text */
+  font-weight: 600;
 }
 
 .soundux-driver-popover .driver-popover-navigation-btns {
-    margin-top: 15px;
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
+  margin-top: 15px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .soundux-driver-popover .driver-popover-navigation-btns button {
-    background-color: var(--v-secondary-base);
-    color: var(--text-primary);
-    border: none;
-    border-radius: 5px; /* Set button radius to 5px */
-    padding: 8px 16px;
-    font-size: 0.85rem;
-    font-weight: 600; /* Slightly bolder */
-    font-family: inherit; /* Ensure correct font */
-    cursor: pointer;
-    transition: background-color var(--transition-speed) ease;
-    flex-grow: 1; /* Make buttons share space */
+  background-color: var(--v-secondary-base);
+  color: var(--text-primary);
+  border: none;
+  border-radius: 5px;
+  /* Set button radius to 5px */
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  /* Slightly bolder */
+  font-family: inherit;
+  /* Ensure correct font */
+  cursor: pointer;
+  transition: background-color var(--transition-speed) ease;
+  flex-grow: 1;
+  /* Make buttons share space */
 }
 
 .soundux-driver-popover .driver-popover-navigation-btns button:hover {
-    background-color: var(--v-secondary-darken2);
+  background-color: var(--v-secondary-darken2);
 }
 
 .soundux-driver-popover .driver-popover-navigation-btns button.driver-popover-next-btn {
-    background-color: var(--v-primary-base); /* Primary color for Next/Done */
-    color: white;
+  background-color: var(--v-primary-base);
+  /* Primary color for Next/Done */
+  color: white;
 }
 
 .soundux-driver-popover .driver-popover-navigation-btns button.driver-popover-next-btn:hover {
-    background-color: var(--v-primary-darken1);
+  background-color: var(--v-primary-darken1);
 }
 
 .soundux-driver-popover .driver-popover-navigation-btns button.driver-popover-prev-btn {
-    /* Keep secondary style for Previous */
+  /* Keep secondary style for Previous */
 }
 
 .soundux-driver-popover .driver-popover-navigation-btns button.driver-popover-close-btn {
-    background-color: var(--error-color); /* Red for Close */
-    color: white;
-    flex-grow: 0; /* Don't let close button grow */
-    padding: 8px 12px;
+  background-color: var(--error-color);
+  /* Red for Close */
+  color: white;
+  flex-grow: 0;
+  /* Don't let close button grow */
+  padding: 8px 12px;
 }
+
 .soundux-driver-popover .driver-popover-navigation-btns button.driver-popover-close-btn:hover {
-    background-color: #ff6b6b;
+  background-color: #ff6b6b;
 }
-
-
 
 .soundux-driver-popover .driver-popover-progress-text {
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-    margin-top: 10px;
-    text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  margin-top: 10px;
+  text-align: center;
 }
 
 .soundux-driver-popover .driver-popover-arrow {
-    /* Use default arrow or customize border colors if needed */
+  /* Use default arrow or customize border colors if needed */
 }
 
 .soundux-driver-popover .driver-popover-arrow::before {
-    border-color: var(--v-secondary-base); /* Match popover border */
+  border-color: var(--v-secondary-base);
+  /* Match popover border */
 }
 
 .soundux-driver-popover.driver-popover-position-bottom .driver-popover-arrow::before {
-    border-top-color: var(--v-secondary-darken1); /* Match popover background */
+  border-top-color: var(--v-secondary-darken1);
+  /* Match popover background */
 }
+
 .soundux-driver-popover.driver-popover-position-top .driver-popover-arrow::before {
-    border-bottom-color: var(--v-secondary-darken1); /* Match popover background */
+  border-bottom-color: var(--v-secondary-darken1);
+  /* Match popover background */
 }
+
 .soundux-driver-popover.driver-popover-position-left .driver-popover-arrow::before {
-    border-right-color: var(--v-secondary-darken1); /* Match popover background */
+  border-right-color: var(--v-secondary-darken1);
+  /* Match popover background */
 }
+
 .soundux-driver-popover.driver-popover-position-right .driver-popover-arrow::before {
-    border-left-color: var(--v-secondary-darken1); /* Match popover background */
+  border-left-color: var(--v-secondary-darken1);
+  /* Match popover background */
 }
 
 /* Overlay */
 .driver-overlay {
-    background-color: rgba(18, 18, 18, 0.1) !important; /* Minimal overlay */
-    /* backdrop-filter: blur(1px); Removed blur */
+  background-color: rgba(18, 18, 18, 0.1) !important;
+  /* Minimal overlay */
+  /* backdrop-filter: blur(1px); Removed blur */
 }
 
 .driver-popover-footer button {
-    text-shadow: none;
+  text-shadow: none;
 }
 
 .driver-popover {
-    background-color: var(--v-secondary-darken1);
-    color: var(--text-secondary);
-    border-radius: 15px;
-    margin: 0px 9px 0px 1px;
-    max-width: max(400px,90vw);
+  background-color: var(--v-secondary-darken1);
+  color: var(--text-secondary);
+  border-radius: 15px;
+  margin: 0px 9px 0px 1px;
+  max-width: max(400px, 90vw);
 }
 
 .driver-popover-description {
-    color: var(--text-secondary);
+  color: var(--text-secondary);
 }
 
 .driver-popover-title {
-    color: var(--text-primary);
+  color: var(--text-primary);
 }
 
 .driver-popover-arrow {
-    border: 5px solid var(--v-secondary-base);
-    display: none;
-
+  border: 5px solid var(--v-secondary-base);
+  display: none;
 }
 
 .driver-popover-progress-text {
-    padding-right: 50px;
+  padding-right: 50px;
 }
 
 .driver-popover-navigation-btns {
-    max-width: 220px;
-    border-radius: 20px;
+  max-width: 220px;
+  border-radius: 20px;
 }
 
 /* --- Wake Lock Indicator Styles --- */
 #wake-lock-indicator {
-    order: 3; /* Position after status text */
-    font-size: 14px; /* Match nearby text/icons */
-    color: var(--text-secondary); /* Default: Grey (Inactive) */
-    transition: color var(--transition-speed) ease;
-    cursor: pointer; /* Clickable by default */
-    display: inline-flex; /* Align icon properly */
-    align-items: center;
-    vertical-align: middle; /* Align with text */
-    background-color: unset;
-    /* Removed button-like styles: padding, border-radius, width, height, background-hover */
+  order: 3;
+  /* Position after status text */
+  font-size: 14px;
+  /* Match nearby text/icons */
+  color: var(--text-secondary);
+  /* Default: Grey (Inactive) */
+  transition: color var(--transition-speed) ease;
+  cursor: pointer;
+  /* Clickable by default */
+  display: inline-flex;
+  /* Align icon properly */
+  align-items: center;
+  vertical-align: middle;
+  /* Align with text */
+  background-color: unset;
+  /* Removed button-like styles: padding, border-radius, width, height, background-hover */
 }
 
 #wake-lock-indicator.active {
-    color: var(--success-color); /* Active: Green */
-    background-color: unset;
+  color: var(--success-color);
+  /* Active: Green */
+  background-color: unset;
 }
 
 #wake-lock-indicator.failed {
-    color: var(--text-secondary); /* Failed: Grey */
-    opacity: 0.6; /* Dimmed */
-    cursor: default; /* Not clickable */
-    background-color: unset;
+  color: var(--text-secondary);
+  /* Failed: Grey */
+  opacity: 0.6;
+  /* Dimmed */
+  cursor: default;
+  /* Not clickable */
+  background-color: unset;
 }
 
 /* Remove hover effect */
 #wake-lock-indicator:hover {
-    background-color: unset;
+  background-color: unset;
 }
