@@ -62,7 +62,7 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 [Files]
 Source: "{#PATH}\build\Release\soundux.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PATH}\build\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{tmp}\VBCABLE_Driver_Pack43.zip"; DestDir: "{app}"; Flags: external deleteafterinstall; Components: VBCable
+Source: "{tmp}\VBCABLE_Driver_Pack45.zip"; DestDir: "{app}"; Flags: external deleteafterinstall; Components: VBCable
 Source: "{tmp}\MicrosoftEdgeWebView2RuntimeInstallerX64.exe"; DestDir: "{tmp}"; Flags: external deleteafterinstall; Components: MicrosoftEdgeWebView2Runtime
 
 [Dirs]
@@ -146,7 +146,7 @@ begin
       DownloadPage.Add('https://go.microsoft.com/fwlink/?linkid=2124701', 'MicrosoftEdgeWebView2RuntimeInstallerX64.exe', '');
     end;
     if WizardIsComponentSelected('VBCable') then begin
-      DownloadPage.Add('https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack43.zip', 'VBCABLE_Driver_Pack43.zip', '')
+      DownloadPage.Add('https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack45.zip', 'VBCABLE_Driver_Pack45.zip', '')
     end;
     DownloadPage.Show;
     try
@@ -158,7 +158,7 @@ begin
       end;
     finally
       if (Result and WizardIsComponentSelected('VBCable')) then begin
-        UnZip(ExpandConstant('{tmp}') + '\VBCABLE_Driver_Pack43.zip', ExpandConstant('{tmp}'))
+        UnZip(ExpandConstant('{tmp}') + '\VBCABLE_Driver_Pack45.zip', ExpandConstant('{tmp}'))
       end;
       DownloadPage.Hide;
     end;

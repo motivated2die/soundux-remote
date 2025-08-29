@@ -89,7 +89,6 @@ int main(int argc, char **arguments)
 #endif
 
     gAudio.setup();
-    gYtdl.setup();
 
 #if defined(__linux__)
     if (gAudioBackend && gSettings.audioBackend == BackendType::PulseAudio && gConfig.settings.useAsDefaultDevice)

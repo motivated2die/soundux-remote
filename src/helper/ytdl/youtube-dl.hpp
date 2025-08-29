@@ -1,8 +1,6 @@
 #pragma once
 #include <json.hpp>
 #include <optional>
-#include <process.hpp>
-#include <regex>
 #include <string>
 
 namespace Soundux
@@ -12,8 +10,6 @@ namespace Soundux
         class YoutubeDl
         {
             bool isAvailable = false;
-            static const std::regex urlRegex;
-            std::optional<TinyProcessLib::Process> currentDownload;
 
           public:
             void setup();
