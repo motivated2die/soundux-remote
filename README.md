@@ -1,3 +1,10 @@
+> [!WARNING]
+> **This repository is archived and no longer maintained.**
+>
+> Please switch to **[Resound](https://github.com/motivated2die/resound)**, its direct replacement. Resound is a free soundboard for Windows that you control from your phone, rewritten from scratch in Go. It has all the essentials of Soundux Remote: playback into voice chat through VB-Cable, a phone remote with tabs, favorites, colors, emoji and custom layouts, plus mic mute and push-to-talk. It also ships as a single small program with a guided setup and one-click updates.
+>
+> **[Download Resound](https://github.com/motivated2die/resound/releases/latest)** · [Website](https://getresound.app) · [Help](https://getresound.app/help/)
+
 # Soundux Remote 🎮
 A fork of the [Soundux cross-platform soundboard](https://github.com/Soundux/Soundux) with a new remote functionality for controlling your soundboard from any device on your local network.
 
